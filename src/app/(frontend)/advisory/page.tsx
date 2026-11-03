@@ -101,8 +101,8 @@ export default async function AdvisoryPage() {
           <p className="idx-intro">
             Most transformations don&rsquo;t fail for technical reasons. They fail because the people responsible
             can&rsquo;t see what is actually happening, or can see it and don&rsquo;t act. Transformidable Advisory
-            brings the evidence from our research to your organization&rsquo;s own decisions. Our technology advisory
-            service does not have a menu of services. Tell us the problem; we&rsquo;ll tell you honestly whether and how we can help.
+            brings the evidence from our research to your organization&rsquo;s own decisions. Transformidable Advisory
+            does not have a menu of services. Tell us the problem; we&rsquo;ll tell you honestly whether and how we can help.
           </p>
           <div className="hero-cta" style={{ marginTop: 28 }}>
             <Link className="btn" href="/advisory/conversation">Book a conversation <Arrow /></Link>
