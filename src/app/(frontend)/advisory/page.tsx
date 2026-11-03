@@ -23,9 +23,10 @@ const Arrow = ({ s = 14 }: { s?: number }) => (
   <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
 );
 
-// Advisory is organized by problem, not product: one page, four short blocks,
-// no sub-pages, pricing, or named service lines. The anchors are linked from
-// the homepage's "Where we help" cards.
+// Advisory is organized by problem, not product: four short blocks, no pricing.
+// The one named offering, the Executive Technology Office, has its own page
+// and is linked from the block below these. The anchors are linked from the
+// homepage's "Where we help" cards.
 const AREAS = [
   {
     id: "mergers-acquisitions",
@@ -100,8 +101,8 @@ export default async function AdvisoryPage() {
           <p className="idx-intro">
             Most transformations don&rsquo;t fail for technical reasons. They fail because the people responsible
             can&rsquo;t see what is actually happening, or can see it and don&rsquo;t act. Transformidable Advisory
-            brings the evidence from our research to your organization&rsquo;s own decisions. We don&rsquo;t sell a
-            menu of services. Tell us the problem; we&rsquo;ll tell you honestly whether and how we can help.
+            brings the evidence from our research to your organization&rsquo;s own decisions. Transformidable Advisory
+            does not have a menu of services. Tell us the problem; we&rsquo;ll tell you honestly whether and how we can help.
           </p>
           <div className="hero-cta" style={{ marginTop: 28 }}>
             <Link className="btn" href="/advisory/conversation">Book a conversation <Arrow /></Link>
@@ -129,6 +130,20 @@ export default async function AdvisoryPage() {
           <p className="av-close">
             Not on this list? Most governance problems aren&rsquo;t.{" "}
             <Link className="link" href="/advisory/conversation">Tell us yours <Arrow s={13} /></Link>
+          </p>
+        </div>
+      </section>
+
+      <section className="rule-band" aria-labelledby="av-eto-h">
+        <div className="wrap">
+          <p className="kicker">Executive Technology Office</p>
+          <h2 className="hm-h2" id="av-eto-h">Executive technology leadership. Shared expertise. Smarter decisions.</h2>
+          <p className="body" style={{ marginTop: 18 }}>
+            Transformidable&rsquo;s Executive Technology Office (ETO) makes executive-level technology expertise
+            accessible through a flexible, shared advisory model.
+          </p>
+          <p className="av-close">
+            <Link className="link" href="/advisory/executive-technology-office">Explore the Executive Technology Office <Arrow s={13} /></Link>
           </p>
         </div>
       </section>
