@@ -29,7 +29,8 @@ const NAV = [
   {
     label: "Advisory", href: "/advisory", children: [
       { no: "02.1", name: "Transformidable Advisory", desc: "Tell us the governance problem in front of you", href: "/advisory" },
-      { no: "02.2", name: "Book a Conversation", desc: "Start with a 30-minute call", href: "/advisory/conversation" },
+      { no: "02.2", name: "Executive Technology Office", desc: "Executive technology leadership. Shared expertise.", href: "/advisory/executive-technology-office" },
+      { no: "02.3", name: "Book a Conversation", desc: "Start with a 30-minute call", href: "/advisory/conversation" },
     ],
   },
   {

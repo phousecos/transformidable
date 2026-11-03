@@ -14,6 +14,7 @@ const STATIC_PATHS = [
   "/research",
   "/advisory",
   "/advisory/conversation",
+  "/advisory/executive-technology-office",
   "/publishing",
   "/media",
   "/publications",
