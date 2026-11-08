@@ -1,4 +1,5 @@
 // @ts-nocheck
+import Link from "next/link";
 import { AcademyFaq, AcademyHero, AcademyShell, Arrow } from "../components/academy/AcademySections";
 import { BetaApply, ProgramFinder } from "../components/academy/AcademyTraining";
 import { LegacyAcademyAnchors } from "../components/academy/LegacyAcademyAnchors";
@@ -86,6 +87,9 @@ export default function AcademyPage() {
               {PRIMARY_AUDIENCES.map((a) => <li key={a}>{a}</li>)}
             </ul>
             <p className="ac-t-small">{OTHER_AUDIENCES}</p>
+            <p className="ac-t-small">
+              <Link className="ac-inline" href="/academy/board-governance-training">About board governance training</Link>
+            </p>
           </div>
         </div>
       </section>

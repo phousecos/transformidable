@@ -132,3 +132,17 @@ export function articleJsonLd({ title, description, path, publishedAt, updatedAt
 export function jsonLdHtml(data: unknown) {
   return { __html: JSON.stringify(data).replace(/</g, '\\u003c') }
 }
+
+// FAQ structured data, so questions can show in Google's results. Answers are
+// plain text, matching what the page shows.
+export function faqJsonLd(items: { q: string; a: string }[]) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: items.map(({ q, a }) => ({
+      '@type': 'Question',
+      name: q,
+      acceptedAnswer: { '@type': 'Answer', text: a },
+    })),
+  }
+}

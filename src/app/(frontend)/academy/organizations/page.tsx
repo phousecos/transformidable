@@ -40,7 +40,8 @@ export default function OrganizationsPage() {
           </div>
           <p className="ac-note">
             A council may want only the briefing; an executive team may be ready for the workshop; an organization
-            building an AI governance program may need the applied course. We can help you choose.
+            building an AI governance program may need the applied course. We can help you choose.{" "}
+            <Link className="ac-inline" href="/academy/board-governance-training">More on board governance training</Link>.
           </p>
         </div>
       </section>
