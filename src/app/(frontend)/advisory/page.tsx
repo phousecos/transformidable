@@ -148,6 +148,21 @@ export default async function AdvisoryPage() {
         </div>
       </section>
 
+      <section className="rule-band" aria-labelledby="av-cio-h">
+        <div className="wrap">
+          <p className="kicker">Interim &amp; fractional CIO</p>
+          <h2 className="hm-h2" id="av-cio-h">When your CIO leaves, or before you hire one.</h2>
+          <p className="body" style={{ marginTop: 18 }}>
+            Interim CIO leadership keeps technology decisions and major work moving after a departure, and helps you
+            define and fill the role. Fractional CIO leadership gives you sustained executive judgment without a
+            full-time appointment.
+          </p>
+          <p className="av-close">
+            <Link className="link" href="/advisory/fractional-cio">Interim, fractional, or outsourced CIO? Compare the options <Arrow s={13} /></Link>
+          </p>
+        </div>
+      </section>
+
       <section className="rule-band" aria-labelledby="av-eto-h">
         <div className="wrap">
           <p className="kicker">Executive Technology Office</p>
@@ -158,9 +173,6 @@ export default async function AdvisoryPage() {
           </p>
           <p className="av-close">
             <Link className="link" href="/advisory/executive-technology-office">Explore the Executive Technology Office <Arrow s={13} /></Link>
-          </p>
-          <p className="av-close">
-            <Link className="link" href="/advisory/fractional-cio">Interim, fractional, or outsourced CIO? Compare the options <Arrow s={13} /></Link>
           </p>
         </div>
       </section>
