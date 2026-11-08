@@ -129,10 +129,10 @@ export default function AiPolicyPage() {
 
       <div className="gd-callout">
         <p>
-          <strong>Watch the briefing: &ldquo;Are we governing AI, or just letting it happen?&rdquo;</strong> Dr. Jerri
+          <strong>The briefing: &ldquo;Are we governing AI, or just letting it happen?&rdquo;</strong> Dr. Jerri
           Bland walks through each of the five questions, where to draw the lines, what should send an approved use back
           for review, and a real scenario: the day your HR vendor switches on AI.{" "}
-          <Link href="/briefings/webinars">Register to watch</Link>.
+          <Link href="/briefings/ai-governance">See the dates and register</Link>.
         </p>
       </div>
 
