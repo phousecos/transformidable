@@ -3,11 +3,12 @@ import config from "@payload-config";
 import { getPayload } from "payload";
 import { TOOLS_PATH, listedToolsWhere } from "../../lib/advisoryTools.ts";
 import { SITE_URL as siteUrl } from "../../lib/seo.ts";
+import { getBriefings } from "../../lib/briefings.ts";
 
 export const dynamic = "force-dynamic";
 
 // Static, always-present routes. The "Coming soon" placeholders (research
-// projects and datasets, briefings, and the tools other than the Codebook) are
+// projects and datasets, and the tools other than the Codebook) are
 // left out, and marked noindex, until they have content: thin placeholder pages
 // count against the site in search. Add each back here when it launches.
 const STATIC_PATHS = [
@@ -22,6 +23,8 @@ const STATIC_PATHS = [
   "/publications/case-files",
   "/publications/research-notes",
   "/podcast",
+  "/briefings/live",
+  "/briefings/webinars",
   "/about",
   "/contact",
   "/academy",
@@ -58,6 +61,17 @@ export default async function sitemap() {
     changeFrequency: p === "" ? "weekly" : "monthly",
     priority: p === "" ? 1 : 0.7,
   }));
+
+  // Briefing topics, from the briefings platform (lib/briefings.ts).
+  const briefings = await getBriefings();
+  for (const s of briefings?.series || []) {
+    entries.push({
+      url: `${siteUrl}/briefings/${s.slug}`,
+      lastModified: s.updatedAt ? new Date(s.updatedAt) : now,
+      changeFrequency: "weekly",
+      priority: 0.7,
+    });
+  }
 
   try {
     const payload = await getPayload({ config });

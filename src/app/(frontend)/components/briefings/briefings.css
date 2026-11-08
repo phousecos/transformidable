@@ -1,0 +1,30 @@
+/* Briefings pages. Cards reuse .cf-card (research.css); these are the extras. */
+
+/* Sections inside .idx-body: drop the site-wide section padding. */
+.tr .br-section { padding: 0; }
+.tr .br-section + .br-section { margin-top: clamp(40px, 6vw, 64px); }
+.tr .br-section > h2 { font-family: var(--serif); font-size: 1.6rem; line-height: 1.2; color: var(--ink); margin: 0 0 8px; }
+.tr .br-section > .br-sub { font-family: var(--serif); color: var(--ink-body); margin: 0 0 22px; max-width: 62ch; }
+
+/* Detail page */
+.tr .br-detail { display: grid; gap: clamp(32px, 5vw, 56px); grid-template-columns: 1fr; }
+@media (min-width: 900px) { .tr .br-detail { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); align-items: start; } }
+.tr .br-cover { margin: 0 0 28px; }
+.tr .br-cover img { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; border: 1px solid var(--rule); }
+.tr .br-copy p { font-family: var(--serif); font-size: 1.05rem; line-height: 1.65; color: var(--ink-body); margin: 0 0 16px; max-width: 64ch; }
+.tr .br-copy h2 { font-family: var(--serif); font-size: 1.35rem; color: var(--ink); margin: 32px 0 10px; }
+
+.tr .br-panel { border: 1px solid var(--rule); border-top: 2px solid var(--wine); background: var(--paper); padding: 24px; box-shadow: var(--shadow); }
+.tr .br-panel + .br-panel { margin-top: 20px; }
+.tr .br-panel h2 { font-family: var(--serif); font-size: 1.2rem; color: var(--ink); margin: 0 0 14px; }
+.tr .br-panel p { font-family: var(--serif); font-size: .96rem; line-height: 1.55; color: var(--ink-body); margin: 0 0 16px; }
+
+.tr .br-dates { list-style: none; margin: 0 0 18px; padding: 0; }
+.tr .br-dates li { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 16px; padding: 12px 0; border-top: 1px solid var(--rule); }
+.tr .br-dates li:first-child { border-top: 0; padding-top: 0; }
+.tr .br-dates .d { font-family: var(--serif); color: var(--ink); }
+.tr .br-dates .t { display: block; font-size: .85rem; color: var(--ink-mute); }
+.tr .br-dates a { font-size: .9rem; font-weight: 600; }
+
+.tr .br-tags { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; margin: 0; padding: 0; }
+.tr .br-tags li { font-size: 11.5px; letter-spacing: .04em; border: 1px solid var(--rule); padding: 4px 10px; color: var(--ink-mute); }

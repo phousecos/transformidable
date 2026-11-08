@@ -26,6 +26,14 @@
       "binding": "WORKER_SELF_REFERENCE",
       "service": "jlynne-cms",
     },
+    {
+      // The briefings platform (repo phousecos/webinar), read for the public
+      // feed behind the /briefings pages (src/lib/briefings.ts). A binding,
+      // because a Worker can't reliably fetch another Worker on the same zone
+      // by URL.
+      "binding": "BRIEFINGS",
+      "service": "briefings",
+    },
   ],
   "routes": [
     // The public website.
