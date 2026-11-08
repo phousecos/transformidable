@@ -68,8 +68,8 @@
 .tr .hm-way p { font-family: var(--serif); font-size: .98rem; line-height: 1.6; color: var(--ink-body); margin: 0 0 6px; }
 .tr .hm-way > .btn, .tr .hm-way > .link, .tr .hm-way > .subscribe { margin-top: auto; }
 .tr .hm-way .subscribe { width: 100%; }
-.tr .hm-way .subscribe input { background: var(--paper); color: var(--ink); border-color: var(--rule-strong); }
-.tr .hm-way .subscribe input::placeholder { color: var(--ink-faint); }
+.tr .hm-way .subscribe input { background: var(--paper); color: var(--ink); border-color: var(--field-border); }
+.tr .hm-way .subscribe input::placeholder { color: var(--ink-mute); }
 
 /* ---- Division landing pages (Publishing, Media) ------------------------ */
 .tr .dv-grid { display: grid; gap: 16px; grid-template-columns: 1fr; }
@@ -88,8 +88,8 @@
 .tr .dv-signup { background: var(--paper-2); }
 .tr .dv-signup-in { display: grid; gap: 24px 48px; grid-template-columns: 1fr; align-items: center; }
 @media (min-width: 900px) { .tr .dv-signup-in { grid-template-columns: 1fr 1fr; } }
-.tr .dv-signup .subscribe input { background: var(--paper); color: var(--ink); border-color: var(--rule-strong); }
-.tr .dv-signup .subscribe input::placeholder { color: var(--ink-faint); }
+.tr .dv-signup .subscribe input { background: var(--paper); color: var(--ink); border-color: var(--field-border); }
+.tr .dv-signup .subscribe input::placeholder { color: var(--ink-mute); }
 
 /* ---- Advisory (/advisory, /advisory/conversation) ---------------------- */
 .tr .av-areas { display: grid; gap: 16px; grid-template-columns: 1fr; }

@@ -24,7 +24,7 @@
   /* Text */
   --ink:        #16100F;
   --ink-body:   #4A3D40;
-  --ink-mute:   #7A6A6E;
+  --ink-mute:   #6B5D61;
   --ink-faint:  #B8A9AC;
 
   /* Utility bar (the one wine surface) */
@@ -89,6 +89,7 @@
 .mag .link--rule:hover { text-decoration: none; border-bottom-width: 2px; }
 
 .mag :focus-visible { outline: 2px solid var(--wine); outline-offset: 3px; }
+.mag .utility :focus-visible, .mag .article-hero :focus-visible { outline-color: var(--gold); }
 
 /* --- Utility bar --------------------------------------------------------- */
 
@@ -193,7 +194,7 @@
 
 .mag .subscribe { padding-block: 28px; border-top: 1px solid var(--rule); }
 .mag .subscribe-form { display: flex; }
-.mag .subscribe input { flex: 1; min-width: 0; background: var(--paper-2); border: 1px solid var(--rule); border-right: 0; padding: 11px 12px; font-family: var(--sans); font-size: 13px; color: var(--ink); }
+.mag .subscribe input { flex: 1; min-width: 0; background: var(--paper-2); border: 1px solid #8f8173; border-right: 0; padding: 11px 12px; font-family: var(--sans); font-size: 13px; color: var(--ink); }
 .mag .subscribe input::placeholder { color: var(--ink-mute); }
 .mag .subscribe .btn { border-radius: 0; flex: none; }
 
