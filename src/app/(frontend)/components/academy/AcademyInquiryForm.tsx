@@ -1,6 +1,6 @@
 // @ts-nocheck
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSpamTrap } from "../useSpamTrap";
 import {
   ACADEMY_DELIVERY,
@@ -39,7 +39,7 @@ function Select({ id, label, value, onChange, options, optional = true }) {
       <label className="case-form-label" htmlFor={id}>
         {label} {optional && <span className="case-form-optional">(optional)</span>}
       </label>
-      <select id={id} className="case-form-input ac-select" value={value} onChange={onChange} required={!optional}>
+      <select id={id} className="case-form-input ac-select" value={value} onChange={onChange} required={!optional} aria-required={!optional || undefined}>
         <option value="">Select…</option>
         {options.map((o) => (
           <option key={o.value} value={o.value}>{o.label}</option>
@@ -73,6 +73,21 @@ export function AcademyInquiryForm({
   const { trap, spamFields } = useSpamTrap();
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [feedback, setFeedback] = useState("");
+  const successRef = useRef(null);
+  const headingRef = useRef(null);
+  const wasSuccess = useRef(false);
+
+  // The form and its confirmation replace each other; move focus with them so
+  // keyboard and screen reader users aren't left on a control that is gone.
+  useEffect(() => {
+    if (status === "success") {
+      wasSuccess.current = true;
+      successRef.current?.focus();
+    } else if (status === "idle" && wasSuccess.current) {
+      wasSuccess.current = false;
+      headingRef.current?.focus();
+    }
+  }, [status]);
 
   useEffect(() => {
     const program = new URLSearchParams(window.location.search).get("program");
@@ -120,7 +135,7 @@ export function AcademyInquiryForm({
   if (status === "success") {
     return (
       <div className="ac-form-card">
-        <div className="case-form-success" role="status" aria-live="polite">
+        <div className="case-form-success" role="status" aria-live="polite" ref={successRef} tabIndex={-1}>
           <p>{feedback}</p>
         </div>
         <button type="button" className="link" onClick={() => setStatus("idle")}>{beta ? "Submit another application" : "Submit another inquiry"}</button>
@@ -130,7 +145,7 @@ export function AcademyInquiryForm({
 
   return (
     <div className="ac-form-card">
-      <h3 className="ac-form-h">{heading || (beta ? "Apply for the beta" : isOrg ? "Request a private session" : "Join the interest list")}</h3>
+      <h3 className="ac-form-h" ref={headingRef} tabIndex={-1}>{heading || (beta ? "Apply for the beta" : isOrg ? "Request a private session" : "Join the interest list")}</h3>
       <p className="ac-form-sub">
         {beta
           ? isOrg

@@ -116,7 +116,7 @@ export default async function MediaPage() {
               <article className="pub" key={ep.id}>
                 <span className="p-type">{ep.episodeNumber ? `Episode ${ep.episodeNumber}` : "Episode"}</span>
                 <div>
-                  <Link className="p-link" href={`/podcast/${ep.slug}`}><h4>{ep.title}</h4></Link>
+                  <Link className="p-link" href={`/podcast/${ep.slug}`}><h3>{ep.title}</h3></Link>
                   {ep.description && <p className="p-desc">{ep.description}</p>}
                   {ep.publishDate && <span className="p-meta">{fullDate(ep.publishDate)}</span>}
                 </div>

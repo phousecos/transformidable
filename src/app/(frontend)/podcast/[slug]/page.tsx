@@ -127,7 +127,7 @@ export default async function PodcastEpisodePage({
           {audioSrc && (
             // Audio-only listeners; preload="none" so the page doesn't start
             // downloading a large file nobody asked for.
-            <audio className="episode-audio" controls preload="none" src={audioSrc}>
+            <audio className="episode-audio" controls preload="none" src={audioSrc} aria-label={`Episode audio: ${ep.title}`}>
               <a href={audioSrc}>Download the episode audio</a>
             </audio>
           )}

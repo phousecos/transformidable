@@ -128,7 +128,7 @@ export default async function BriefingPage({ params }) {
                             <span className="t">{w.time} &middot; {se.durationMinutes} minutes</span>
                           </span>
                           <a className="link" href={tagged(s.registerUrl, { session: String(se.id) })}>
-                            Register<span className="sr-only"> for {w.date}</span>
+                            Register<span className="sr-only"> for {w.date}, {w.time}</span>
                           </a>
                         </li>
                       );
