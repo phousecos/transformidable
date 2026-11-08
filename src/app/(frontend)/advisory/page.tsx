@@ -12,7 +12,7 @@ import { jsonLdHtml, pageMetadata, serviceJsonLd } from "../../../lib/seo.ts";
 export const dynamic = "force-dynamic";
 
 const DESCRIPTION =
-  "Independent technology, project, and AI governance advisory for boards and executives: ERP transformations, IT controls and material weaknesses, mergers and separations, vendor renewals, and fractional CIO support.";
+  "Tell us the technology, project, or AI governance problem in front of you: a troubled ERP program, an audit finding, a leadership gap, or AI already in use without a policy. We'll tell you honestly whether and how we can help.";
 
 export const metadata = pageMetadata({ title: "Technology, Project & AI Governance Advisory", description: DESCRIPTION, path: "/advisory" });
 
