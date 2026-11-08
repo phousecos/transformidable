@@ -106,14 +106,13 @@ export default function FractionalCioPage() {
       </p>
 
       <h2>How Transformidable helps</h2>
-      <p>Support ranges from help when you need it to interim executive leadership.</p>
       <h3>Through the Executive Technology Office</h3>
       <p>
         Our <Link href="/advisory/executive-technology-office">Executive Technology Office</Link> provides executive
         technology expertise as an outsourced service:
       </p>
       <ul>
-        <li><strong>For association members:</strong> organizations without a CIO can get help when they need it, such as a technology or AI policy written or guidance on a decision, on an as-needed basis. It&rsquo;s often a first step toward more sustained support.</li>
+        <li><strong>Association Executive Technology Office:</strong> shared executive technology expertise that associations offer their members as a benefit.</li>
         <li><strong>Organizational technology advisory:</strong> independent guidance on consequential technology decisions, alongside your existing leadership and providers.</li>
         <li><strong>Fractional CIO leadership:</strong> sustained part-time executive leadership for organizations not ready to appoint a full-time CIO, including technology strategy, governance, investment oversight, vendor coordination, and support for executive and board decisions.</li>
       </ul>
