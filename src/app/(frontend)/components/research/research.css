@@ -353,7 +353,7 @@
 .tr .event .e-date { display: flex; align-items: baseline; gap: 10px; margin-bottom: 8px; }
 .tr .event .e-date .m { font-family: var(--mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--wine); }
 .tr .event .e-date .tag { font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-mute); border: 1px solid var(--rule-strong); border-radius: 999px; padding: 2px 8px; }
-.tr .event h4 { font-family: var(--serif); font-size: 1.12rem; line-height: 1.25; color: var(--ink); margin: 0 0 6px; }
+.tr .event h3, .tr .event h4 { font-family: var(--serif); font-size: 1.12rem; line-height: 1.25; color: var(--ink); margin: 0 0 6px; }
 .tr .event p { font-size: 12.5px; line-height: 1.5; color: var(--ink-mute); margin: 0 0 10px; }
 
 .tr .empty { font-family: var(--serif); font-style: italic; color: var(--ink-mute); font-size: 1rem; padding: 8px 0; }
@@ -372,7 +372,7 @@
 .tr .footer-cols { display: grid; gap: 32px 40px; grid-template-columns: 1fr 1fr; padding-block: 42px; }
 @media (min-width: 720px) { .tr .footer-cols { grid-template-columns: repeat(3, 1fr); } }
 @media (min-width: 1000px) { .tr .footer-cols { grid-template-columns: 1.3fr repeat(5, 1fr); } }
-.tr .fcol h5 { font-size: 10.5px; letter-spacing: .18em; text-transform: uppercase; color: var(--on-wine-mute); margin: 0 0 16px; font-weight: 700; }
+.tr .fcol h2, .tr .fcol h5 { font-size: 10.5px; letter-spacing: .18em; text-transform: uppercase; color: var(--on-wine-mute); margin: 0 0 16px; font-weight: 700; }
 .tr .fcol a, .tr .fcol .fitem { display: block; font-size: 13px; color: var(--on-wine); padding: 5px 0; }
 .tr .fcol a:hover { color: #fff; }
 .tr .fcol.brand .fw { display: inline-flex; margin-bottom: 14px; }
@@ -909,3 +909,4 @@
 .tr .case-moment { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; margin-top: 16px; padding: 0 14px; border: 1px solid var(--rule-strong); color: var(--wine); font-family: var(--sans); font-size: 13px; font-weight: 600; text-decoration: none; box-sizing: border-box; }
 .tr .case-moment:hover { border-color: var(--wine); }
 .tr .case-moment svg { width: 13px; height: 13px; }
+.tr .case-form-success:focus { outline: none; }

@@ -45,6 +45,7 @@ export default async function CaseFilesIndex() {
 
       <div className="idx-body">
         <div className="wrap">
+          <h2 className="sr-only">All case files</h2>
           {docs.length === 0 ? (
             <p className="empty">Case files will appear here as the research is published.</p>
           ) : (

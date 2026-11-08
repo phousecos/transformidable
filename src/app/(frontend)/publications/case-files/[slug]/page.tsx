@@ -98,7 +98,7 @@ export default async function CaseFileDetail({ params }: { params: Promise<{ slu
 
           {cover && (
             /* eslint-disable-next-line @next/next/no-img-element */
-            <img className="detail-cover" src={cover} alt="" />
+            <img className="detail-cover" src={cover} alt={typeof cf.featuredImage?.alt === "string" ? cf.featuredImage.alt : ""} />
           )}
         </div>
 

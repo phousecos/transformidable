@@ -1,6 +1,6 @@
 // @ts-nocheck
 "use client";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSpamTrap } from "../useSpamTrap";
 
 export function SubmitToCaseForm({ caseSlug }: { caseSlug: string }) {
@@ -13,6 +13,22 @@ export function SubmitToCaseForm({ caseSlug }: { caseSlug: string }) {
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [feedback, setFeedback] = useState("");
   const { trap, spamFields } = useSpamTrap();
+  // The form is replaced on success; move focus to the confirmation so it is
+  // announced and keyboard focus is not lost.
+  const successRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (status === "success") successRef.current?.focus();
+  }, [status]);
+  const docRadio = useRef<HTMLButtonElement>(null);
+  const fbRadio = useRef<HTMLButtonElement>(null);
+  // Radio group keyboard pattern: arrow keys move and select.
+  const onRadioKey = (e: React.KeyboardEvent) => {
+    if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.key)) return;
+    e.preventDefault();
+    const next = type === "document" ? "feedback" : "document";
+    setType(next);
+    (next === "document" ? docRadio : fbRadio).current?.focus();
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,7 +63,7 @@ export function SubmitToCaseForm({ caseSlug }: { caseSlug: string }) {
 
   if (status === "success") {
     return (
-      <div className="case-form-success" role="status" aria-live="polite">
+      <div className="case-form-success" role="status" aria-live="polite" tabIndex={-1} ref={successRef}>
         <p>{feedback}</p>
       </div>
     );
@@ -56,10 +72,12 @@ export function SubmitToCaseForm({ caseSlug }: { caseSlug: string }) {
   return (
     <form className="case-form" onSubmit={handleSubmit} noValidate>
       {trap}
-      <div className="case-form-toggle" role="radiogroup" aria-label="Submission type">
+      <div className="case-form-toggle" role="radiogroup" aria-label="Submission type" onKeyDown={onRadioKey}>
         <button
           type="button"
           role="radio"
+          ref={docRadio}
+          tabIndex={type === "document" ? 0 : -1}
           aria-checked={type === "document"}
           className={`case-form-toggle-btn${type === "document" ? " is-active" : ""}`}
           onClick={() => setType("document")}
@@ -69,6 +87,8 @@ export function SubmitToCaseForm({ caseSlug }: { caseSlug: string }) {
         <button
           type="button"
           role="radio"
+          ref={fbRadio}
+          tabIndex={type === "feedback" ? 0 : -1}
           aria-checked={type === "feedback"}
           className={`case-form-toggle-btn${type === "feedback" ? " is-active" : ""}`}
           onClick={() => setType("feedback")}
@@ -83,6 +103,9 @@ export function SubmitToCaseForm({ caseSlug }: { caseSlug: string }) {
       <textarea
         id="submit-message"
         required
+        aria-required="true"
+        aria-invalid={status === "error" ? true : undefined}
+        aria-describedby={status === "error" ? "submit-error" : undefined}
         rows={3}
         value={message}
         onChange={(e) => setMessage(e.target.value)}
@@ -96,6 +119,7 @@ export function SubmitToCaseForm({ caseSlug }: { caseSlug: string }) {
           <input
             id="submit-url"
             type="url"
+            inputMode="url"
             value={sourceUrl}
             onChange={(e) => setSourceUrl(e.target.value)}
             placeholder="https://…"
@@ -133,7 +157,7 @@ export function SubmitToCaseForm({ caseSlug }: { caseSlug: string }) {
         className="case-form-input"
       />
 
-      <div role="alert" aria-live="assertive" className="case-form-msg">
+      <div id="submit-error" role="alert" className="case-form-msg">
         {status === "error" && feedback}
       </div>
 

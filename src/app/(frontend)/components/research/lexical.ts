@@ -28,7 +28,9 @@ function nodeToHtml(node: any): string {
     case "root": return children
     case "paragraph": return children ? `<p>${children}</p>` : `<p><br /></p>`
     case "heading": {
-      const tag = ALLOWED_HEADING_TAGS.has(node.tag) ? node.tag : "h2"
+      // Body copy sits under the page's own <h1>, so an authored h1 is
+      // demoted to h2 to keep one h1 per page (WCAG 1.3.1 / 2.4.6).
+      const tag = ALLOWED_HEADING_TAGS.has(node.tag) && node.tag !== "h1" ? node.tag : "h2"
       return `<${tag}>${children}</${tag}>`
     }
     case "quote": return `<blockquote>${children}</blockquote>`

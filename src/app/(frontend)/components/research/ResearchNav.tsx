@@ -1,7 +1,8 @@
 // @ts-nocheck
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useSpamTrap } from "../useSpamTrap";
 
 const Chevron = () => (
@@ -72,6 +73,25 @@ const UTILITY = [
 
 export function ResearchNav() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  // The mega menu opens on hover/focus (CSS). Escape dismisses it (WCAG 1.4.13)
+  // until the pointer or focus leaves that item.
+  const [dismissed, setDismissed] = useState<string | null>(null);
+  const burgerRef = useRef<HTMLButtonElement>(null);
+  const pathname = usePathname();
+  const current = (href: string) => (href === pathname ? "page" : undefined);
+
+  // Escape closes the mobile menu and returns focus to its toggle.
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setMobileOpen(false);
+        burgerRef.current?.focus();
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [mobileOpen]);
 
   const toggleTheme = () => {
     const root = document.documentElement;
@@ -108,7 +128,7 @@ export function ResearchNav() {
                 <Link className="u-brief" href={u.href} key={u.label}>{u.label}</Link>
               ),
             )}
-            <button className="theme-toggle" onClick={toggleTheme} aria-label="Toggle light and dark theme">
+            <button type="button" className="theme-toggle" onClick={toggleTheme} aria-label="Toggle light and dark theme">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></svg>
             </button>
           </div>
@@ -125,12 +145,30 @@ export function ResearchNav() {
 
           <nav className="primary" aria-label="Primary">
             {NAV.map((item) => (
-              <div className="nav-item" key={item.label}>
-                <Link href={item.href}>{item.label}{item.children && <Chevron />}</Link>
+              <div
+                className="nav-item"
+                key={item.label}
+                onKeyDown={(e) => {
+                  if (e.key === "Escape" && item.children) {
+                    setDismissed(item.label);
+                    (e.currentTarget.querySelector(":scope > a") as HTMLElement | null)?.focus();
+                  }
+                }}
+                onMouseLeave={() => setDismissed(null)}
+                onBlur={(e) => {
+                  if (!e.currentTarget.contains(e.relatedTarget as Node)) setDismissed(null);
+                }}
+              >
+                <Link href={item.href} aria-current={current(item.href)}>{item.label}{item.children && <Chevron />}</Link>
                 {item.children && (
-                  <div className="mega" role="menu">
+                  <div
+                    className="mega"
+                    aria-label={`${item.label} pages`}
+                    role="group"
+                    style={dismissed === item.label ? { visibility: "hidden", opacity: 0 } : undefined}
+                  >
                     {item.children.map((c) => (
-                      <Link href={c.href} key={c.name} role="menuitem">
+                      <Link href={c.href} key={c.name} aria-current={current(c.href)}>
                         <span className="m-no">{c.no}</span>
                         <span><span className="m-name">{c.name}</span><span className="m-desc">{c.desc}</span></span>
                       </Link>
@@ -141,7 +179,7 @@ export function ResearchNav() {
             ))}
           </nav>
 
-          <button className="burger" aria-expanded={mobileOpen} aria-controls="tr-mobile-menu" aria-label="Menu" onClick={() => setMobileOpen((v) => !v)}>
+          <button ref={burgerRef} type="button" className="burger" aria-expanded={mobileOpen} aria-controls="tr-mobile-menu" aria-label={mobileOpen ? "Close menu" : "Open menu"} onClick={() => setMobileOpen((v) => !v)}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
               {mobileOpen ? <path d="M6 6l12 12M18 6L6 18" /> : <path d="M4 7h16M4 12h16M4 17h16" />}
             </svg>
@@ -149,13 +187,13 @@ export function ResearchNav() {
         </div>
 
         {/* Mobile menu */}
-        <div className={`mobile-menu${mobileOpen ? " is-open" : ""}`} id="tr-mobile-menu">
+        <nav className={`mobile-menu${mobileOpen ? " is-open" : ""}`} id="tr-mobile-menu" aria-label="Mobile">
           <div className="wrap">
             {NAV.map((item) => (
               <div key={item.label}>
-                <Link href={item.href} onClick={() => setMobileOpen(false)}>{item.label}</Link>
+                <Link href={item.href} aria-current={current(item.href)} onClick={() => setMobileOpen(false)}>{item.label}</Link>
                 {item.children?.map((c) => (
-                  <Link className="mm-sub" href={c.href} key={c.name} onClick={() => setMobileOpen(false)}>{c.name}</Link>
+                  <Link className="mm-sub" href={c.href} key={c.name} aria-current={current(c.href)} onClick={() => setMobileOpen(false)}>{c.name}</Link>
                 ))}
               </div>
             ))}
@@ -167,7 +205,7 @@ export function ResearchNav() {
               ),
             )}
           </div>
-        </div>
+        </nav>
       </header>
     </>
   );
@@ -211,10 +249,23 @@ export function ResearchSubscribe({ list = "brief", id = "tr-email", buttonLabel
     <form className="subscribe" onSubmit={onSubmit}>
       {trap}
       <label className="sr-only" htmlFor={id}>Email address</label>
-      <input id={id} type="email" name="email" placeholder="you@institution.org" required value={email} onChange={(e) => setEmail(e.target.value)} />
+      <input
+        id={id}
+        type="email"
+        name="email"
+        autoComplete="email"
+        placeholder="you@institution.org"
+        required
+        aria-invalid={state === "error" ? true : undefined}
+        aria-describedby={message ? `${id}-msg` : undefined}
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+      />
       <button className="btn" type="submit" disabled={state === "sending"}>{state === "sending" ? "Joining…" : buttonLabel}</button>
+      {/* Always-present live region so the result is announced. */}
+      <span className="sr-only" role="status" aria-live="polite">{message}</span>
       {message && (
-        <p role="status" style={{ flexBasis: "100%", margin: "4px 0 0", fontSize: 12, color: onLight ? (state === "error" ? "var(--wine)" : "var(--ink-body)") : state === "error" ? "#fff" : "var(--on-wine)" }}>{message}</p>
+        <p id={`${id}-msg`} style={{ flexBasis: "100%", margin: "4px 0 0", fontSize: 12, color: onLight ? (state === "error" ? "var(--wine)" : "var(--ink-body)") : state === "error" ? "#fff" : "var(--on-wine)" }}>{message}</p>
       )}
     </form>
   );

@@ -58,22 +58,23 @@ export default async function PublicationsIndex({
             What the research becomes: argued, edited, and on the record. The Governance Files run
             long; articles run short; white papers and annual reports carry the depth.
           </p>
-          <div className="idx-filters">
+          <nav className="idx-filters" aria-label="Filter publications by type">
             {FILTERS.map((f) => {
               const href = f.value ? `/publications?type=${f.value}` : "/publications";
               const isActive = f.value === activeType;
               return (
-                <Link className={`idx-filter${isActive ? " is-active" : ""}`} href={href} key={f.label}>
+                <Link className={`idx-filter${isActive ? " is-active" : ""}`} href={href} key={f.label} aria-current={isActive ? "page" : undefined}>
                   {f.label}
                 </Link>
               );
             })}
-          </div>
+          </nav>
         </div>
       </section>
 
       <div className="idx-body">
         <div className="wrap">
+          <h2 className="sr-only">{activeType ? `${heading}: all items` : "All publications"}</h2>
           {docs.length === 0 ? (
             <p className="empty">No publications in this series yet. New work is on the way.</p>
           ) : (
@@ -83,7 +84,7 @@ export default async function PublicationsIndex({
                 <article className="pub" key={p.id}>
                   <span className="p-type">{TYPE_LABELS[p.type] || "Publication"}</span>
                   <div>
-                    <Link className="p-link" href={`/publications/${p.slug}`}><h4>{p.title}</h4></Link>
+                    <Link className="p-link" href={`/publications/${p.slug}`}><h3>{p.title}</h3></Link>
                     {p.dek && <p className="p-desc">{p.dek}</p>}
                     {meta.length > 0 && <span className="p-meta">{meta.join(" · ")}</span>}
                   </div>
