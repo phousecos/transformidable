@@ -3,20 +3,12 @@ import { AcademyFaq, AcademyHero, AcademyShell, Arrow } from "../components/acad
 import { BetaApply, ProgramFinder } from "../components/academy/AcademyTraining";
 import { LegacyAcademyAnchors } from "../components/academy/LegacyAcademyAnchors";
 import { BETA, BETA_STEPS, FACULTY, OTHER_AUDIENCES, PRIMARY_AUDIENCES, PROGRAMS, PROMISES, betaPrice, faqIn, formatPrice } from "./content";
+import { pageMetadata } from "../../../lib/seo.ts";
 
 const DESCRIPTION =
-  "AI governance education for city councils, county commissions, university governing boards, and executive leadership teams. Now enrolling beta participants at 50% off the first two classes.";
+  "AI governance training for city councils, county commissions, university and nonprofit boards, and executive leadership teams. Beta enrollment open at 50% off the first two classes.";
 
-export const metadata = {
-  title: "Academy",
-  description: DESCRIPTION,
-  alternates: { canonical: "/academy" },
-  openGraph: {
-    title: "Transformidable Academy | AI Governance Education",
-    description: DESCRIPTION,
-    url: "/academy",
-  },
-};
+export const metadata = pageMetadata({ title: "AI Governance Training for Boards and Executives", description: DESCRIPTION, path: "/academy" });
 
 const pct = `${BETA.discount * 100}%`;
 
@@ -29,7 +21,7 @@ export default function AcademyPage() {
 
       <AcademyHero
         badge={<>Beta enrollment open &middot; {pct} off &middot; {BETA.orgSpots} organization spots</>}
-        kicker="Transformidable Academy · AI Governance Education"
+        kicker="Transformidable Academy · AI Governance Training"
         title="Govern the technology shaping your organization."
         intro="Executive education for the leaders and governing bodies who oversee decisions about artificial intelligence. Designed for decision-makers rather than technical specialists, with practical governance tools to take back to your organization."
         image={{ src: "/academy-hero-jerri-bland-knee.webp", alt: "Jerri Bland, Ed.D., Lead Faculty", width: 548, height: 800 }}

@@ -1,19 +1,20 @@
 import React from "react";
 import Script from "next/script";
 import "./globals.css";
+import { OG_IMAGE, SITE_URL, jsonLdHtml, organizationJsonLd } from "../../lib/seo.ts";
 
-// Canonical public site URL. Set NEXT_PUBLIC_SITE_URL in the environment to the
-// production domain so absolute URLs (OpenGraph, sitemap, canonicals) are right.
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://transformidablethinking.com";
+// Canonical public site URL (NEXT_PUBLIC_SITE_URL, falling back to the
+// production domain) so absolute URLs (OpenGraph, sitemap, canonicals) are right.
+const siteUrl = SITE_URL;
 
 // Cloudflare Web Analytics site token (public; it appears in the page). Read
 // at build time for the statically rendered pages, so set it as a build
 // variable as well as a runtime one.
 const cfAnalyticsToken = process.env.CF_WEB_ANALYTICS_TOKEN;
 
-const SITE_TITLE = "Transformidable | Evidence for Better Transformation Governance";
+const SITE_TITLE = "Transformidable | Technology, Project & AI Governance for Boards and Executives";
 const SITE_DESCRIPTION =
-  "Independent research on how governance, leadership, and institutional decision-making shape whether organizational transformation succeeds or fails.";
+  "Technology, project, and AI governance advisory, research, and governance training for boards and executives in higher education, nonprofits, associations, and mid-market organizations.";
 
 export const metadata = {
   metadataBase: new URL(siteUrl),
@@ -25,22 +26,31 @@ export const metadata = {
   description: SITE_DESCRIPTION,
   applicationName: "Transformidable",
   keywords: [
+    "technology governance",
+    "project governance",
+    "AI governance",
+    "governance training",
+    "AI governance training for boards",
+    "board technology oversight",
+    "ERP transformation governance",
+    "IT general controls",
+    "material weakness remediation",
+    "fractional CIO",
+    "executive technology office",
+    "higher education technology governance",
+    "nonprofit technology governance",
     "transformation governance",
-    "governance research",
-    "organizational transformation",
-    "institutional resilience",
-    "leadership",
-    "governance case files",
   ],
   authors: [{ name: "Transformidable" }],
   robots: { index: true, follow: true },
   openGraph: {
     type: "website",
     siteName: "Transformidable",
-    url: siteUrl,
+    // No url here: a page that doesn't set its own would otherwise claim the
+    // home page's address. Pages set theirs with pageMetadata() (lib/seo.ts).
     title: SITE_TITLE,
     description: SITE_DESCRIPTION,
-    images: [{ url: "/og.png", width: 1200, height: 630, alt: "Transformidable" }],
+    images: [OG_IMAGE],
   },
   twitter: {
     card: "summary_large_image",
@@ -69,6 +79,7 @@ export default function FrontendLayout({ children }: { children: React.ReactNode
         <a href="#main-content" className="skip-link">
           Skip to main content
         </a>
+        <script type="application/ld+json" dangerouslySetInnerHTML={jsonLdHtml(organizationJsonLd())} />
         {children}
         {cfAnalyticsToken && (
           <Script

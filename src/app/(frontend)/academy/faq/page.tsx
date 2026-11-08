@@ -1,12 +1,9 @@
 // @ts-nocheck
 import { AcademyFaq, AcademyHero, AcademyShell, JsonLd } from "../../components/academy/AcademySections";
 import { FAQ, FAQ_GROUPS, faqIn, faqJsonLd } from "../content";
+import { pageMetadata } from "../../../../lib/seo.ts";
 
-export const metadata = {
-  title: "Academy FAQ",
-  description: "Answers to common questions about Transformidable Academy's AI governance programs, private sessions for organizations, and the interest list for individuals.",
-  alternates: { canonical: "/academy/faq" },
-};
+export const metadata = pageMetadata({ title: "AI Governance Training FAQ", description: "Answers to common questions about Transformidable Academy's AI governance training: programs for boards and leadership teams, private sessions, and the interest list for individuals.", path: "/academy/faq" });
 
 export default function AcademyFaqPage() {
   return (

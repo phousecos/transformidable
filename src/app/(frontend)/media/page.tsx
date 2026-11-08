@@ -6,17 +6,14 @@ import { ResearchShell } from "../components/research/ResearchShell";
 import { Sky } from "../components/research/Sky";
 import { fullDate } from "../components/research/format";
 import "../components/home/home.css";
+import { pageMetadata } from "../../../lib/seo.ts";
 
 export const dynamic = "force-dynamic";
 
 const DESCRIPTION =
   "Transformidable Media: The Governance Files podcast, the Transformidable Briefing, interviews, and events on leadership and governance.";
 
-export const metadata = {
-  title: "Media",
-  description: DESCRIPTION,
-  alternates: { canonical: "/media" },
-};
+export const metadata = pageMetadata({ title: "Media", description: DESCRIPTION, path: "/media" });
 
 const Arrow = ({ s = 14 }: { s?: number }) => (
   <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>

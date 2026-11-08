@@ -3,6 +3,7 @@ import config from "@payload-config";
 import { getPayload } from "payload";
 import { notFound } from "next/navigation";
 import MagazineHomepage from "../../components/MagazineHomepage";
+import { pageMetadata } from "../../../../lib/seo.ts";
 
 export const dynamic = "force-dynamic";
 
@@ -24,10 +25,7 @@ export async function generateMetadata({ params }: { params: Promise<{ issueNumb
     ? `Issue ${num}: ${issue.themeTagline}`
     : `${issue.title ?? `Issue ${num}`}`;
 
-  return {
-    title,
-    description: issue.themeSubheading || undefined,
-  };
+  return pageMetadata({ title, description: issue.themeSubheading, path: `/issues/${issueNumber}`, type: "article" });
 }
 
 export default async function IssuePage({ params }: { params: Promise<{ issueNumber: string }> }) {

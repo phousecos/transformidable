@@ -5,14 +5,13 @@ import Link from "next/link";
 import { ResearchShell } from "../components/research/ResearchShell";
 import { Sky } from "../components/research/Sky";
 import { fullDate } from "../components/research/format";
+import { pageMetadata } from "../../../lib/seo.ts";
 
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "The Governance Files",
-  description:
-    "The Transformidable podcast. Conversations on governance, leadership, and institutional transformation.",
-  alternates: { types: { "application/rss+xml": "/podcast/feed.xml" } },
+  ...pageMetadata({ title: "The Governance Files Podcast", description: "The Transformidable podcast. Conversations on technology governance, AI governance, leadership, and institutional transformation.", path: "/podcast" }),
+  alternates: { canonical: "/podcast", types: { "application/rss+xml": "/podcast/feed.xml" } },
 };
 
 const Arrow = () => (

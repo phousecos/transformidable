@@ -8,6 +8,7 @@ import { Sky } from "../../../components/research/Sky";
 import { ToolRequestForm } from "../../../components/advisory/ToolRequestForm";
 import { TOOLS_PATH, assetTypeLabel, findTool, isOffered } from "../../../../../lib/advisoryTools.ts";
 import "../../../components/home/home.css";
+import { pageMetadata } from "../../../../../lib/seo.ts";
 
 export const dynamic = "force-dynamic";
 
@@ -24,12 +25,12 @@ export async function generateMetadata({ params }) {
   const { slug } = await params;
   const tool = await load(slug);
   if (!tool) return { title: "Advisory tools" };
-  return {
-    title: `${tool.title} | Advisory tools`,
-    description: tool.summary || undefined,
-    alternates: { canonical: `${TOOLS_PATH}/${slug}` },
-    ...(tool.status === "retired" && { robots: { index: false, follow: true } }),
-  };
+  return pageMetadata({
+    title: `${tool.title} | Governance Tools`,
+    description: tool.summary,
+    path: `${TOOLS_PATH}/${slug}`,
+    noindex: tool.status === "retired",
+  });
 }
 
 export default async function ToolPage({ params }) {

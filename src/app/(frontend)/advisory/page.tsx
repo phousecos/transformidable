@@ -7,17 +7,14 @@ import { Sky } from "../components/research/Sky";
 import { caseNo } from "../components/research/format";
 import { TOOLS_PATH, assetTypeLabel, listedToolsWhere } from "../../../lib/advisoryTools.ts";
 import "../components/home/home.css";
+import { jsonLdHtml, pageMetadata, serviceJsonLd } from "../../../lib/seo.ts";
 
 export const dynamic = "force-dynamic";
 
 const DESCRIPTION =
-  "Transformidable Advisory brings the evidence from our research to an organization's own governance decisions: mergers and acquisitions, troubled programs, IT general controls, and AI governance.";
+  "Independent technology, project, and AI governance advisory for boards and executives: ERP transformations, IT controls and material weaknesses, mergers and separations, vendor renewals, and fractional CIO support.";
 
-export const metadata = {
-  title: "Advisory",
-  description: DESCRIPTION,
-  alternates: { canonical: "/advisory" },
-};
+export const metadata = pageMetadata({ title: "Technology, Project & AI Governance Advisory", description: DESCRIPTION, path: "/advisory" });
 
 const Arrow = ({ s = 14 }: { s?: number }) => (
   <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
@@ -93,10 +90,21 @@ export default async function AdvisoryPage() {
 
   return (
     <ResearchShell>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={jsonLdHtml(
+          serviceJsonLd({
+            name: "Transformidable Advisory",
+            description: DESCRIPTION,
+            path: "/advisory",
+            serviceType: ["Technology governance", "Project governance", "AI governance", "ERP transformation governance", "IT general controls and material weakness remediation", "Mergers, acquisitions, and separation", "Technology vendor portfolio and renewals", "Fractional CIO"],
+          }),
+        )}
+      />
       <section className="idx-hero tr-onsky">
         <Sky variant="advisory" />
         <div className="wrap idx-hero-in">
-          <p className="kicker">Transformidable Advisory</p>
+          <p className="kicker">Transformidable Advisory · Technology, Project &amp; AI Governance</p>
           <h1 className="idx-title">Tell us the governance problem in front of you.</h1>
           <p className="idx-intro">
             Most transformations don&rsquo;t fail for technical reasons. They fail because the people responsible

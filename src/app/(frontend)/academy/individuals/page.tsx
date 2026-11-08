@@ -2,15 +2,12 @@
 import Link from "next/link";
 import { AcademyFaq, AcademyHero, AcademyRegister, AcademyShell, Arrow } from "../../components/academy/AcademySections";
 import { PROGRAMS, faqIn, programHref } from "../content";
+import { pageMetadata } from "../../../../lib/seo.ts";
 
 const DESCRIPTION =
   "Join the Transformidable Academy interest list to hear when an open AI governance program is scheduled for individual executives and professionals.";
 
-export const metadata = {
-  title: "For Individuals | Academy",
-  description: DESCRIPTION,
-  alternates: { canonical: "/academy/individuals" },
-};
+export const metadata = pageMetadata({ title: "AI Governance Training for Individuals", description: DESCRIPTION, path: "/academy/individuals" });
 
 // Kept deliberately short: the Academy leads with organizations, and this page
 // is for the individuals who find it anyway.

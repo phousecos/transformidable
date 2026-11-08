@@ -3,15 +3,12 @@ import Link from "next/link";
 import { ResearchShell } from "../../components/research/ResearchShell";
 import { Sky } from "../../components/research/Sky";
 import "../../components/home/home.css";
+import { jsonLdHtml, pageMetadata, serviceJsonLd } from "../../../../lib/seo.ts";
 
 const DESCRIPTION =
-  "Transformidable's Executive Technology Office (ETO) makes executive-level technology expertise accessible through a flexible, shared advisory model.";
+  "Transformidable's Executive Technology Office gives associations, nonprofits, and mid-market organizations shared, CIO-level technology leadership: technology governance, strategy, vendors, and AI, without a full-time hire.";
 
-export const metadata = {
-  title: "Executive Technology Office | Advisory",
-  description: DESCRIPTION,
-  alternates: { canonical: "/advisory/executive-technology-office" },
-};
+export const metadata = pageMetadata({ title: "Executive Technology Office: Shared CIO for Associations & Nonprofits", absolute: true, description: DESCRIPTION, path: "/advisory/executive-technology-office" });
 
 const BOOK_HREF = "/advisory/conversation";
 const BOOK_LABEL = "Schedule an Executive Conversation";
@@ -75,6 +72,17 @@ const SECTORS = [
 export default function ExecutiveTechnologyOfficePage() {
   return (
     <ResearchShell>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={jsonLdHtml(
+          serviceJsonLd({
+            name: "Executive Technology Office",
+            description: DESCRIPTION,
+            path: "/advisory/executive-technology-office",
+            serviceType: ["Shared CIO", "Fractional CIO", "Technology governance", "Technology strategy", "AI governance"],
+          }),
+        )}
+      />
       <section className="idx-hero tr-onsky">
         <Sky variant="advisory" />
         <div className="wrap idx-hero-in">

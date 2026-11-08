@@ -3,12 +3,9 @@ import Link from "next/link";
 import { ResearchShell } from "../../components/research/ResearchShell";
 import { Sky } from "../../components/research/Sky";
 import { MechanismExplorer } from "../../components/research/MechanismExplorer";
+import { pageMetadata } from "../../../../lib/seo.ts";
 
-export const metadata = {
-  title: "Governance Codebook",
-  description:
-    "The analytical framework behind Transformidable's research: how technology governance is defined, evidenced, and assessed, independent of outcome.",
-};
+export const metadata = pageMetadata({ title: "Technology Governance Codebook", description: "The analytical framework behind Transformidable's research: how technology governance is defined, evidenced, and assessed, independent of outcome.", path: "/tools/governance-codebook" });
 
 const SEQUENCE = ["Evidence", "Governance", "Design & Operation", "Effectiveness", "Consequences", "Relationship"];
 

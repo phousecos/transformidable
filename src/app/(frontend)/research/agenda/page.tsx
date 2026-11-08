@@ -2,12 +2,9 @@
 import Link from "next/link";
 import { ResearchShell } from "../../components/research/ResearchShell";
 import { Sky } from "../../components/research/Sky";
+import { pageMetadata } from "../../../../lib/seo.ts";
 
-export const metadata = {
-  title: "Research Agenda",
-  description:
-    "Five questions organize Transformidable's research: governance, leadership, institutions, technology, and evidence.",
-};
+export const metadata = pageMetadata({ title: "Research Agenda", description: "Five questions organize Transformidable's research: governance, leadership, institutions, technology, and evidence.", path: "/research/agenda" });
 
 const THREADS = [
   {

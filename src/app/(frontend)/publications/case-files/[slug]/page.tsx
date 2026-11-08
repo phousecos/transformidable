@@ -10,6 +10,7 @@ import { caseNo, fullDate } from "../../../components/research/format";
 import { CaseDossier } from "../../../components/research/CaseDossier";
 import { FollowCaseForm } from "../../../components/research/FollowCaseForm";
 import { SubmitToCaseForm } from "../../../components/research/SubmitToCaseForm";
+import { articleJsonLd, jsonLdHtml, pageMetadata } from "../../../../../lib/seo.ts";
 
 export const dynamic = "force-dynamic";
 
@@ -45,7 +46,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   const cf = await getCaseFile(slug);
   if (!cf) return { title: "Case file not found" };
-  return { title: `${cf.title}`, description: cf.dek || undefined };
+  return pageMetadata({ title: `${cf.title}`, description: cf.dek, path: `/publications/case-files/${slug}`, type: "article" });
 }
 
 export default async function CaseFileDetail({ params }: { params: Promise<{ slug: string }> }) {
@@ -65,6 +66,10 @@ export default async function CaseFileDetail({ params }: { params: Promise<{ slu
 
   return (
     <ResearchShell>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={jsonLdHtml(articleJsonLd({ title: cf.title, description: cf.dek, path: `/publications/case-files/${slug}`, publishedAt: cf.publishedAt, updatedAt: cf.updatedAt }))}
+      />
       <article className="detail">
         <div className="detail-wrap">
           <Link className="backlink" href="/publications/case-files">

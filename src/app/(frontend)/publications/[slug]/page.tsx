@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import { ResearchShell } from "../../components/research/ResearchShell";
 import { TYPE_LABELS, pubMeta, videoEmbedUrl } from "../../components/research/format";
 import { renderLexical } from "../../components/research/lexical";
+import { articleJsonLd, jsonLdHtml, pageMetadata } from "../../../../lib/seo.ts";
 
 export const dynamic = "force-dynamic";
 
@@ -32,10 +33,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   const p = await getPublication(slug);
   if (!p) return { title: "Publication not found" };
-  return {
-    title: `${p.title}`,
-    description: p.dek || undefined,
-  };
+  return pageMetadata({ title: `${p.title}`, description: p.dek, path: `/publications/${slug}`, type: "article" });
 }
 
 export default async function PublicationDetail({ params }: { params: Promise<{ slug: string }> }) {
@@ -53,6 +51,10 @@ export default async function PublicationDetail({ params }: { params: Promise<{ 
 
   return (
     <ResearchShell>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={jsonLdHtml(articleJsonLd({ title: p.title, description: p.dek, path: `/publications/${slug}`, publishedAt: p.publishedAt, updatedAt: p.updatedAt }))}
+      />
       <article className="detail">
         <div className="detail-wrap">
           <Link className="backlink" href="/publications">

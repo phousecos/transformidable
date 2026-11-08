@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import { ResearchShell } from "../../../components/research/ResearchShell";
 import { fullDate } from "../../../components/research/format";
 import { renderLexical } from "../../../components/research/lexical";
+import { articleJsonLd, jsonLdHtml, pageMetadata } from "../../../../../lib/seo.ts";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +29,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   const n = await getNote(slug);
   if (!n) return { title: "Research note not found" };
-  return { title: `${n.title}`, description: n.dek || undefined };
+  return pageMetadata({ title: `${n.title}`, description: n.dek, path: `/publications/research-notes/${slug}`, type: "article" });
 }
 
 export default async function ResearchNoteDetail({ params }: { params: Promise<{ slug: string }> }) {
@@ -44,6 +45,10 @@ export default async function ResearchNoteDetail({ params }: { params: Promise<{
 
   return (
     <ResearchShell>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={jsonLdHtml(articleJsonLd({ title: n.title, description: n.dek, path: `/publications/research-notes/${slug}`, publishedAt: n.publishedAt, updatedAt: n.updatedAt }))}
+      />
       <article className="detail">
         <div className="detail-wrap">
           <Link className="backlink" href="/publications/research-notes">

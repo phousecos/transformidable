@@ -2,12 +2,9 @@
 import Link from "next/link";
 import { ResearchShell } from "../../components/research/ResearchShell";
 import { Sky } from "../../components/research/Sky";
+import { pageMetadata } from "../../../../lib/seo.ts";
 
-export const metadata = {
-  title: "The Transformidable Governance Method",
-  description:
-    "A framework for making governance visible, accountable, and actionable: six governance disciplines applied through a five-stage improvement lifecycle.",
-};
+export const metadata = pageMetadata({ title: "The Transformidable Governance Method", description: "A framework for making governance visible, accountable, and actionable: six governance disciplines applied through a five-stage improvement lifecycle.", path: "/research/governance-method" });
 
 const DISCIPLINES = [
   {

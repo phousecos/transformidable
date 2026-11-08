@@ -5,14 +5,11 @@ import Link from "next/link";
 import { ResearchShell } from "../components/research/ResearchShell";
 import { Sky } from "../components/research/Sky";
 import { TYPE_LABELS, TYPE_PLURALS, pubMeta } from "../components/research/format";
+import { pageMetadata } from "../../../lib/seo.ts";
 
 export const dynamic = "force-dynamic";
 
-export const metadata = {
-  title: "Publications",
-  description:
-    "The Governance Files, Articles, White Papers, and Annual Reports. The research, argued and on the record.",
-};
+export const metadata = pageMetadata({ title: "Governance Publications", description: "The Governance Files, articles, white papers, and annual reports on technology, project, and AI governance. The research, argued and on the record.", path: "/publications" });
 
 const FILTERS = [
   { value: "", label: "All" },
