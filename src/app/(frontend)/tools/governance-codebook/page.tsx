@@ -130,9 +130,9 @@ export default function GovernanceCodebookPage() {
             <h2 className="case-h">How the analysis works</h2>
             <div className="seq-flow" role="list" aria-label="Analytical sequence">
               {SEQUENCE.map((step, i) => (
-                <div className="seq-item" key={step}>
-                  <div className={`seq-step${i === SEQUENCE.length - 1 ? " is-last" : ""}`} role="listitem">
-                    <span className="seq-n">{i + 1}</span>
+                <div className="seq-item" key={step} role="listitem">
+                  <div className={`seq-step${i === SEQUENCE.length - 1 ? " is-last" : ""}`}>
+                    <span className="seq-n">{i + 1}</span><span className="sr-only">. </span>
                     <span>{step}</span>
                   </div>
                   {i < SEQUENCE.length - 1 && (

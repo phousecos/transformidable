@@ -79,16 +79,26 @@ export function ConversationBooking() {
     const el = document.getElementById(`${idp}-cal`);
     if (!el) return;
     el.innerHTML = "";
+    // The embed's iframe has no title of its own; name it for screen readers.
+    const titleFrames = () =>
+      el.querySelectorAll("iframe:not([title])").forEach((f) => f.setAttribute("title", "Choose a time: Cal.com scheduler"));
+    const observer = new MutationObserver(titleFrames);
+    observer.observe(el, { childList: true, subtree: true });
     loadCal()("inline", { elementOrSelector: `#${idp}-cal`, calLink: CAL_LINK, config });
-    el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    el.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "nearest" });
+    return () => observer.disconnect();
   }, [config]);
 
   const set = (key) => (e) => setFields((f) => ({ ...f, [key]: e.target.value }));
+  // After a failed submit, flag each required field that is still empty.
+  const invalid = (key) => (error && !fields[key].trim() ? { "aria-invalid": true, "aria-describedby": `${idp}-error` } : {});
 
   const onSubmit = (e) => {
     e.preventDefault();
     if (!fields.name.trim() || !fields.problem.trim()) {
       setError("Please add your name and a few words about the governance problem.");
+      document.getElementById(fields.name.trim() ? `${idp}-problem` : `${idp}-name`)?.focus();
       return;
     }
     setError("");
@@ -109,14 +119,14 @@ export function ConversationBooking() {
           <div className="av-form-grid">
             <div>
               <label className="case-form-label" htmlFor={`${idp}-name`}>Name</label>
-              <input id={`${idp}-name`} className="case-form-input" type="text" required aria-required="true" autoComplete="name" value={fields.name} onChange={set("name")} />
+              <input id={`${idp}-name`} className="case-form-input" type="text" required aria-required="true" autoComplete="name" value={fields.name} onChange={set("name")} {...invalid("name")} />
             </div>
             <div>
-              <label className="case-form-label" htmlFor={`${idp}-org`}>Organization</label>
+              <label className="case-form-label" htmlFor={`${idp}-org`}>Organization <span className="case-form-optional">(optional)</span></label>
               <input id={`${idp}-org`} className="case-form-input" type="text" autoComplete="organization" value={fields.organization} onChange={set("organization")} />
             </div>
             <div>
-              <label className="case-form-label" htmlFor={`${idp}-role`}>Role</label>
+              <label className="case-form-label" htmlFor={`${idp}-role`}>Role <span className="case-form-optional">(optional)</span></label>
               <input id={`${idp}-role`} className="case-form-input" type="text" autoComplete="organization-title" value={fields.role} onChange={set("role")} />
             </div>
             <div>
@@ -129,21 +139,24 @@ export function ConversationBooking() {
           </div>
 
           <label className="case-form-label" htmlFor={`${idp}-problem`}>What&rsquo;s the governance problem?</label>
-          <textarea id={`${idp}-problem`} className="case-form-textarea" rows={5} required aria-required="true" maxLength={2000} value={fields.problem} onChange={set("problem")} />
+          <textarea id={`${idp}-problem`} className="case-form-textarea" rows={5} required aria-required="true" maxLength={2000} value={fields.problem} onChange={set("problem")} {...invalid("problem")} />
 
-          <div role="alert" aria-live="assertive" className="case-form-msg">{error}</div>
+          <div id={`${idp}-error`} role="alert" aria-live="assertive" className="case-form-msg">{error}</div>
 
           <button type="submit" className="case-form-btn">{config ? "Update and choose a time" : "Choose a time"}</button>
         </form>
       </div>
 
       <div>
-        <div className="av-cal" id={`${idp}-cal`} aria-live="polite">
+        <p className="sr-only" role="status" aria-live="polite">
+          {config ? "The scheduler has opened below the form. Choose a time there." : ""}
+        </p>
+        <div className="av-cal" id={`${idp}-cal`}>
           <p className="av-cal-wait">The calendar opens here once you&rsquo;ve told us a little about the problem.</p>
         </div>
         {config && (
           <p className="av-note">
-            Calendar not loading? <a className="link" href={directLink} target="_blank" rel="noopener">Open the scheduler in a new tab</a>
+            Calendar not loading? <a className="link" href={directLink} target="_blank" rel="noopener noreferrer">Open the scheduler in a new tab</a>
           </p>
         )}
       </div>

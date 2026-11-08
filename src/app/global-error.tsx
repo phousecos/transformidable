@@ -12,18 +12,22 @@ export default function GlobalError({
 }) {
   return (
     <html lang="en">
-      <body style={{ fontFamily: 'system-ui, sans-serif', padding: '2rem' }}>
-        <h1>Something went wrong</h1>
-        <p>An unexpected error occurred. Please try again.</p>
-        {error.digest && (
-          <p style={{ color: '#666', fontSize: '0.85rem' }}>Reference: {error.digest}</p>
-        )}
-        <button
-          onClick={reset}
-          style={{ marginTop: '1rem', padding: '0.5rem 1rem', cursor: 'pointer' }}
-        >
-          Try again
-        </button>
+      <body style={{ fontFamily: 'system-ui, sans-serif', padding: '2rem', background: '#fff', color: '#1A1A1A' }}>
+        <title>Something went wrong | Transformidable</title>
+        <main>
+          <h1>Something went wrong</h1>
+          <p>An unexpected error occurred. Please try again.</p>
+          {error.digest && (
+            <p style={{ color: '#666', fontSize: '0.85rem' }}>Reference: {error.digest}</p>
+          )}
+          <button
+            type="button"
+            onClick={reset}
+            style={{ marginTop: '1rem', padding: '0.5rem 1rem', cursor: 'pointer' }}
+          >
+            Try again
+          </button>
+        </main>
       </body>
     </html>
   )

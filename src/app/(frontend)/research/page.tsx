@@ -100,6 +100,7 @@ export default async function ResearchPage() {
 
         {/* MODES OF WORK */}
         <div className="modes">
+          <h2 className="sr-only">What the research does</h2>
           <div className="wrap modes-in">
             <div className="mode">
               <span className="diamond" aria-hidden="true"></span>
@@ -233,7 +234,7 @@ export default async function ResearchPage() {
                       <div className="figlabel" style={{ marginTop: 4 }}>Rolling, indexed to 100 at launch</div>
                     </div>
                     <div className="cc-now">
-                      <div className="n">68<span className="up">&nbsp;&uarr;6</span></div>
+                      <div className="n">68<span className="up">&nbsp;<span aria-hidden="true">&uarr;</span><span className="sr-only">up </span>6</span></div>
                       <div className="l">Q3 2026</div>
                     </div>
                   </div>
@@ -252,7 +253,7 @@ export default async function ResearchPage() {
                     {[["Credit unions", 74], ["Community banks", 61], ["Public agencies", 48], ["Healthcare systems", 43]].map(([s, v], i, arr) => (
                       <div className="bt-row" key={s} style={i === arr.length - 1 ? { borderBottom: 0 } : undefined}>
                         <span className="s">{s}</span>
-                        <span className="bt-bar"><span style={{ width: `${v}%` }} /></span>
+                        <span className="bt-bar" aria-hidden="true"><span style={{ width: `${v}%` }} /></span>
                         <span className="bt-val">{v}</span>
                       </div>
                     ))}
@@ -271,16 +272,16 @@ export default async function ResearchPage() {
               <PublicationsList publications={publications} />
 
               <aside className="events-side" id="events">
-                <p className="kicker">Upcoming events</p>
+                <h2 className="kicker">Upcoming events</h2>
                 <div className="event">
                   <div className="e-date"><span className="m">Oct 16, 2026</span><span className="tag">Roundtable</span></div>
-                  <h4>Governance &amp; the Digital Board</h4>
+                  <h3>Governance &amp; the Digital Board</h3>
                   <p>A working session on how boards oversee transformation they cannot personally see.</p>
                   <Link className="link" href="#briefing">Request a seat <Arrow s={13} /></Link>
                 </div>
                 <div className="event">
                   <div className="e-date"><span className="m">Nov 2026</span><span className="tag">Briefing</span></div>
-                  <h4>Reading the Resilience Index</h4>
+                  <h3>Reading the Resilience Index</h3>
                   <p>A live walkthrough of the Q3 benchmark and what moved. Online.</p>
                   <Link className="link" href="#briefing">Get notified <Arrow s={13} /></Link>
                 </div>

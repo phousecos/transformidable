@@ -24,7 +24,7 @@ export function ResearchFooter() {
           <p>Research, advisory, executive education, publishing, and media on the leadership and governance of organizational transformation.</p>
         </div>
         <div className="fcol">
-          <h5>Research</h5>
+          <h2>Research</h2>
           <Link href="/research">Transformidable Research</Link>
           <Link href="/research/agenda">Research Agenda</Link>
           <Link href="/research/governance-method">Governance Method</Link>
@@ -36,14 +36,14 @@ export function ResearchFooter() {
           <Link href="/tools/governance-codebook">Governance Tools</Link>
         </div>
         <div className="fcol">
-          <h5>Advisory</h5>
+          <h2>Advisory</h2>
           <Link href="/advisory">Transformidable Advisory</Link>
           <Link href="/advisory/fractional-cio">Interim &amp; Fractional CIO</Link>
           <Link href="/advisory/executive-technology-office">Executive Technology Office</Link>
           <Link href="/advisory/conversation">Book a Conversation</Link>
         </div>
         <div className="fcol">
-          <h5>Academy</h5>
+          <h2>Academy</h2>
           <Link href="/academy">AI Governance Education</Link>
           <Link href="/academy/courses/ai-governance-for-boards-and-councils">Briefing for Boards &amp; Councils</Link>
           <Link href="/academy/organizations">Private Sessions</Link>
@@ -51,12 +51,12 @@ export function ResearchFooter() {
           <Link href="/academy/individuals">For Individuals</Link>
         </div>
         <div className="fcol">
-          <h5>Publishing</h5>
+          <h2>Publishing</h2>
           <Link href="/publishing">The Transformidable Leader</Link>
           <Link href="/publishing#book-updates">Book Updates</Link>
         </div>
         <div className="fcol">
-          <h5>Media</h5>
+          <h2>Media</h2>
           <Link href="/media">Transformidable Media</Link>
           <Link href="/podcast">The Governance Files</Link>
           <Link href="/publications?type=transformidable-brief">Transformidable Briefing</Link>

@@ -45,7 +45,8 @@ export default async function LiveBriefingsPage() {
               when the next dates open.
             </p>
           ) : (
-            <section className="br-section" aria-label="Upcoming briefings">
+            <section className="br-section" aria-labelledby="br-up-h">
+              <h2 id="br-up-h" className="sr-only">Upcoming briefings</h2>
               <div className="cf-cards">
                 {upcoming.map((s) => <BriefingCard series={s} key={s.slug} />)}
               </div>

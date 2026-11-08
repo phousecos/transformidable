@@ -38,7 +38,7 @@ export function PublicationsList({ publications = [] }: { publications?: any[] }
   return (
     <div>
       <div className="sec-head" style={{ marginBottom: 28 }}>
-        <div><p className="kicker">Latest publications</p></div>
+        <div><h2 className="kicker">Latest publications</h2></div>
         <Link className="link" href="/publications">All publications <ArrowRight /></Link>
       </div>
 
@@ -57,10 +57,10 @@ export function PublicationsList({ publications = [] }: { publications?: any[] }
               <div>
                 {external ? (
                   <a className="p-link" href={href} rel="noopener" target="_blank">
-                    <h4>{p.title}</h4>
+                    <h3>{p.title}<span className="sr-only"> (opens in new tab)</span></h3>
                   </a>
                 ) : (
-                  <Link className="p-link" href={href}><h4>{p.title}</h4></Link>
+                  <Link className="p-link" href={href}><h3>{p.title}</h3></Link>
                 )}
                 {p.dek && <p className="p-desc">{p.dek}</p>}
                 {meta.length > 0 && <span className="p-meta">{meta.join(" · ")}</span>}
@@ -100,6 +100,7 @@ export function CaseFilesFeature({ caseFiles = [] }: { caseFiles?: any[] }) {
 
   return (
     <div className="wrap">
+      <h2 className="sr-only">Case files</h2>
       <div className="cf-grid">
         <div className="cf-copy">
           <p className="kicker">Case File {caseNo(featured.caseNumber)} · From the field</p>
@@ -126,12 +127,12 @@ export function CaseFilesFeature({ caseFiles = [] }: { caseFiles?: any[] }) {
                 {exhibit.map((row: any, i: number) => (
                   <div className="tl-row" key={i}>
                     <span className="tl-time">{row.time}</span>
-                    <span className="tl-mark">
+                    <span className="tl-mark" aria-hidden="true">
                       <span className={`tl-dot${row.keyMoment ? " key" : ""}`} />
                       <span className="tl-line" />
                     </span>
                     <div className="tl-body">
-                      <div className="t">{row.title}</div>
+                      <div className="t">{row.keyMoment && <span className="sr-only">Key moment: </span>}{row.title}</div>
                       {row.description && <div className="d">{row.description}</div>}
                     </div>
                   </div>
@@ -147,7 +148,7 @@ export function CaseFilesFeature({ caseFiles = [] }: { caseFiles?: any[] }) {
           {rest.map((cf) => (
             <Link className="cf-list-item" href={`/publications/case-files/${cf.slug}`} key={cf.id}>
               <span className="n">{caseNo(cf.caseNumber)}</span>
-              <span className="t">{cf.title}{cf.dek && <span className="d">{cf.dek}</span>}</span>
+              <span className="t">{cf.title}{cf.dek && <span className="sr-only">. </span>}{cf.dek && <span className="d">{cf.dek}</span>}</span>
               <span className="m">{cf.sector || (cf.readTime ? `${cf.readTime} min` : "")}</span>
             </Link>
           ))}

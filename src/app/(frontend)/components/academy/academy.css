@@ -218,14 +218,15 @@
 .tr .ac-t-chip:focus-visible, .tr .ac-t-toggle button:focus-visible, .tr .ac-t-reset:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 .tr .ac-t-finder-status:empty { display: none; }
 .tr .ac-t-finder-status { font-family: var(--sans); font-size: .95rem; color: var(--ink-body); margin: 0; display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: center; }
-.tr .ac-t-reset { font-family: var(--sans); font-size: 13px; font-weight: 700; color: var(--ac-oxblood); background: none; border: 0; padding: 0; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.tr .ac-t-reset { font-family: var(--sans); font-size: 13px; font-weight: 700; color: var(--ac-oxblood); background: none; border: 0; padding: 4px 0; min-height: 24px; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 
 /* Program cards */
 .tr .ac-t-cards { display: grid; gap: 18px; grid-template-columns: 1fr; }
 @media (min-width: 960px) { .tr .ac-t-cards { grid-template-columns: repeat(3, 1fr); } }
 .tr .ac-t-card { background: var(--paper); border: 1px solid var(--rule); border-radius: 14px; box-shadow: var(--shadow); padding: 22px 22px 20px; display: flex; flex-direction: column; transition: opacity .2s ease, border-color .2s ease, transform .2s ease; }
 .tr .ac-t-card.is-fit { border: 2px solid var(--ac-oxblood); transform: translateY(-2px); }
-.tr .ac-t-card.is-dim { opacity: .5; }
+/* Recede without fading the text: opacity dropped it to ~2:1 contrast. */
+.tr .ac-t-card.is-dim { background: var(--paper-2); box-shadow: none; }
 .tr .ac-t-card-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
 .tr .ac-t-stage { font-family: var(--sans); font-size: 12px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--ac-oxblood); }
 .tr .ac-t-badge { font-family: var(--sans); font-size: 11px; font-weight: 800; letter-spacing: .04em; color: #1a1210; background: var(--gold); border-radius: 999px; padding: 5px 10px; white-space: nowrap; }

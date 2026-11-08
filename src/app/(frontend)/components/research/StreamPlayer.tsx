@@ -52,6 +52,10 @@ export function StreamPlayer({
   // A jump asked for while the player is still a closed card; run once the
   // <video> exists.
   const pending = useRef<number | null>(null);
+  // The closed card's button disappears when the player opens; focus moves to
+  // the play/pause button so keyboard focus isn't lost.
+  const playBtn = useRef<HTMLButtonElement>(null);
+  const focusOnOpen = useRef(false);
 
   const [open, setOpen] = useState(!collapsible);
   const [started, setStarted] = useState(false);
@@ -120,6 +124,10 @@ export function StreamPlayer({
   );
 
   useEffect(() => {
+    if (open && focusOnOpen.current) {
+      focusOnOpen.current = false;
+      playBtn.current?.focus();
+    }
     if (open && pending.current !== null && video.current) {
       seekTo(pending.current, true);
       pending.current = null;
@@ -239,7 +247,15 @@ export function StreamPlayer({
         <span className="sp-card-thumb">{poster && <img src={poster} alt="" loading="lazy" />}</span>
         <span className="sp-card-body">
           <span className="sp-card-t">{title}</span>
-          <button type="button" className="sp-card-go" onClick={() => jump(startAt)}>
+          <button
+            type="button"
+            className="sp-card-go"
+            onClick={() => {
+              focusOnOpen.current = true;
+              jump(startAt);
+            }}
+            aria-label={`Watch: ${title}${knownDuration ? `, ${Math.round(knownDuration / 60)} minutes` : ""}`}
+          >
             {Icon.play}
             Watch{knownDuration ? ` · ${Math.round(knownDuration / 60)} min` : ""}
           </button>
@@ -267,7 +283,7 @@ export function StreamPlayer({
         {!started && (
           <button type="button" className="sp-big" onClick={toggle} aria-label={`Play: ${title}`}>{Icon.play}</button>
         )}
-        {failed && <p className="sp-error">The video couldn&rsquo;t load. Please refresh the page to try again.</p>}
+        {failed && <p className="sp-error" role="alert">The video couldn&rsquo;t load. Please refresh the page to try again.</p>}
       </div>
       <div className="sp-bar">
         <div className="sp-track">
@@ -285,13 +301,13 @@ export function StreamPlayer({
             />
             {duration > 0 &&
               chapters.slice(1).map((c) => (
-                <span key={c.start} className="sp-tick" style={{ left: `${(c.start / duration) * 100}%` }} />
+                <span key={c.start} className="sp-tick" aria-hidden="true" style={{ left: `${(c.start / duration) * 100}%` }} />
               ))}
           </span>
           <span>{clock(duration)}</span>
         </div>
         <div className="sp-row">
-          <button type="button" className="sp-btn sp-play" onClick={toggle} aria-label={playing ? "Pause" : "Play"}>
+          <button ref={playBtn} type="button" className="sp-btn sp-play" onClick={toggle} aria-label={playing ? "Pause" : "Play"}>
             {playing ? Icon.pause : Icon.play}
           </button>
           <button type="button" className="sp-btn" onClick={() => skip(-15)} aria-label="Back 15 seconds">{Icon.back}</button>
@@ -318,9 +334,10 @@ export function StreamPlayer({
               v.muted = v.volume === 0;
             }}
             aria-label="Volume"
+            aria-valuetext={muted ? "Muted" : `${Math.round(volume * 100)}%`}
           />
           {current >= 0 && (
-            <span className="sp-chapter">
+            <span className="sp-chapter" aria-live="polite">
               Chapter {current + 1} of {chapters.length} · <em>{chapters[current].title}</em>
             </span>
           )}
@@ -328,7 +345,7 @@ export function StreamPlayer({
           {hasCaptions && (
             <button type="button" className="sp-pill" onClick={toggleCaptions} aria-pressed={captionsOn} aria-label="Captions">CC</button>
           )}
-          <button type="button" className="sp-pill" onClick={cycleSpeed} aria-label={`Playback speed ${speed} times`}>{speed}×</button>
+          <button type="button" className="sp-pill" onClick={cycleSpeed} aria-label={`Playback speed: ${speed} times. Change speed`}>{speed}×</button>
           {canPip && (
             <button type="button" className="sp-btn sp-pipbtn" onClick={togglePip} aria-label="Picture in picture">{Icon.pip}</button>
           )}

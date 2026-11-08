@@ -30,7 +30,7 @@ export default async function ArchivePage() {
           <h1 className="font-serif text-4xl font-bold italic text-obsidian md:text-5xl">
             Archive
           </h1>
-          <p className="mt-4 max-w-2xl text-lg text-obsidian/60 font-light">
+          <p className="mt-4 max-w-2xl text-lg text-obsidian/70 font-light">
             Past issues of Transformidable.
           </p>
 
@@ -65,33 +65,34 @@ export default async function ArchivePage() {
                         ].filter(Boolean).join(" · ")}
                       </p>
                       <h2 className="mt-2 font-serif text-2xl font-bold italic leading-snug text-obsidian md:text-3xl">
-                        <Link href={`/issues/${issue.issueNumber}`} className="transition-colors hover:text-oxblood">
+                        <Link href={`/issues/${issue.issueNumber}`} className="transition-colors hover:text-oxblood focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-oxblood">
                           {issue.themeTagline || issue.title}
                         </Link>
                       </h2>
                       {issue.themeSubheading && (
-                        <p className="mt-1 text-sm text-obsidian/50">{issue.themeSubheading}</p>
+                        <p className="mt-1 text-sm text-obsidian/70">{issue.themeSubheading}</p>
                       )}
                     </div>
                     {dateStr && (
-                      <p className="text-xs font-medium uppercase tracking-[0.15em] text-obsidian/40">{dateStr}</p>
+                      <p className="text-xs font-medium uppercase tracking-[0.15em] text-obsidian/70">{dateStr}</p>
                     )}
                   </div>
-                  <div className="mt-4 h-[2px] bg-oxblood" />
+                  <div className="mt-4 h-[2px] bg-oxblood" aria-hidden="true" />
 
                   <div className="mt-6 space-y-4">
                     {flagship && (
                       <div className="flex items-baseline gap-4">
-                        <span className="w-6 shrink-0 text-right text-xs font-bold text-gold">
+                        <span className="w-6 shrink-0 text-right text-xs font-bold text-[#7F6416]">
                           {String(flagship.displayOrder ?? 1).padStart(2, "0")}
                         </span>
-                        <span className="text-xs text-gold" aria-label="Flagship">★</span>
+                        <span className="text-xs text-[#7F6416]" aria-hidden="true">★</span>
                         <div>
                           <p className="font-serif text-base font-semibold leading-snug text-obsidian md:text-lg">
+                            <span className="sr-only">Flagship: </span>
                             {flagship.title}
                           </p>
                           {flagship.dek && (
-                            <p className="mt-1 text-xs text-obsidian/50 md:text-sm">{flagship.dek}</p>
+                            <p className="mt-1 text-xs text-obsidian/70 md:text-sm">{flagship.dek}</p>
                           )}
                         </div>
                       </div>
@@ -100,7 +101,7 @@ export default async function ArchivePage() {
                       const vertical = article.vertical && typeof article.vertical === "object" ? article.vertical : null;
                       return (
                         <div key={article.id} className="flex items-baseline gap-4">
-                          <span className="w-6 shrink-0 text-right text-xs font-bold text-obsidian/30">
+                          <span className="w-6 shrink-0 text-right text-xs font-bold text-obsidian/65">
                             {String(article.displayOrder ?? 0).padStart(2, "0")}
                           </span>
                           <div>
@@ -108,7 +109,7 @@ export default async function ArchivePage() {
                               {article.title}
                             </p>
                             {vertical && (
-                              <p className="mt-0.5 text-[9px] font-medium uppercase tracking-[0.2em] text-obsidian/40 md:text-[10px]">
+                              <p className="mt-0.5 text-[9px] font-medium uppercase tracking-[0.2em] text-obsidian/70 md:text-[10px]">
                                 {vertical.name}
                               </p>
                             )}
@@ -120,9 +121,9 @@ export default async function ArchivePage() {
 
                   <Link
                     href={`/issues/${issue.issueNumber}`}
-                    className="mt-6 inline-block rounded-sm border border-oxblood/40 px-6 py-2 text-[10px] font-medium uppercase tracking-[0.2em] text-oxblood transition-colors hover:bg-oxblood/5 md:text-xs"
+                    className="mt-6 inline-block rounded-sm border border-oxblood/40 px-6 py-2 text-[10px] font-medium uppercase tracking-[0.2em] text-oxblood transition-colors hover:bg-oxblood/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-oxblood md:text-xs"
                   >
-                    Read This Issue →
+                    Read This Issue<span className="sr-only">: Issue {issue.issueNumber}</span> <span aria-hidden="true">→</span>
                   </Link>
                 </section>
               );
@@ -130,7 +131,7 @@ export default async function ArchivePage() {
           </div>
 
           {!issues.length && (
-            <p className="mt-12 font-serif text-lg text-obsidian/60 italic">
+            <p className="mt-12 font-serif text-lg text-obsidian/70 italic">
               No published issues yet.
             </p>
           )}

@@ -26,7 +26,8 @@ function escapeHtml(s: string): string {
     .replace(/'/g, "&#39;");
 }
 
-const ALLOWED_HEADING_TAGS = new Set(["h1", "h2", "h3", "h4", "h5", "h6"]);
+// No h1: the article title is the page's only h1, so body headings start at h2.
+const ALLOWED_HEADING_TAGS = new Set(["h2", "h3", "h4", "h5", "h6"]);
 
 function lexicalToHtml(node: any): string {
   if (!node) return "";
@@ -90,6 +91,8 @@ export default function MagazineHomepage({ issue, articles, issues = [], books =
   const [navOpen, setNavOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const issuesToggleRef = useRef<HTMLButtonElement | null>(null);
+  const menuToggleRef = useRef<HTMLButtonElement | null>(null);
+  const isFirstView = useRef(true);
 
   const num = issue.issueNumber ?? 1;
   const issueNumberFormatted = String(num).padStart(2, "0");
@@ -113,18 +116,32 @@ export default function MagazineHomepage({ issue, articles, issues = [], books =
     scrollToTopRespectingMotion();
   };
 
-  // Escape closes the issues drawer and returns focus to its toggle.
+  // Escape closes the issues drawer (or, if it is shut, the mobile menu) and
+  // returns focus to the toggle that opened it.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
       if (drawerOpen) {
         setDrawerOpen(false);
         issuesToggleRef.current?.focus();
+      } else if (navOpen) {
+        setNavOpen(false);
+        menuToggleRef.current?.focus();
       }
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [drawerOpen]);
+  }, [drawerOpen, navOpen]);
+
+  // Switching between the issue index and an article swaps out the button the
+  // reader just activated, so move focus to the new view's h1 (WCAG 2.4.3).
+  useEffect(() => {
+    if (isFirstView.current) {
+      isFirstView.current = false;
+      return;
+    }
+    document.querySelector<HTMLElement>("#main-content h1")?.focus({ preventScroll: true });
+  }, [view]);
 
   const monthYear = (d: any) => {
     if (!d) return "";
@@ -147,6 +164,7 @@ export default function MagazineHomepage({ issue, articles, issues = [], books =
             <button
               className="burger"
               id="menu-toggle"
+              ref={menuToggleRef}
               aria-expanded={navOpen}
               aria-controls="nav"
               aria-label="Menu"
@@ -178,7 +196,9 @@ export default function MagazineHomepage({ issue, articles, issues = [], books =
         </div>
 
         {/* Issues archive drawer */}
-        <div className={`drawer${drawerOpen ? " is-open" : ""}`} id="issues-drawer">
+        {/* inert while shut: the collapsed drawer is only height-clipped, so its
+            links would otherwise stay in the tab order while invisible. */}
+        <div className={`drawer${drawerOpen ? " is-open" : ""}`} id="issues-drawer" inert={!drawerOpen}>
           <div className="drawer-inner">
             <div className="w drawer-head">
               <h2 className="kicker">The archive</h2>
@@ -193,7 +213,7 @@ export default function MagazineHomepage({ issue, articles, issues = [], books =
                 const n = String(it.issueNumber ?? 0).padStart(2, "0");
                 return (
                   <Link className="shelf-item" href={`/issues/${it.issueNumber}`} key={it.id ?? it.issueNumber} aria-current={isCurrent ? "page" : undefined}>
-                    {cover ? <img className="cover cover--issue" src={cover} alt="" /> : <div className="ph ph--issue">cover</div>}
+                    {cover ? <img className="cover cover--issue" src={cover} alt="" /> : <div className="ph ph--issue" aria-hidden="true">cover</div>}
                     <div className="shelf-current" style={isCurrent ? undefined : { color: "var(--ink-mute)" }}>
                       {isCurrent ? `${n} · CURRENT` : n}
                     </div>
@@ -297,14 +317,14 @@ function SubscribeForm() {
       <div>
         <div style={{ fontFamily: "var(--display)", fontSize: 15, marginBottom: 4 }}>Get the next issue</div>
         <div className="meta" style={{ marginBottom: 14 }}>One email. Monthly. No filler.</div>
-        {message && (
-          <div className="meta" role="status" style={{ marginBottom: 12, color: state === "error" ? "var(--wine)" : "var(--ink)" }}>{message}</div>
-        )}
+        {/* Always mounted so screen readers pick up the message when it changes;
+            a live region inserted together with its text is often not announced. */}
+        <div id="mag-subscribe-status" className="meta" role="status" aria-live="polite" style={{ marginBottom: message ? 12 : 0, color: state === "error" ? "var(--wine)" : "var(--ink)" }}>{message}</div>
       </div>
       <form className="subscribe-form" onSubmit={onSubmit}>
         {trap}
         <label className="sr-only" htmlFor="email">Email address</label>
-        <input id="email" type="email" name="email" placeholder="you@company.com" required value={email} onChange={(e) => setEmail(e.target.value)} />
+        <input id="email" type="email" name="email" autoComplete="email" placeholder="you@company.com" required aria-invalid={state === "error" || undefined} aria-describedby={state === "error" ? "mag-subscribe-status" : undefined} value={email} onChange={(e) => setEmail(e.target.value)} />
         <button className="btn" type="submit" disabled={state === "sending"}>{state === "sending" ? "Joining…" : "Join"}</button>
       </form>
     </div>
@@ -354,8 +374,8 @@ function IndexView({ issue, flagship, column, books, latestPodcast, issueCount, 
       {/* HERO — the lead essay. This is the issue INDEX; the essay reads on its
           own view. */}
       <article className="w" style={{ paddingTop: "var(--section)", paddingBottom: 22 }}>
-        <h2 className="kicker">The lead essay</h2>
-        <h1 className="display hero-title" style={{ fontSize: 31, margin: "14px 0 16px" }}>
+        <p className="kicker">The lead essay</p>
+        <h1 className="display hero-title" tabIndex={-1} style={{ fontSize: 31, margin: "14px 0 16px" }}>
           <AccentTitle text={flagship?.title || issue.themeTagline || issue.title || "This issue"} />
         </h1>
         {(flagship?.dek || issue.themeSubheading) && (
@@ -371,7 +391,7 @@ function IndexView({ issue, flagship, column, books, latestPodcast, issueCount, 
           ) : null}
         </div>
       </article>
-      {heroPhoto ? <img className="cover--bleed" src={heroPhoto} alt="" /> : <div className="ph ph--bleed">photo, full bleed</div>}
+      {heroPhoto ? <img className="cover--bleed" src={heroPhoto} alt="" /> : <div className="ph ph--bleed" aria-hidden="true">photo, full bleed</div>}
 
       <hr className="rule" style={{ marginTop: "var(--section)" }} />
 
@@ -399,7 +419,7 @@ function IndexView({ issue, flagship, column, books, latestPodcast, issueCount, 
       {/* THE COLUMN — a guest byline where available. Photo sits above, full-bleed. */}
       {column && (
         <>
-          {columnPhoto ? <img className="cover--bleed-col" src={columnPhoto} alt="" /> : <div className="ph ph--bleed-col">photo</div>}
+          {columnPhoto ? <img className="cover--bleed-col" src={columnPhoto} alt="" /> : <div className="ph ph--bleed-col" aria-hidden="true">photo</div>}
           <section className="w" style={{ paddingTop: 24, paddingBottom: "var(--section)" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <h2 className="kicker">The column</h2>
@@ -429,8 +449,9 @@ function IndexView({ issue, flagship, column, books, latestPodcast, issueCount, 
         <blockquote className="pullquote">
           <p>&ldquo;A $400M credit union doesn&rsquo;t fail its core conversion on day one. It fails it eleven months earlier, in a meeting nobody documented.&rdquo;</p>
         </blockquote>
-        <a className="link" href="https://cusomag.com/" rel="noopener" target="_blank">
+        <a className="link" href="https://cusomag.com/" rel="noopener noreferrer" target="_blank">
           Read the full piece at CUSO
+          <span className="sr-only"> (opens in a new tab)</span>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" /></svg>
         </a>
       </section>
@@ -440,7 +461,7 @@ function IndexView({ issue, flagship, column, books, latestPodcast, issueCount, 
         <section className="w section">
           <h2 className="kicker">Transformidable Thinking · Ep. {latestPodcast.episodeNumber}</h2>
           <div className="split" style={{ marginTop: 18 }}>
-            {podArt ? <img className="ph--round cover" src={podArt} alt="" style={{ width: 96, height: 96, borderRadius: "50%", marginBottom: 16 }} /> : <div className="ph ph--round" style={{ marginBottom: 16 }}>guest</div>}
+            {podArt ? <img className="ph--round cover" src={podArt} alt="" style={{ width: 96, height: 96, borderRadius: "50%", marginBottom: 16 }} /> : <div className="ph ph--round" style={{ marginBottom: 16 }} aria-hidden="true">guest</div>}
             <div style={{ flex: 1 }}>
               <h3 className="display section-title" style={{ marginTop: 0 }}>{latestPodcast.title}</h3>
               {latestPodcast.description && <p className="body" style={{ marginBottom: 16 }}>{latestPodcast.description}</p>}
@@ -480,7 +501,7 @@ function ArticleReadView({ article, position, issue, allArticles, onOpenArticle,
   const endBreak = Math.max(midBreak + 1, Math.floor(totalParagraphs * 0.75));
 
   const PullQuote = ({ quote }: { quote: string }) => (
-    <aside className="article-pullquote"><p>&ldquo;{quote}&rdquo;</p></aside>
+    <figure className="article-pullquote"><p>&ldquo;{quote}&rdquo;</p></figure>
   );
 
   const renderBody = () => {
@@ -523,7 +544,7 @@ function ArticleReadView({ article, position, issue, allArticles, onOpenArticle,
             <span className="kicker">{String(position).padStart(2, "0")}</span>
             {verticalLabel(article) && <span className="kicker">· {verticalLabel(article)}</span>}
           </div>
-          <h1 className="display" style={{ fontSize: 30, lineHeight: 1.02 }}>{article.title}</h1>
+          <h1 className="display" tabIndex={-1} style={{ fontSize: 30, lineHeight: 1.02 }}>{article.title}</h1>
           {article.dek && <p className="dek">{article.dek}</p>}
           <p className="meta" style={{ marginTop: 14 }}>
             {issue.issueNumber != null && <>Issue {String(issue.issueNumber).padStart(2, "0")}</>}

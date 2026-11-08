@@ -43,6 +43,7 @@ export default async function ResearchNotesIndex() {
 
       <div className="idx-body">
         <div className="wrap">
+          <h2 className="sr-only">All research notes</h2>
           {docs.length === 0 ? (
             <p className="empty">Research notes will appear here as the work develops.</p>
           ) : (
@@ -50,7 +51,7 @@ export default async function ResearchNotesIndex() {
               <article className="pub" key={n.id}>
                 <span className="p-type">Note</span>
                 <div>
-                  <Link className="p-link" href={`/publications/research-notes/${n.slug}`}><h4>{n.title}</h4></Link>
+                  <Link className="p-link" href={`/publications/research-notes/${n.slug}`}><h3>{n.title}</h3></Link>
                   {n.dek && <p className="p-desc">{n.dek}</p>}
                   {(n.publishedAt || n.readTime) && (
                     <span className="p-meta">

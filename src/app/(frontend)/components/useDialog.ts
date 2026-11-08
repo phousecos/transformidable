@@ -11,6 +11,11 @@ import { useEffect, useRef } from "react";
 export function useDialog(isOpen: boolean, onClose: () => void) {
   const dialogRef = useRef<HTMLDivElement | null>(null);
   const previouslyFocusedRef = useRef<HTMLElement | null>(null);
+  // Callers pass an inline onClose; keep the latest in a ref so a re-render
+  // while the dialog is open doesn't re-run the effect (which would bounce
+  // focus out to the trigger and back to the first field).
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   useEffect(() => {
     if (!isOpen) return;
@@ -32,7 +37,7 @@ export function useDialog(isOpen: boolean, onClose: () => void) {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         e.stopPropagation();
-        onClose();
+        onCloseRef.current();
         return;
       }
       if (e.key !== "Tab" || !dialog) return;
@@ -41,7 +46,7 @@ export function useDialog(isOpen: boolean, onClose: () => void) {
         dialog.querySelectorAll<HTMLElement>(
           'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
         )
-      ).filter((el) => !el.hasAttribute("inert"));
+      ).filter((el) => !el.closest("[inert]") && el.getClientRects().length > 0);
 
       if (focusable.length === 0) {
         e.preventDefault();
@@ -52,7 +57,12 @@ export function useDialog(isOpen: boolean, onClose: () => void) {
       const last = focusable[focusable.length - 1]!;
       const active = document.activeElement as HTMLElement;
 
-      if (e.shiftKey && active === first) {
+      // Focus is on the container or has escaped (e.g. a click on the
+      // backdrop): bring it back to the first or last control.
+      if (active === dialog || !dialog.contains(active)) {
+        e.preventDefault();
+        (e.shiftKey ? last : first).focus();
+      } else if (e.shiftKey && active === first) {
         e.preventDefault();
         last.focus();
       } else if (!e.shiftKey && active === last) {
@@ -69,7 +79,7 @@ export function useDialog(isOpen: boolean, onClose: () => void) {
       // Return focus to wherever the user was before opening the dialog.
       previouslyFocusedRef.current?.focus?.();
     };
-  }, [isOpen, onClose]);
+  }, [isOpen]);
 
   return dialogRef;
 }

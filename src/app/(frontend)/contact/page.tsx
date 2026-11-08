@@ -1,6 +1,6 @@
 // @ts-nocheck
 "use client";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ResearchShell } from "../components/research/ResearchShell";
 import { Sky } from "../components/research/Sky";
 import { useSpamTrap } from "../components/useSpamTrap";
@@ -13,6 +13,13 @@ export default function ContactPage() {
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [feedback, setFeedback] = useState("");
   const { trap, spamFields } = useSpamTrap();
+  const successRef = useRef<HTMLDivElement>(null);
+
+  // The form is replaced by the confirmation; move focus there so keyboard
+  // and screen reader users aren't left on a control that no longer exists.
+  useEffect(() => {
+    if (status === "success") successRef.current?.focus();
+  }, [status]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,7 +66,7 @@ export default function ContactPage() {
       <article className="detail">
         <div className="detail-wrap" style={{ maxWidth: 560 }}>
           {status === "success" ? (
-            <div className="case-form-success" role="status" aria-live="polite">
+            <div className="case-form-success" role="status" aria-live="polite" ref={successRef} tabIndex={-1}>
               <p>{feedback}</p>
             </div>
           ) : (

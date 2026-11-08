@@ -166,11 +166,10 @@ function QuestionTable({ mechanisms, question }) {
             .filter((o) => row.counts[o.code])
             .map((o) => `${row.counts[o.code]} ${o.label.toLowerCase()}`);
           return (
-            <li
-              className="go-row"
-              key={row.domain}
-              aria-label={`${meta.code} ${meta.short}: ${row.total} ${row.total === 1 ? "finding" : "findings"} — ${parts.join(", ")}.`}
-            >
+            <li className="go-row" key={row.domain}>
+              {/* aria-label on <li> is ignored by several screen readers; the
+                  row's text alternative is real (visually hidden) text instead. */}
+              <span className="sr-only">{`${meta.code} ${meta.short}: ${row.total} ${row.total === 1 ? "finding" : "findings"} — ${parts.join(", ")}.`}</span>
               <div className="go-key" aria-hidden="true">
                 <span className="go-code">{meta.code}</span>
                 <span className="go-name">{meta.short}</span>

@@ -42,9 +42,12 @@ export default async function RecordedBriefingsPage() {
               Recorded briefings will appear here. In the meantime, <Link className="link" href="/briefings/live">see the upcoming live dates</Link>.
             </p>
           ) : (
-            <div className="cf-cards">
-              {recorded.map((s) => <BriefingCard series={s} recorded key={s.slug} />)}
-            </div>
+            <section aria-labelledby="br-all-h">
+              <h2 id="br-all-h" className="sr-only">All recorded briefings</h2>
+              <div className="cf-cards">
+                {recorded.map((s) => <BriefingCard series={s} recorded key={s.slug} />)}
+              </div>
+            </section>
           )}
         </div>
       </div>

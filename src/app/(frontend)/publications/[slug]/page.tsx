@@ -76,6 +76,7 @@ export default async function PublicationDetail({ params }: { params: Promise<{ 
             <div className="detail-cta">
               <a className="btn" href={p.assetUrl} rel="noopener" target="_blank">
                 {downloadLabel}
+                <span className="sr-only"> (opens in new tab)</span>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M5 21h14" /></svg>
               </a>
             </div>
@@ -85,7 +86,7 @@ export default async function PublicationDetail({ params }: { params: Promise<{ 
             <div className="detail-video">
               <iframe
                 src={video}
-                title={p.title}
+                title={`Video: ${p.title}`}
                 loading="lazy"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen
@@ -93,7 +94,7 @@ export default async function PublicationDetail({ params }: { params: Promise<{ 
             </div>
           ) : cover ? (
             /* eslint-disable-next-line @next/next/no-img-element */
-            <img className="detail-cover" src={cover} alt="" />
+            <img className="detail-cover" src={cover} alt={typeof p.coverImage?.alt === "string" ? p.coverImage.alt : ""} />
           ) : null}
 
           {bodyHtml ? (

@@ -124,7 +124,7 @@ export default function AcademyPage() {
               {BETA.programs.map((p) => (
                 <li key={p.slug}>
                   <span>{p.title}<small>{p.stage.format}</small></span>
-                  <span className="ac-t-price"><s>{formatPrice(p.beta.price)}</s><b>{formatPrice(betaPrice(p.beta.price))}</b></span>
+                  <span className="ac-t-price"><s><span className="sr-only">Regular price </span>{formatPrice(p.beta.price)}</s><b><span className="sr-only">, beta price </span>{formatPrice(betaPrice(p.beta.price))}</b></span>
                 </li>
               ))}
             </ul>

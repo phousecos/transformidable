@@ -1,6 +1,6 @@
 // @ts-nocheck
 "use client";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSpamTrap } from "../useSpamTrap";
 
 export function FollowCaseForm({ caseSlug }: { caseSlug: string }) {
@@ -8,6 +8,12 @@ export function FollowCaseForm({ caseSlug }: { caseSlug: string }) {
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [message, setMessage] = useState("");
   const { trap, spamFields } = useSpamTrap();
+  // The form is replaced on success; move focus to the confirmation so it is
+  // announced and keyboard focus is not lost.
+  const successRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (status === "success") successRef.current?.focus();
+  }, [status]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,7 +41,7 @@ export function FollowCaseForm({ caseSlug }: { caseSlug: string }) {
 
   if (status === "success") {
     return (
-      <div className="case-form-success" role="status" aria-live="polite">
+      <div className="case-form-success" role="status" aria-live="polite" tabIndex={-1} ref={successRef}>
         <p>{message}</p>
       </div>
     );
@@ -52,7 +58,7 @@ export function FollowCaseForm({ caseSlug }: { caseSlug: string }) {
           required
           autoComplete="email"
           aria-required="true"
-          aria-invalid={status === "error"}
+          aria-invalid={status === "error" ? true : undefined}
           aria-describedby={status === "error" ? "follow-error" : undefined}
           value={email}
           onChange={(e) => setEmail(e.target.value)}
@@ -63,7 +69,7 @@ export function FollowCaseForm({ caseSlug }: { caseSlug: string }) {
           {status === "loading" ? "Following…" : "Follow"}
         </button>
       </div>
-      <div id="follow-error" role="alert" aria-live="assertive" className="case-form-msg">
+      <div id="follow-error" role="alert" className="case-form-msg">
         {status === "error" && message}
       </div>
     </form>

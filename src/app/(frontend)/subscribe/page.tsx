@@ -1,6 +1,6 @@
 // @ts-nocheck
 "use client";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import SiteNav from "../components/SiteNav";
 import Footer from "../components/Footer";
 import { useSpamTrap } from "../components/useSpamTrap";
@@ -11,6 +11,13 @@ export default function SubscribePage() {
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [message, setMessage] = useState("");
   const { trap, spamFields } = useSpamTrap();
+  const successRef = useRef<HTMLDivElement>(null);
+
+  // The form (and the focused submit button) is replaced by the confirmation,
+  // so move focus there rather than letting it fall back to <body>.
+  useEffect(() => {
+    if (status === "success") successRef.current?.focus();
+  }, [status]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,15 +57,17 @@ export default function SubscribePage() {
           <h1 className="mt-3 font-serif text-3xl font-bold italic text-obsidian md:text-4xl">
             Stay in the conversation.
           </h1>
-          <p className="mt-4 text-base leading-relaxed text-obsidian/60 md:text-lg">
+          <p className="mt-4 text-base leading-relaxed text-obsidian/70 md:text-lg">
             Subscribe to Transformidable for executive insight on technology strategy,
             project execution, and leadership, delivered to your inbox.
           </p>
 
-          <div className="mt-4 h-[2px] w-16 bg-oxblood" />
+          <div className="mt-4 h-[2px] w-16 bg-oxblood" aria-hidden="true" />
 
           {status === "success" ? (
             <div
+              ref={successRef}
+              tabIndex={-1}
               role="status"
               aria-live="polite"
               className="mt-10 rounded-sm border border-gold/40 bg-gold/5 px-6 py-8 text-center"
@@ -73,16 +82,17 @@ export default function SubscribePage() {
               {trap}
               <div>
                 <label htmlFor="name" className="block text-[10px] font-medium uppercase tracking-[0.2em] text-obsidian/70 md:text-xs">
-                  Name <span className="normal-case tracking-normal text-obsidian/60">(optional)</span>
+                  Name <span className="normal-case tracking-normal text-obsidian/70">(optional)</span>
                 </label>
                 <input
                   id="name"
+                  name="name"
                   type="text"
                   autoComplete="name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Your name"
-                  className="mt-2 w-full border border-obsidian/40 bg-transparent px-4 py-3 text-sm text-obsidian placeholder:text-obsidian/60 focus:border-oxblood focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-oxblood"
+                  className="mt-2 w-full border border-obsidian/50 bg-transparent px-4 py-3 text-sm text-obsidian placeholder:text-obsidian/70 focus:border-oxblood focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-oxblood"
                 />
               </div>
               <div>
@@ -92,6 +102,7 @@ export default function SubscribePage() {
                 </label>
                 <input
                   id="email"
+                  name="email"
                   type="email"
                   required
                   autoComplete="email"
@@ -101,7 +112,7 @@ export default function SubscribePage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@example.com"
-                  className="mt-2 w-full border border-obsidian/40 bg-transparent px-4 py-3 text-sm text-obsidian placeholder:text-obsidian/60 focus:border-oxblood focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-oxblood"
+                  className="mt-2 w-full border border-obsidian/50 bg-transparent px-4 py-3 text-sm text-obsidian placeholder:text-obsidian/70 focus:border-oxblood focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-oxblood"
                 />
               </div>
 

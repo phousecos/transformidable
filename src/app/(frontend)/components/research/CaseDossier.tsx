@@ -24,17 +24,24 @@ function mediaUrl(m: any): string | null {
 }
 const has = (a: any) => Array.isArray(a) && a.length > 0;
 
-const ExtLink = ({ href, children }: any) => (
+// `label` names what the link points to, so "Open" / "Read" / "Visit" make
+// sense out of context (WCAG 2.4.4). New-tab behavior is announced too.
+const ExtLink = ({ href, label, children }: any) => (
   <a className="link" href={href} rel="noopener" target="_blank">{children}
+    <span className="sr-only">{label ? `: ${label}` : ""} (opens in new tab)</span>
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" /></svg>
   </a>
 );
+
+// Screen readers run adjacent inline text together ("OverviewPending"); this
+// visually hidden separator keeps a title and its pills apart.
+const Sep = () => <span className="sr-only">, </span>;
 
 // moments: the episode chapters tied to case sections, keyed by section id.
 function Section({ id, label, pending, children, moments }: any) {
   return (
     <section className="case-section" id={id}>
-      <h2 className="case-h">{label}{pending && <span className="case-pill case-pill--pending">Pending</span>}</h2>
+      <h2 className="case-h">{label}{pending && <><Sep /><span className="case-pill case-pill--pending">Pending</span></>}</h2>
       {children}
       {moments?.[id]?.map((m: any) => (
         <SeekLink key={m.start} className="case-moment" href={m.href} seconds={m.start}>
@@ -113,9 +120,9 @@ export function CaseDossier({ caseFile: cf, streamHost }: { caseFile: any; strea
                     {timeline.map((row: any, i: number) => (
                       <div className="tl-row" key={i}>
                         <span className="tl-time">{row.time}</span>
-                        <span className="tl-mark"><span className={`tl-dot${row.keyMoment ? " key" : ""}`} /><span className="tl-line" /></span>
+                        <span className="tl-mark" aria-hidden="true"><span className={`tl-dot${row.keyMoment ? " key" : ""}`} /><span className="tl-line" /></span>
                         <div className="tl-body">
-                          <div className="t">{row.title}</div>
+                          <div className="t">{row.keyMoment && <span className="sr-only">Key moment: </span>}{row.title}</div>
                           {row.description && <div className="d">{row.description}</div>}
                         </div>
                       </div>
@@ -135,10 +142,10 @@ export function CaseDossier({ caseFile: cf, streamHost }: { caseFile: any; strea
               {orgs.map((o: any, i: number) => (
                 <div className="case-row" key={i}>
                   <div className="case-row-main">
-                    <div className="case-row-title">{o.name}{o.role && <span className="case-pill">{o.role}</span>}</div>
+                    <div className="case-row-title">{o.name}{o.role && <><Sep /><span className="case-pill">{o.role}</span></>}</div>
                     {o.description && <p className="case-row-desc">{o.description}</p>}
                   </div>
-                  {o.url && <ExtLink href={o.url}>Visit</ExtLink>}
+                  {o.url && <ExtLink href={o.url} label={o.name}>Visit</ExtLink>}
                 </div>
               ))}
             </div>
@@ -172,12 +179,13 @@ export function CaseDossier({ caseFile: cf, streamHost }: { caseFile: any; strea
                   <div className="case-row" key={i}>
                     <div className="case-row-main">
                       <div className="case-row-title">{d.title}
+                        {d.docType && <Sep />}
                         {d.docType && <span className="case-pill">{DOC_TYPES[d.docType] || "Document"}</span>}
                       </div>
                       {d.description && <p className="case-row-desc">{d.description}</p>}
                       {d.date && <span className="case-row-meta">{fullDate(d.date)}</span>}
                     </div>
-                    {href && <ExtLink href={href}>Open</ExtLink>}
+                    {href && <ExtLink href={href} label={d.title}>Open</ExtLink>}
                   </div>
                 );
               })}
@@ -201,7 +209,7 @@ export function CaseDossier({ caseFile: cf, streamHost }: { caseFile: any; strea
                       )}
                       {a.summary && <p className="case-row-desc">{a.summary}</p>}
                     </div>
-                    {href && <ExtLink href={href}>Read</ExtLink>}
+                    {href && <ExtLink href={href} label={a.title}>Read</ExtLink>}
                   </div>
                 );
               })}
@@ -223,7 +231,7 @@ export function CaseDossier({ caseFile: cf, streamHost }: { caseFile: any; strea
                     )}
                     {n.excerpt && <p className="case-row-desc">{n.excerpt}</p>}
                   </div>
-                  {n.url && <ExtLink href={n.url}>Read</ExtLink>}
+                  {n.url && <ExtLink href={n.url} label={n.headline}>Read</ExtLink>}
                 </div>
               ))}
             </div>
@@ -243,7 +251,7 @@ export function CaseDossier({ caseFile: cf, streamHost }: { caseFile: any; strea
                     {nt.publishedAt && <span className="case-row-meta">{fullDate(nt.publishedAt)}</span>}
                   </div>
                   <span className="link" aria-hidden="true">Read
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+                    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
                   </span>
                 </Link>
               ))}
@@ -261,12 +269,12 @@ export function CaseDossier({ caseFile: cf, streamHost }: { caseFile: any; strea
                   <div className="case-row" key={i}>
                     <div className="case-row-main">
                       <div className="case-row-title">{m.name}
-                        {dom && <span className="case-pill">{dom.code} {dom.short}</span>}
+                        {dom && <><Sep /><span className="case-pill">{dom.code} {dom.short}</span></>}
                         {/* Everything except a narrative finding is labelled, so a
                             recommendation or an entity's own response is never
                             read as a finding about the entity. */}
-                        {type && m.segmentType !== "narrative-finding" && <span className="case-pill case-pill--pending">{type}</span>}
-                        {m.assessment && <span className={`case-pill case-pill--${m.assessment}`}>{ASSESSMENT[m.assessment]}</span>}
+                        {type && m.segmentType !== "narrative-finding" && <><Sep /><span className="case-pill case-pill--pending">{type}</span></>}
+                        {m.assessment && <><Sep /><span className={`case-pill case-pill--${m.assessment}`}>{ASSESSMENT[m.assessment]}</span></>}
                       </div>
                       {m.description && <p className="case-row-desc">{m.description}</p>}
                       <div className="case-codes">

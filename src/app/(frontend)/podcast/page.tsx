@@ -71,7 +71,7 @@ export default async function PodcastPage() {
                   <article className="pub" key={ep.id}>
                     <span className="p-type">{label || "Episode"}</span>
                     <div>
-                      <Link className="p-link" href={`/podcast/${ep.slug}`}><h4>{ep.title}</h4></Link>
+                      <Link className="p-link" href={`/podcast/${ep.slug}`}><h2>{ep.title}</h2></Link>
                       {guest && (
                         <p className="p-meta" style={{ color: "var(--gold-deep)" }}>
                           with {guest.name}{guest.role ? `, ${guest.role}` : ""}
@@ -82,7 +82,7 @@ export default async function PodcastPage() {
                         {ep.publishDate && <span>{fullDate(ep.publishDate)}</span>}
                         {ep.duration && <span>{ep.duration}</span>}
                         <Link className="link" href={`/podcast/${ep.slug}`}>
-                          Watch &amp; listen <Arrow />
+                          Watch &amp; listen<span className="sr-only">: {ep.title}</span> <Arrow />
                         </Link>
                       </div>
                     </div>
