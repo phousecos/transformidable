@@ -106,6 +106,17 @@ export default function FractionalCioPage() {
       </p>
 
       <h2>How Transformidable helps</h2>
+      <p>Support ranges from help when you need it to interim executive leadership.</p>
+      <h3>Through the Executive Technology Office</h3>
+      <p>
+        Our <Link href="/advisory/executive-technology-office">Executive Technology Office</Link> provides executive
+        technology expertise as an outsourced service:
+      </p>
+      <ul>
+        <li><strong>For association members:</strong> organizations without a CIO can get help when they need it, such as a technology or AI policy written or guidance on a decision, on an as-needed basis. It&rsquo;s often a first step toward more sustained support.</li>
+        <li><strong>Organizational technology advisory:</strong> independent guidance on consequential technology decisions, alongside your existing leadership and providers.</li>
+        <li><strong>Fractional CIO leadership:</strong> sustained part-time executive leadership for organizations not ready to appoint a full-time CIO, including technology strategy, governance, investment oversight, vendor coordination, and support for executive and board decisions.</li>
+      </ul>
       <h3>Interim CIO leadership</h3>
       <p>
         When your CIO has left and the work can&rsquo;t wait, an interim CIO engagement puts experienced executive
@@ -113,16 +124,6 @@ export default function FractionalCioPage() {
         helping you define and fill the permanent position. It is our most senior level of engagement, scoped
         directly with your executive team and board.
       </p>
-      <h3>Outsourced and fractional support through the Executive Technology Office</h3>
-      <p>
-        For ongoing needs, our <Link href="/advisory/executive-technology-office">Executive Technology Office</Link>{" "}
-        provides executive technology expertise as an outsourced service:
-      </p>
-      <ul>
-        <li><strong>Organizational technology advisory:</strong> independent guidance on consequential technology decisions, alongside your existing leadership and providers.</li>
-        <li><strong>Fractional CIO leadership:</strong> sustained part-time executive leadership for organizations not ready to appoint a full-time CIO, including technology strategy, governance, investment oversight, vendor coordination, and support for executive and board decisions.</li>
-        <li><strong>Association Executive Technology Office:</strong> shared executive technology expertise offered to members as a benefit.</li>
-      </ul>
       <p>
         We work with your existing technology providers rather than replacing them, and we don&rsquo;t sell the systems
         we advise on (<Link href="/independence">independence policy</Link>).
