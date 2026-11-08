@@ -38,6 +38,7 @@ export function ResearchFooter() {
         <div className="fcol">
           <h5>Advisory</h5>
           <Link href="/advisory">Transformidable Advisory</Link>
+          <Link href="/advisory/fractional-cio">Interim &amp; Fractional CIO</Link>
           <Link href="/advisory/executive-technology-office">Executive Technology Office</Link>
           <Link href="/advisory/conversation">Book a Conversation</Link>
         </div>

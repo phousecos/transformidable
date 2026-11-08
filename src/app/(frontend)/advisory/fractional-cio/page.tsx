@@ -106,22 +106,25 @@ export default function FractionalCioPage() {
       </p>
 
       <h2>How Transformidable helps</h2>
-      <h3>Through the Executive Technology Office</h3>
-      <p>
-        Our <Link href="/advisory/executive-technology-office">Executive Technology Office</Link> provides executive
-        technology expertise as an outsourced service:
-      </p>
-      <ul>
-        <li><strong>Association Executive Technology Office:</strong> shared executive technology expertise that associations offer their members as a benefit.</li>
-        <li><strong>Organizational technology advisory:</strong> independent guidance on consequential technology decisions, alongside your existing leadership and providers.</li>
-        <li><strong>Fractional CIO leadership:</strong> sustained part-time executive leadership for organizations not ready to appoint a full-time CIO, including technology strategy, governance, investment oversight, vendor coordination, and support for executive and board decisions.</li>
-      </ul>
       <h3>Interim CIO leadership</h3>
       <p>
         When your CIO has left and the work can&rsquo;t wait, an interim CIO engagement puts experienced executive
         leadership in the role: running technology decisions and major work, keeping vendors and teams steady, and
         helping you define and fill the permanent position. It is our most senior level of engagement, scoped
         directly with your executive team and board.
+      </p>
+      <h3>Fractional CIO leadership</h3>
+      <p>
+        A dedicated, part-time CIO for organizations that need sustained executive technology leadership but
+        aren&rsquo;t ready to appoint a full-time CIO: leading technology strategy, establishing governance, overseeing
+        investments, coordinating vendors and teams, and supporting executive and board decisions. Engagements are
+        structured around your priorities and the level of involvement you need.
+      </p>
+      <h3>Not ready for a dedicated CIO?</h3>
+      <p>
+        Our <Link href="/advisory/executive-technology-office">Executive Technology Office</Link> is a shared service
+        model: executive technology expertise for organizations, and for associations to offer their members, without
+        a dedicated role.
       </p>
       <p>
         We work with your existing technology providers rather than replacing them, and we don&rsquo;t sell the systems

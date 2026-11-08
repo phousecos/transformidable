@@ -32,7 +32,7 @@ const ASSOCIATION_RESOURCES = [
   "Group advisory sessions and office hours",
   "Limited individual executive consultations",
   "Technology planning and vendor evaluation resources",
-  "Access to additional advisory and fractional leadership services",
+  "Access to Transformidable’s other advisory services",
 ];
 
 const ORGANIZATION_SERVICES = [
@@ -79,7 +79,7 @@ export default function ExecutiveTechnologyOfficePage() {
             name: "Executive Technology Office",
             description: DESCRIPTION,
             path: "/advisory/executive-technology-office",
-            serviceType: ["Shared CIO", "Fractional CIO", "Technology governance", "Technology strategy", "AI governance"],
+            serviceType: ["Shared executive technology office", "Technology governance", "Technology strategy", "AI governance"],
           }),
         )}
       />
@@ -135,7 +135,7 @@ export default function ExecutiveTechnologyOfficePage() {
         <div className="wrap">
           <div className="sec-head">
             <div>
-              <h2 className="h" id="eto-levels-h">One service. Three levels of engagement.</h2>
+              <h2 className="h" id="eto-levels-h">One service. Two levels of engagement.</h2>
             </div>
           </div>
           <div className="eto-levels">
@@ -175,28 +175,12 @@ export default function ExecutiveTechnologyOfficePage() {
               </p>
             </div>
 
-            <div className="dv-card eto-level" id="fractional-cio">
-              <span className="dv-tag">03</span>
-              <h3>Fractional CIO Leadership</h3>
-              <p className="eto-sub">Executive leadership when you need more than advice.</p>
-              <p>
-                For organizations that require sustained technology leadership but are not ready to appoint a full-time
-                CIO, ETO offers fractional executive engagements.
-              </p>
-              <p>
-                Depending on the organization&rsquo;s needs, a fractional CIO may help lead technology strategy,
-                establish governance structures, oversee technology investments, coordinate vendors and internal teams,
-                and support executive and board decision-making.
-              </p>
-              <p>
-                Engagements are structured around the organization&rsquo;s priorities, responsibilities, and required
-                level of involvement.
-              </p>
-              <p>
-                <Link className="link" href="/advisory/fractional-cio">Interim, fractional, or outsourced CIO? Compare the options <Arrow s={13} /></Link>
-              </p>
-            </div>
           </div>
+          <p className="av-close">
+            ETO is a shared service. If you need dedicated technology leadership, interim and fractional CIO
+            engagements are separate.{" "}
+            <Link className="link" href="/advisory/fractional-cio">See Interim &amp; Fractional CIO <Arrow s={13} /></Link>
+          </p>
         </div>
       </section>
 
