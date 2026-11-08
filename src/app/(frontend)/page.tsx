@@ -7,17 +7,14 @@ import { Sky } from "./components/research/Sky";
 import { caseNo, fullDate } from "./components/research/format";
 import { ResearchSubscribe } from "./components/research/ResearchNav";
 import "./components/home/home.css";
+import { pageMetadata } from "../../lib/seo.ts";
 
 export const dynamic = "force-dynamic";
 
 const DESCRIPTION =
-  "Transformidable brings together research, advisory, executive education, publishing, and media to help leaders and governing bodies govern consequential change, from mergers and troubled programs to IT controls and AI.";
+  "Technology, project, and AI governance advisory and governance training for boards and executives in higher education, nonprofits, associations, and mid-market organizations.";
 
-export const metadata = {
-  title: { absolute: "Transformidable | Governance for Consequential Transformation" },
-  description: DESCRIPTION,
-  alternates: { canonical: "/" },
-};
+export const metadata = pageMetadata({ title: "Technology, Project & AI Governance for Boards | Transformidable", absolute: true, description: DESCRIPTION, path: "/" });
 
 const Arrow = ({ s = 14 }: { s?: number }) => (
   <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>

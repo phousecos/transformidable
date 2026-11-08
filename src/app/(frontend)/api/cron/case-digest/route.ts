@@ -8,7 +8,7 @@ export const maxDuration = 60
 const SITE_URL = (
   process.env.NEXT_PUBLIC_SITE_URL ||
   process.env.NEXT_PUBLIC_SERVER_URL ||
-  'https://transformidablethinking.com'
+  'https://betransformidable.com'
 ).replace(/\/$/, '')
 
 const DAY_MS = 24 * 60 * 60 * 1000

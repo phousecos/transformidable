@@ -5,14 +5,11 @@ import Link from "next/link";
 import { ResearchShell } from "../../components/research/ResearchShell";
 import { Sky } from "../../components/research/Sky";
 import { caseNo } from "../../components/research/format";
+import { pageMetadata } from "../../../../lib/seo.ts";
 
 export const dynamic = "force-dynamic";
 
-export const metadata = {
-  title: "Case Files",
-  description:
-    "Anatomies of real governance decisions and why they held or failed. The evidence base behind the research.",
-};
+export const metadata = pageMetadata({ title: "Governance Case Files", description: "Anatomies of real technology, ERP, merger, and AI governance decisions, and why they held or failed. The evidence base behind the research.", path: "/publications/case-files" });
 
 export default async function CaseFilesIndex() {
   const payload = await getPayload({ config });

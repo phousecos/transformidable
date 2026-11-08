@@ -2,13 +2,15 @@
 import config from "@payload-config";
 import { getPayload } from "payload";
 import { TOOLS_PATH, listedToolsWhere } from "../../lib/advisoryTools.ts";
+import { SITE_URL as siteUrl } from "../../lib/seo.ts";
+import { getBriefings } from "../../lib/briefings.ts";
 
 export const dynamic = "force-dynamic";
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://transformidablethinking.com";
-
-// Static, always-present routes (the coming-soon placeholders are included so
-// the structure is discoverable; drop any you'd rather keep out of the index).
+// Static, always-present routes. The "Coming soon" placeholders (research
+// projects and datasets, and the tools other than the Codebook) are
+// left out, and marked noindex, until they have content: thin placeholder pages
+// count against the site in search. Add each back here when it launches.
 const STATIC_PATHS = [
   "",
   "/research",
@@ -21,7 +23,10 @@ const STATIC_PATHS = [
   "/publications/case-files",
   "/publications/research-notes",
   "/podcast",
+  "/briefings/live",
+  "/briefings/webinars",
   "/about",
+  "/contact",
   "/academy",
   "/academy/courses/ai-governance-for-boards-and-councils",
   "/academy/courses/governing-ai-adoption",
@@ -31,15 +36,7 @@ const STATIC_PATHS = [
   "/academy/faq",
   "/research/agenda",
   "/research/governance-method",
-  "/research/datasets",
-  "/research/projects",
-  "/briefings/webinars",
-  "/briefings/live",
   "/tools/governance-codebook",
-  "/tools/governance-watch",
-  "/tools/assessments",
-  "/tools/benchmarks",
-  "/tools/risk-models",
 ];
 
 async function publishedDocs(payload: any, collection: string) {
@@ -64,6 +61,17 @@ export default async function sitemap() {
     changeFrequency: p === "" ? "weekly" : "monthly",
     priority: p === "" ? 1 : 0.7,
   }));
+
+  // Briefing topics, from the briefings platform (lib/briefings.ts).
+  const briefings = await getBriefings();
+  for (const s of briefings?.series || []) {
+    entries.push({
+      url: `${siteUrl}/briefings/${s.slug}`,
+      lastModified: s.updatedAt ? new Date(s.updatedAt) : now,
+      changeFrequency: "weekly",
+      priority: 0.7,
+    });
+  }
 
   try {
     const payload = await getPayload({ config });

@@ -4,6 +4,7 @@ import { ResearchShell } from "../components/research/ResearchShell";
 import { Sky } from "../components/research/Sky";
 import { ResearchSubscribe } from "../components/research/ResearchNav";
 import "../components/home/home.css";
+import { pageMetadata } from "../../../lib/seo.ts";
 
 // PENDING: add the book's description, subtitle, and release timing once they
 // are confirmed. Until then the copy says only what is settled: the book is
@@ -13,11 +14,7 @@ const BOOK_SITE = "https://thetransformidableleader.com";
 const DESCRIPTION =
   "Transformidable Publishing: The Transformidable Leader, its companion workbook, future books, and substantive publications on leadership and governance.";
 
-export const metadata = {
-  title: "Publishing",
-  description: DESCRIPTION,
-  alternates: { canonical: "/publishing" },
-};
+export const metadata = pageMetadata({ title: "Publishing", description: DESCRIPTION, path: "/publishing" });
 
 const Arrow = ({ s = 14 }: { s?: number }) => (
   <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>

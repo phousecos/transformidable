@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AcademyHero, AcademyRegister, AcademyShell, Arrow, JsonLd } from "../../../components/academy/AcademySections";
 import { PROGRAMS, programHref } from "../../content";
+import { pageMetadata } from "../../../../../lib/seo.ts";
 
 const findProgram = (slug: string) => PROGRAMS.find((p) => p.slug === slug);
 
@@ -15,12 +16,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const p = findProgram(slug);
   if (!p) return {};
   const description = `${p.subtitle}. ${p.intro[0]}`;
-  return {
-    title: `${p.title} | Academy`,
-    description,
-    alternates: { canonical: programHref(p.slug) },
-    openGraph: { title: `${p.title} | Transformidable Academy`, description, url: programHref(p.slug) },
-  };
+  return pageMetadata({ title: `${p.title} | AI Governance Training`, description, path: programHref(p.slug) });
 }
 
 export default async function ProgramPage({ params }: { params: Promise<{ slug: string }> }) {

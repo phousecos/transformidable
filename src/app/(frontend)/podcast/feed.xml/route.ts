@@ -10,7 +10,7 @@ import { PODCAST_DEFAULTS, durationSeconds } from "../../../../lib/podcast";
 
 export const dynamic = "force-dynamic";
 
-const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://transformidablethinking.com").replace(/\/$/, "");
+import { SITE_URL as siteUrl } from "../../../../lib/seo.ts";
 
 function xml(s: unknown): string {
   return String(s ?? "")

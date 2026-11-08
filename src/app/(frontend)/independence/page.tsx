@@ -3,18 +3,13 @@ import Link from "next/link";
 import { ResearchShell } from "../components/research/ResearchShell";
 import { Sky } from "../components/research/Sky";
 import { ADVISORY_ENTITY } from "../components/site";
+import { pageMetadata } from "../../../lib/seo.ts";
 
 // PENDING CONFIRMATION: every commitment below must be confirmed true as
 // written (especially "no vendor compensation" and "no referral fees") before
 // the page is indexed. Once confirmed, remove `robots` from the metadata and
 // add /independence to STATIC_PATHS in sitemap.ts.
-export const metadata = {
-  title: "Independence",
-  description:
-    "The commitments that govern how Transformidable's research, advisory, and other divisions relate to one another.",
-  alternates: { canonical: "/independence" },
-  robots: { index: false, follow: true },
-};
+export const metadata = pageMetadata({ title: "Independence", description: "The commitments that govern how Transformidable's research, advisory, and other divisions relate to one another.", path: "/independence", noindex: true });
 
 export default function IndependencePage() {
   return (

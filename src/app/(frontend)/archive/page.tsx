@@ -4,13 +4,11 @@ import { getPayload } from "payload";
 import Link from "next/link";
 import SiteNav from "../components/SiteNav";
 import Footer from "../components/Footer";
+import { pageMetadata } from "../../../lib/seo.ts";
 
 export const dynamic = "force-dynamic";
 
-export const metadata = {
-  title: "Archive",
-  description: "Browse past issues of Transformidable.",
-};
+export const metadata = pageMetadata({ title: "Archive", description: "Browse past issues of Transformidable.", path: "/archive" });
 
 export default async function ArchivePage() {
   const payload = await getPayload({ config });

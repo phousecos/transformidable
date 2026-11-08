@@ -3,14 +3,11 @@ import Link from "next/link";
 import { ResearchShell } from "../components/research/ResearchShell";
 import { Sky } from "../components/research/Sky";
 import { ADVISORY_ENTITY } from "../components/site";
+import { pageMetadata } from "../../../lib/seo.ts";
 
 export const dynamic = "force-dynamic";
 
-export const metadata = {
-  title: "About",
-  description:
-    "Transformidable advances the leadership and governance of organizational transformation through research, advisory, education, publishing, and media.",
-};
+export const metadata = pageMetadata({ title: "About", description: "Transformidable advances the governance of technology and organizational transformation through research, advisory, governance training, publishing, and media for boards and executives.", path: "/about" });
 
 export default function AboutPage() {
   return (

@@ -12,6 +12,7 @@ import { SeekLink } from "../../components/research/SeekLink";
 import { fullDate } from "../../components/research/format";
 import { renderLexical } from "../../components/research/lexical";
 import { chapterList, clock, durationSeconds, streamVideo, youtubeId } from "../../../../lib/podcast";
+import { SITE_URL, jsonLdHtml, pageMetadata } from "../../../../lib/seo.ts";
 
 export const dynamic = "force-dynamic";
 
@@ -35,11 +36,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   const ep = await getEpisode(slug);
   if (!ep) return { title: "Episode not found" };
-  return {
-    title: ep.title,
-    description: ep.description || undefined,
-    alternates: { types: { "application/rss+xml": "/podcast/feed.xml" } },
-  };
+  const meta = pageMetadata({ title: ep.title, description: ep.description, path: `/podcast/${slug}`, type: "article" });
+  return { ...meta, alternates: { ...meta.alternates, types: { "application/rss+xml": "/podcast/feed.xml" } } };
 }
 
 export default async function PodcastEpisodePage({
@@ -70,8 +68,21 @@ export default async function PodcastEpisodePage({
   ].filter(Boolean).join(" · ");
   const meta = [ep.publishDate && fullDate(ep.publishDate), ep.duration].filter(Boolean);
 
+  const episodeJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "PodcastEpisode",
+    name: ep.title,
+    ...(ep.description && { description: ep.description }),
+    url: `${SITE_URL}/podcast/${slug}`,
+    ...(ep.publishDate && { datePublished: ep.publishDate }),
+    ...(ep.episodeNumber != null && { episodeNumber: ep.episodeNumber }),
+    ...(audioSrc && { associatedMedia: { "@type": "MediaObject", contentUrl: audioSrc } }),
+    partOfSeries: { "@type": "PodcastSeries", name: "The Governance Files", url: `${SITE_URL}/podcast` },
+  };
+
   return (
     <ResearchShell>
+      <script type="application/ld+json" dangerouslySetInnerHTML={jsonLdHtml(episodeJsonLd)} />
       <article className="detail">
         <div className="detail-wrap">
           <Link className="backlink" href="/podcast">

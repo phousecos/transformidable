@@ -5,15 +5,11 @@ import Link from "next/link";
 import { ResearchShell } from "../components/research/ResearchShell";
 import { PublicationsList, CaseFilesFeature, HeroLatest } from "../components/research/ResearchSections";
 import { Sky } from "../components/research/Sky";
+import { pageMetadata } from "../../../lib/seo.ts";
 
 export const dynamic = "force-dynamic";
 
-export const metadata = {
-  title: { absolute: "Transformidable Research | Evidence for Better Transformation Governance" },
-  description:
-    "Independent research on how governance, leadership, and institutional decision-making shape whether organizational transformation succeeds or fails.",
-  alternates: { canonical: "/research" },
-};
+export const metadata = pageMetadata({ title: "Technology & Transformation Governance Research | Transformidable", absolute: true, description: "Independent research on how boards, executives, and institutions govern technology, ERP, merger, and AI transformations, and why those transformations succeed or fail.", path: "/research" });
 
 const Arrow = ({ s = 14 }: { s?: number }) => (
   <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>

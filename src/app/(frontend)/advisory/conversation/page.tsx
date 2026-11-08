@@ -4,13 +4,9 @@ import { ResearchShell } from "../../components/research/ResearchShell";
 import { Sky } from "../../components/research/Sky";
 import { ConversationBooking } from "../../components/advisory/ConversationBooking";
 import "../../components/home/home.css";
+import { pageMetadata } from "../../../../lib/seo.ts";
 
-export const metadata = {
-  title: "Book a Conversation | Advisory",
-  description:
-    "Thirty minutes, no pitch. Tell Transformidable Advisory the governance problem in front of you, and we'll tell you honestly whether and how we can help.",
-  alternates: { canonical: "/advisory/conversation" },
-};
+export const metadata = pageMetadata({ title: "Book a Governance Conversation", description: "Thirty minutes, no pitch. Tell Transformidable the technology, project, or AI governance problem in front of you, and we'll tell you honestly whether and how we can help.", path: "/advisory/conversation" });
 
 export default function ConversationPage() {
   return (

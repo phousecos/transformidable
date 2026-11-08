@@ -5,13 +5,11 @@ import Link from "next/link";
 import { ResearchShell } from "../../components/research/ResearchShell";
 import { Sky } from "../../components/research/Sky";
 import { fullDate } from "../../components/research/format";
+import { pageMetadata } from "../../../../lib/seo.ts";
 
 export const dynamic = "force-dynamic";
 
-export const metadata = {
-  title: "Research Notes",
-  description: "Working findings in progress from the governance research.",
-};
+export const metadata = pageMetadata({ title: "Governance Research Notes", description: "Working findings in progress from Transformidable's research on technology, project, and AI governance.", path: "/publications/research-notes" });
 
 export default async function ResearchNotesIndex() {
   const payload = await getPayload({ config });

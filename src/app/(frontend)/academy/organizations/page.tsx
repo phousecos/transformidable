@@ -2,15 +2,12 @@
 import Link from "next/link";
 import { AcademyFaq, AcademyHero, AcademyRegister, AcademyShell, Arrow } from "../../components/academy/AcademySections";
 import { OTHER_AUDIENCES, PRIMARY_AUDIENCES, PROGRAMS, faqIn, programHref } from "../content";
+import { pageMetadata } from "../../../../lib/seo.ts";
 
 const DESCRIPTION =
-  "Private Transformidable Academy sessions in AI governance for city councils, county commissions, university governing boards, and executive leadership teams.";
+  "Private AI governance training for city councils, county commissions, university and nonprofit boards, and executive leadership teams, delivered to your organization.";
 
-export const metadata = {
-  title: "Private Sessions for Organizations | Academy",
-  description: DESCRIPTION,
-  alternates: { canonical: "/academy/organizations" },
-};
+export const metadata = pageMetadata({ title: "Private Board Governance Training Sessions", description: DESCRIPTION, path: "/academy/organizations" });
 
 export default function OrganizationsPage() {
   return (
