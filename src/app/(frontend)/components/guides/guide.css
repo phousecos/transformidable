@@ -1,0 +1,30 @@
+/* Guide pages (problem-led Advisory pages). Long-form reading column. */
+
+.tr .gd { max-width: 76ch; }
+.tr .gd > h2, .tr .gd section > h2 { font-family: var(--serif); font-size: clamp(1.35rem, 2.4vw, 1.7rem); line-height: 1.2; color: var(--ink); margin: clamp(36px, 5vw, 52px) 0 14px; text-wrap: balance; }
+.tr .gd > h2:first-child { margin-top: 0; }
+.tr .gd h3 { font-family: var(--serif); font-size: 1.15rem; color: var(--ink); margin: 26px 0 8px; }
+.tr .gd p, .tr .gd li { font-family: var(--serif); font-size: 1.04rem; line-height: 1.65; color: var(--ink-body); }
+.tr .gd p { margin: 0 0 16px; }
+.tr .gd ul, .tr .gd ol { margin: 0 0 18px; padding-left: 1.4em; }
+.tr .gd ul { list-style: disc; }
+.tr .gd ol { list-style: decimal; }
+.tr .gd li::marker { color: var(--wine); }
+.tr .gd li { margin: 0 0 8px; }
+.tr .gd li strong, .tr .gd p strong { color: var(--ink); }
+.tr .gd a:not(.btn) { color: var(--wine); text-decoration: underline; text-underline-offset: 2px; }
+
+/* Comparison table: scrolls inside its own box on narrow screens. */
+.tr .gd-table { overflow-x: auto; margin: 8px 0 24px; border: 1px solid var(--rule); background: var(--paper); }
+.tr .gd-table table { border-collapse: collapse; width: 100%; min-width: 640px; font-size: .95rem; }
+.tr .gd-table th, .tr .gd-table td { text-align: left; vertical-align: top; padding: 12px 14px; border-top: 1px solid var(--rule); font-family: var(--serif); line-height: 1.5; color: var(--ink-body); }
+.tr .gd-table thead th { border-top: 0; font-family: inherit; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-mute); }
+.tr .gd-table tbody th { color: var(--ink); font-weight: 600; }
+
+.tr .gd-callout { border-left: 3px solid var(--wine); background: var(--paper); padding: 18px 22px; margin: 8px 0 24px; }
+.tr .gd-callout p:last-child { margin-bottom: 0; }
+
+.tr .gd-faq details { border-top: 1px solid var(--rule); padding: 14px 0; }
+.tr .gd-faq details:last-child { border-bottom: 1px solid var(--rule); }
+.tr .gd-faq summary { cursor: pointer; font-family: var(--serif); font-size: 1.08rem; color: var(--ink); }
+.tr .gd-faq details p { margin: 10px 0 0; }

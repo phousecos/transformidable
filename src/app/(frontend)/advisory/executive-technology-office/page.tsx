@@ -192,6 +192,9 @@ export default function ExecutiveTechnologyOfficePage() {
                 Engagements are structured around the organization&rsquo;s priorities, responsibilities, and required
                 level of involvement.
               </p>
+              <p>
+                <Link className="link" href="/advisory/fractional-cio">Interim, fractional, or outsourced CIO? Compare the options <Arrow s={13} /></Link>
+              </p>
             </div>
           </div>
         </div>

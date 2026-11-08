@@ -34,6 +34,7 @@ const AREAS = [
     id: "troubled-programs",
     name: "Troubled Programs",
     text: "Status reports stay green while milestones slip, and the steering committee hears about problems after they become expensive. We help leadership get to reliable facts, make the recovery decisions, and put oversight in place that can change the trajectory.",
+    related: [{ label: "IV&V and troubled project recovery", href: "/advisory/independent-verification-and-validation" }],
   },
   {
     id: "it-general-controls",
@@ -44,7 +45,10 @@ const AREAS = [
     id: "ai-governance",
     name: "AI Governance",
     text: "Many organizations have an AI policy but no clear answer to five questions: who sees AI use, who decides, who owns it, when it escalates, and what evidence exists. We help turn the policy into practice.",
-    related: { label: "Academy: AI Governance for Boards & Councils", href: "/academy/courses/ai-governance-for-boards-and-councils" },
+    related: [
+      { label: "Where to start: an AI acceptable use policy", href: "/advisory/ai-policy" },
+      { label: "Academy: AI Governance for Boards & Councils", href: "/academy/courses/ai-governance-for-boards-and-councils" },
+    ],
   },
 ];
 
@@ -131,7 +135,9 @@ export default async function AdvisoryPage() {
               <div className="dv-card av-area" id={a.id} key={a.id}>
                 <h3>{a.name}</h3>
                 <p>{a.text}</p>
-                {a.related && <Link className="link" href={a.related.href}>{a.related.label} <Arrow s={13} /></Link>}
+                {a.related?.map((r) => (
+                  <p key={r.href} style={{ marginTop: 10 }}><Link className="link" href={r.href}>{r.label} <Arrow s={13} /></Link></p>
+                ))}
               </div>
             ))}
           </div>
@@ -152,6 +158,9 @@ export default async function AdvisoryPage() {
           </p>
           <p className="av-close">
             <Link className="link" href="/advisory/executive-technology-office">Explore the Executive Technology Office <Arrow s={13} /></Link>
+          </p>
+          <p className="av-close">
+            <Link className="link" href="/advisory/fractional-cio">Interim, fractional, or outsourced CIO? Compare the options <Arrow s={13} /></Link>
           </p>
         </div>
       </section>
