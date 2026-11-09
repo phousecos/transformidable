@@ -7,28 +7,137 @@ import { pageMetadata } from "../../../lib/seo.ts";
 
 export const dynamic = "force-dynamic";
 
-export const metadata = pageMetadata({ title: "About", description: "Transformidable advances the governance of technology and organizational transformation through research, advisory, governance training, publishing, and media for boards and executives.", path: "/about" });
+export const metadata = pageMetadata({ title: "About", description: "Transformidable: possessing the capacity to bring about consequential transformation. Research, Advisory, Academy, Publishing, and Media are each an expression of that definition.", path: "/about" });
+
+// The organizing idea of the page: each division expresses one part of the
+// definition, in the order the definition reads.
+const EXPRESSIONS = [
+  {
+    id: "capacity",
+    term: "capacity",
+    excerpt: "Possessing the capacity to bring about consequential transformation.",
+    sense: "1",
+    name: "Academy",
+    href: "/academy",
+    body: "Capacity is built, not assumed. Academy builds it in the people who carry transformation: governance briefings, workshops, and applied programs for leadership teams and governing bodies.",
+  },
+  {
+    id: "courage",
+    term: "courage",
+    excerpt: "Characterized by the courage…",
+    sense: "2",
+    name: "Media",
+    href: "/media",
+    body: "It takes courage to examine in public what went wrong and who decided it. The Governance Files podcast, the Transformidable Briefing, interviews, and events bring those conversations into the open.",
+  },
+  {
+    id: "discipline",
+    term: "discipline",
+    excerpt: "…the discipline…",
+    sense: "2",
+    name: "Research",
+    href: "/research",
+    body: "Discipline means evidence before opinion. Research builds it case by case: Case Files, the governance codebook, evidence-based findings, and the research agenda.",
+  },
+  {
+    id: "capability",
+    term: "capability",
+    excerpt: "…and capability to turn complex challenges into meaningful change.",
+    sense: "2",
+    name: "Advisory",
+    href: "/advisory",
+    body: "Capability is evidence applied to an organization\u2019s own decisions. Advisory provides independent governance advisory for mergers and acquisitions, troubled programs, IT general controls, and AI adoption, grounded in the research.",
+  },
+  {
+    id: "shaping",
+    term: "shaping",
+    excerpt: "Not simply to embrace change, but to be capable of shaping it.",
+    sense: null,
+    name: "Publishing",
+    href: "/publishing",
+    body: "Ideas shape how leaders lead long after a transformation ends. Publishing carries them: The Transformidable Leader, its companion workbook, future books, and substantive publications.",
+  },
+];
+
+function Term({ id, children }) {
+  return <a className="def-term" href={`#expr-${id}`}>{children}</a>;
+}
 
 export default function AboutPage() {
   return (
     <ResearchShell>
-      <section className="idx-hero tr-onsky">
+      <section className="idx-hero tr-onsky about-hero">
         <Sky variant="about" />
         <div className="wrap idx-hero-in">
           <p className="kicker">About</p>
-          <h1 className="idx-title">Governance decides whether transformation holds.</h1>
-          <p className="idx-intro">
-            Transformidable advances the leadership and governance of organizational transformation
-            through research, advisory, education, publishing, and media. We study how governance, leadership,
-            and institutional decision-making shape the success, resilience, and public trust of
-            organizations navigating complex change.
-          </p>
+          <div className="def-entry" lang="en">
+            <h1 className="def-word">transformidable</h1>
+            <p className="def-meta">
+              <span className="def-phon">/trans-FOR-mi-duh-bul/</span>
+              <span className="def-pos">adjective</span>
+              <span className="def-ety">coined from <i>transform</i> + <i>formidable</i></span>
+            </p>
+            <ol className="def-senses">
+              <li>
+                Possessing the <Term id="capacity">capacity</Term> to bring about consequential transformation.
+              </li>
+              <li>
+                Characterized by the <Term id="courage">courage</Term>, <Term id="discipline">discipline</Term>,
+                and <Term id="capability">capability</Term> to turn complex challenges into meaningful change.
+              </li>
+            </ol>
+            <blockquote className="def-coda">
+              <p>
+                To be transformidable is not simply to embrace change, but to be capable
+                of <Term id="shaping">shaping</Term> it.
+              </p>
+            </blockquote>
+          </div>
+        </div>
+      </section>
+
+      <section className="about-expr" id="expressions" aria-labelledby="expr-h">
+        <div className="wrap">
+          <div className="expr-head">
+            <p className="kicker">Five divisions, one definition</p>
+            <h2 className="expr-h" id="expr-h">Each part of Transformidable expresses part of the word.</h2>
+            <p className="expr-intro">
+              Transformidable works through five divisions. Each has its own audience and purpose, and
+              each takes its charge from the definition.
+            </p>
+          </div>
+          <ol className="expr-list">
+            {EXPRESSIONS.map((e) => (
+              <li className="expr-row" id={`expr-${e.id}`} key={e.id}>
+                <div className="expr-term">
+                  <span className="expr-word">{e.term}</span>
+                  <span className="expr-src">
+                    {e.sense ? <span className="expr-sense">{e.sense}.</span> : null}
+                    {e.excerpt}
+                  </span>
+                </div>
+                <div className="expr-main">
+                  <h3 className="expr-name"><Link href={e.href}>{e.name}</Link></h3>
+                  <p className="expr-body">{e.body}</p>
+                  <Link className="link" href={e.href}>Explore {e.name}</Link>
+                </div>
+              </li>
+            ))}
+          </ol>
         </div>
       </section>
 
       <article className="detail">
         <div className="detail-wrap">
+          <h2 className="case-h">Why governance</h2>
+          <p className="about-thesis">Governance decides whether transformation holds.</p>
           <div className="prose" style={{ marginTop: 0 }}>
+            <p>
+              Transformidable advances the leadership and governance of organizational transformation
+              through research, advisory, education, publishing, and media. We study how governance,
+              leadership, and institutional decision-making shape the success, resilience, and public
+              trust of organizations navigating complex change.
+            </p>
             <p>
               Most transformations do not fail for lack of technology or talent. They fail, or quietly
               revert, because of decisions made upstream: in the rooms where oversight, accountability,
@@ -47,24 +156,6 @@ export default function AboutPage() {
               whether transformation holds.
             </p>
           </div>
-
-          <section className="case-section" id="divisions">
-            <h2 className="case-h">Five divisions, one intellectual identity</h2>
-            <div className="prose" style={{ marginTop: 0 }}>
-              <p>
-                Transformidable works through five divisions. Each has its own audience and purpose. Research
-                builds the evidence, and Advisory applies it to an organization&rsquo;s own decisions. What they
-                share is a commitment to stronger leadership and governance.
-              </p>
-              <ul>
-                <li><Link href="/research">Research</Link>: Case Files, the governance codebook, evidence-based findings, and the research agenda.</li>
-                <li><Link href="/advisory">Advisory</Link>: independent governance advisory for mergers and acquisitions, troubled programs, IT general controls, and AI adoption, grounded in the research.</li>
-                <li><Link href="/academy">Academy</Link>: executive education, with governance briefings, workshops, and applied programs for leadership teams and governing bodies.</li>
-                <li><Link href="/publishing">Publishing</Link>: The Transformidable Leader, its companion workbook, future books, and substantive publications.</li>
-                <li><Link href="/media">Media</Link>: The Governance Files podcast, the Transformidable Briefing, interviews, and events.</li>
-              </ul>
-            </div>
-          </section>
 
           <section className="case-section" id="agenda">
             <h2 className="case-h">The research agenda</h2>
