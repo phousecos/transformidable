@@ -4,6 +4,7 @@ import { getPayload } from "payload";
 import { TOOLS_PATH, listedToolsWhere } from "../../lib/advisoryTools.ts";
 import { SITE_URL as siteUrl } from "../../lib/seo.ts";
 import { getBriefings } from "../../lib/briefings.ts";
+import { courseHref, getCourses } from "../../lib/academy.ts";
 
 export const dynamic = "force-dynamic";
 
@@ -31,13 +32,7 @@ const STATIC_PATHS = [
   "/about",
   "/contact",
   "/academy",
-  "/academy/courses/ai-governance-for-boards-and-councils",
-  "/academy/courses/governing-ai-adoption",
-  "/academy/courses/building-ai-governance",
-  "/academy/organizations",
-  "/academy/individuals",
-  "/academy/faq",
-  "/academy/board-governance-training",
+  "/academy/dedicated-sessions",
   "/research/agenda",
   "/research/governance-method",
   "/tools/governance-codebook",
@@ -75,6 +70,12 @@ export default async function sitemap() {
       changeFrequency: "weekly",
       priority: 0.7,
     });
+  }
+
+  // Academy course pages (Courses: listed, with a page).
+  for (const c of await getCourses()) {
+    if (!c.listed || !c.hasPage) continue;
+    entries.push({ url: `${siteUrl}${courseHref(c.slug)}`, lastModified: c.updatedAt ? new Date(c.updatedAt) : now, changeFrequency: "weekly", priority: 0.8 });
   }
 
   try {

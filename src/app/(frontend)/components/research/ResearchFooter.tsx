@@ -44,11 +44,10 @@ export function ResearchFooter() {
         </div>
         <div className="fcol">
           <h2>Academy</h2>
-          <Link href="/academy">AI Governance Education</Link>
-          <Link href="/academy/courses/ai-governance-for-boards-and-councils">Briefing for Boards &amp; Councils</Link>
-          <Link href="/academy/organizations">Private Sessions</Link>
-          <Link href="/academy/faq">FAQ</Link>
-          <Link href="/academy/individuals">For Individuals</Link>
+          <Link href="/academy">Transformidable Academy</Link>
+          <Link href="/academy#sessions">Upcoming Sessions</Link>
+          <Link href="/academy/dedicated-sessions">Dedicated Sessions</Link>
+          <Link href="/academy#faq">FAQ</Link>
         </div>
         <div className="fcol">
           <h2>Publishing</h2>

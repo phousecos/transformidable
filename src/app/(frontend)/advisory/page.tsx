@@ -47,7 +47,7 @@ const AREAS = [
     text: "Many organizations have an AI policy but no clear answer to five questions: who sees AI use, who decides, who owns it, when it escalates, and what evidence exists. We help turn the policy into practice.",
     related: [
       { label: "Where to start: an AI acceptable use policy", href: "/advisory/ai-policy" },
-      { label: "Academy: AI Governance for Boards & Councils", href: "/academy/courses/ai-governance-for-boards-and-councils" },
+      { label: "Academy: TA-101 Know What You’re Governing", href: "/academy/courses/know-what-youre-governing" },
     ],
   },
 ];

@@ -51,3 +51,33 @@ export const ACADEMY_TIMEFRAMES = [
 ]
 
 export const optionValues = (options: { value: string }[]) => options.map((o) => o.value)
+
+// Courses (src/collections/Courses.ts).
+export const ACADEMY_LEVELS = [
+  { label: 'Foundations', value: 'foundations' },
+  { label: 'Workshop', value: 'workshop' },
+  { label: 'Applied', value: 'applied' },
+]
+
+export const ACADEMY_BUYING_MODELS = [
+  { label: 'per seat', value: 'per-seat' },
+  { label: 'private for your organization', value: 'private-organization' },
+  { label: 'private program', value: 'private-program' },
+]
+
+// scheduled: dates from the class platform. private: arranged per
+// organization. coming: no dates yet; the card offers the interest list.
+export const ACADEMY_AVAILABILITY = [
+  { label: 'Scheduled (open dates)', value: 'scheduled' },
+  { label: 'Private (on request)', value: 'private' },
+  { label: 'Coming (interest list)', value: 'coming' },
+]
+
+// What brought an inquiry in. organization and individual are the retired
+// forms' values, kept so older inquiries keep their answer.
+export const ACADEMY_INQUIRY_TYPES = [
+  { label: 'Dedicated session', value: 'dedicated' },
+  { label: 'Interest list or waitlist', value: 'interest' },
+  { label: 'Organization (retired form)', value: 'organization' },
+  { label: 'Individual (retired form)', value: 'individual' },
+]

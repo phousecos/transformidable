@@ -36,13 +36,15 @@ const NAV = [
     ],
   },
   {
+    // Courses here are the built-in copy; useAcademyMenu() swaps in the
+    // current list from Courses (/api/academy-menu) once loaded.
     label: "Academy", href: "/academy", children: [
-      { no: "03.1", name: "AI Governance Education", desc: "Programs for boards, councils, and leadership teams", href: "/academy" },
-      { no: "03.2", name: "AI Governance for Boards & Councils", desc: "Executive briefing · 90 minutes", href: "/academy/courses/ai-governance-for-boards-and-councils" },
-      { no: "03.3", name: "Governing AI Adoption", desc: "Facilitated workshop · 4 hours", href: "/academy/courses/governing-ai-adoption" },
-      { no: "03.4", name: "Building AI Governance in Practice", desc: "Applied program · about 7 hours", href: "/academy/courses/building-ai-governance" },
-      { no: "03.5", name: "Private Sessions", desc: "For your whole leadership or governing body", href: "/academy/organizations" },
-      { no: "03.6", name: "FAQ", desc: "Common questions, answered", href: "/academy/faq" },
+      { name: "Transformidable Academy", desc: "Live courses for the bodies that govern technology", href: "/academy" },
+      { name: "TA-101 Know What You’re Governing", desc: "90 minutes · live online · per seat", href: "/academy/courses/know-what-youre-governing" },
+      { name: "Governing AI Adoption", desc: "Half day · private for your organization", href: "/academy#courses" },
+      { name: "Building AI Governance in Practice", desc: "About a full day · private program", href: "/academy#courses" },
+      { name: "Dedicated Sessions", desc: "A session for your whole board", href: "/academy/dedicated-sessions" },
+      { name: "FAQ", desc: "Questions officials ask", href: "/academy#faq" },
     ],
   },
   {
@@ -71,7 +73,34 @@ const UTILITY = [
   { label: "Book a conversation", href: "/advisory/conversation" },
 ];
 
+// The Academy menu, with its courses from the CMS: the first entry (the
+// Academy itself), then each listed course, then the last two (Dedicated
+// Sessions and FAQ). Keeps the built-in copy if the request fails.
+function useAcademyMenu() {
+  const [nav, setNav] = useState(NAV);
+  useEffect(() => {
+    let live = true;
+    fetch("/api/academy-menu")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!live || !Array.isArray(data?.courses) || !data.courses.length) return;
+        setNav((current) => current.map((item) => {
+          if (item.label !== "Academy") return item;
+          const kids = item.children;
+          return { ...item, children: [kids[0], ...data.courses, ...kids.slice(-2)] };
+        }));
+      })
+      .catch(() => {});
+    return () => { live = false; };
+  }, []);
+  // Menu numbers follow position, e.g. 03.1, 03.2, ...
+  return nav.map((item, i) => item.children
+    ? { ...item, children: item.children.map((c, j) => ({ ...c, no: c.no || `${String(i + 1).padStart(2, "0")}.${j + 1}` })) }
+    : item);
+}
+
 export function ResearchNav() {
+  const navItems = useAcademyMenu();
   const [mobileOpen, setMobileOpen] = useState(false);
   // The mega menu opens on hover/focus (CSS). Escape dismisses it (WCAG 1.4.13)
   // until the pointer or focus leaves that item.
@@ -144,7 +173,7 @@ export function ResearchNav() {
           </Link>
 
           <nav className="primary" aria-label="Primary">
-            {NAV.map((item) => (
+            {navItems.map((item) => (
               <div
                 className="nav-item"
                 key={item.label}
@@ -189,7 +218,7 @@ export function ResearchNav() {
         {/* Mobile menu */}
         <nav className={`mobile-menu${mobileOpen ? " is-open" : ""}`} id="tr-mobile-menu" aria-label="Mobile">
           <div className="wrap">
-            {NAV.map((item) => (
+            {navItems.map((item) => (
               <div key={item.label}>
                 <Link href={item.href} aria-current={current(item.href)} onClick={() => setMobileOpen(false)}>{item.label}</Link>
                 {item.children?.map((c) => (

@@ -24,6 +24,7 @@ import { CaseFollows } from './collections/CaseFollows.ts'
 import { CaseSubmissions } from './collections/CaseSubmissions.ts'
 import { ContactMessages } from './collections/ContactMessages.ts'
 import { AcademyInquiries } from './collections/AcademyInquiries.ts'
+import { Courses } from './collections/Courses.ts'
 import { PodcastEpisodes } from './collections/PodcastEpisodes.ts'
 import { Documents } from './collections/Documents.ts'
 import { AdvisoryBookings } from './collections/AdvisoryBookings.ts'
@@ -38,6 +39,7 @@ import { SiteSettings } from './globals/SiteSettings.ts'
 import { TransformidableFeature } from './globals/TransformidableFeature.ts'
 import { PodcastSettings } from './globals/PodcastSettings.ts'
 import { MessagingSettings } from './globals/MessagingSettings.ts'
+import { AcademyPage } from './globals/AcademyPage.ts'
 
 // Legacy collections — kept so Payload can still read/write their DB tables.
 // Articles still references authors and brand-pillars via legacy fields.
@@ -259,8 +261,7 @@ export default buildConfig({
   collections: [
     ...inGroup('Research', [CaseFiles, ResearchNotes, Publications, CaseSubmissions, CaseFollows, Topics, Verticals]),
     ...inGroup('Advisory', [Assets, AssetFiles, MessageTemplates, MessageSnippets, Senders, AdvisoryBookings, ToolRequests, ApiClients]),
-    // Training assets will join this group.
-    ...inGroup('Academy', [AcademyInquiries]),
+    ...inGroup('Academy', [Courses, AcademyInquiries]),
     ...inGroup('Publishing & Media', [Books, PodcastEpisodes, Articles, Issues]),
     ...inGroup('Audience', [Subscribers, ContactMessages]),
     ...inGroup('Site', [Media, Documents, Users]),
@@ -274,6 +275,7 @@ export default buildConfig({
   globals: [
     ...inGroup('Site', [SiteSettings, TransformidableFeature, PodcastSettings]),
     ...inGroup('Advisory', [MessagingSettings]),
+    ...inGroup('Academy', [AcademyPage]),
   ],
 
   logger: isWorkers ? workersLogger : undefined,
