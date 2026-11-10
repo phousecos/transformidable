@@ -210,16 +210,25 @@
 .tr .aa-public-note { font-family: var(--sans); font-size: .84rem; line-height: 1.55; color: var(--ink-mute); margin: 18px 0 0; max-width: 100ch; }
 .tr .aa-public-note b { color: var(--ink); }
 
-/* ---- Course page: cohorts ------------------------------------------------ */
-.tr .aa-cohorts { list-style: none; padding: 0; margin: 4px 0 0; display: grid; gap: 16px; grid-template-columns: 1fr; }
-@media (min-width: 760px) { .tr .aa-cohorts { grid-template-columns: repeat(3, 1fr); } }
-.tr .aa-cohort { background: var(--aa-card); border: 1px solid var(--aa-line); border-radius: 8px; padding: 20px; display: flex; flex-direction: column; }
-.tr .aa-cohort--next { border: 1.5px solid var(--aa-wine-text); }
-.tr .aa-cohort-label { font-family: var(--sans); font-size: 10.5px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--gold-deep); margin: 0 0 8px; }
-.tr .aa-cohort-date { font-family: var(--serif); font-weight: 700; font-size: 1.5rem; color: var(--ink); margin: 0 0 4px; }
-.tr .aa-cohort-time { font-family: var(--sans); font-size: .9rem; color: var(--ink-mute); margin: 0 0 8px; }
-.tr .aa-cohort-seats { font-family: var(--sans); font-size: .9rem; font-weight: 700; color: var(--ink); margin: 0 0 16px; }
-.tr .aa-cohort .aa-btn { margin-top: auto; }
+/* ---- Course page: every date, by month ---------------------------------- */
+.tr .aa-dates { display: grid; gap: 26px; }
+.tr .aa-month-h { font-family: var(--sans); font-size: 11px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; color: var(--gold-deep); margin: 0 0 10px; }
+.tr .aa-date-list { list-style: none; padding: 0; margin: 0; background: var(--aa-card); border: 1px solid var(--aa-line); border-radius: 8px; overflow: hidden; }
+.tr .aa-date { display: grid; gap: 4px 20px; align-items: center; padding: 14px 18px; border-top: 1px solid var(--aa-line); font-family: var(--sans); font-size: .92rem; color: var(--ink); grid-template-columns: 1fr auto; }
+.tr .aa-date:first-child { border-top: 0; }
+.tr .aa-date p { margin: 0; }
+.tr .aa-date-when { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-family: var(--serif); font-weight: 700; font-size: 1.1rem; }
+.tr .aa-date-tag { font-family: var(--sans); font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #1a1210; background: var(--gold); border-radius: 999px; padding: 3px 9px; }
+.tr .aa-date-tag--quiet { color: var(--aa-wine-text); background: color-mix(in srgb, var(--aa-wine-text) 10%, transparent); }
+.tr .aa-date-time, .tr .aa-date-seats { color: var(--ink-mute); }
+.tr .aa-date-price s { color: var(--ink-mute); }
+.tr .aa-date-go { grid-column: 2; grid-row: 1 / span 4; }
+.tr .aa-date--next { box-shadow: inset 4px 0 0 var(--aa-wine-text); }
+.tr .aa-date--full .aa-date-when, .tr .aa-date--full .aa-date-price { color: var(--ink-mute); }
+@media (min-width: 760px) {
+  .tr .aa-date { grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, .8fr) 128px; }
+  .tr .aa-date-go { grid-column: auto; grid-row: auto; justify-self: end; }
+}
 .tr .aa-cohort-empty { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; }
 .tr .aa-cohort-empty .aa-body { margin: 0; }
 

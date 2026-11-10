@@ -20,6 +20,7 @@ import {
   WaitlistLine,
 } from "../../../components/academy/Academy";
 import {
+  ACADEMY_TIMEZONE,
   DEDICATED_HREF,
   INTEREST_HREF,
   buildCatalog,
@@ -37,8 +38,6 @@ import {
 import { SITE_URL, pageMetadata } from "../../../../../lib/seo.ts";
 
 export const dynamic = "force-dynamic";
-
-const COHORTS_SHOWN = 3;
 
 async function load(slug: string) {
   const [courses, feed, page] = await Promise.all([getCourses(), getAcademyFeed(), getAcademyPage()]);
@@ -69,8 +68,17 @@ function priceFact(course, s, foundingLabel) {
     : `${money(s.priceCents, cur)} per seat`;
 }
 
-function CohortCards({ course, page }) {
-  const sessions = course.sessions.slice(0, COHORTS_SHOWN);
+/** "January 2027", in Eastern, to group dates by month. */
+const monthOf = (iso) => new Intl.DateTimeFormat("en-US", { timeZone: ACADEMY_TIMEZONE, month: "long", year: "numeric" }).format(new Date(iso));
+
+/**
+ * Every upcoming date the class platform sends, grouped by month: one row per
+ * date with its time, seats, price and Register (or the waitlist when full).
+ * The next open date is marked; founding-rate dates show the regular price
+ * struck through.
+ */
+function CohortList({ course }) {
+  const sessions = course.sessions;
   if (!sessions.length) {
     return (
       <div className="aa-cohort-empty">
@@ -80,29 +88,50 @@ function CohortCards({ course, page }) {
     );
   }
   const firstOpen = sessions.find((s) => !s.full);
+  const months = [];
+  for (const s of sessions) {
+    const m = monthOf(s.startsAt);
+    if (months.at(-1)?.month !== m) months.push({ month: m, sessions: [] });
+    months.at(-1).sessions.push(s);
+  }
+  const cur = course.series.currency;
   return (
-    <ul className="aa-cohorts" role="list">
-      {sessions.map((s) => {
-        const t = sessionTimes(s);
-        const seats = seatsText(s);
-        const label = s === firstOpen ? "Next cohort" : isReduced(s) ? "Founding cohort" : "Cohort";
-        return (
-          <li className={s === firstOpen ? "aa-cohort aa-cohort--next" : "aa-cohort"} key={s.id}>
-            <p className="aa-cohort-label">{label}</p>
-            <p className="aa-cohort-date"><time dateTime={t.iso}>{t.date}</time></p>
-            <p className="aa-cohort-time">{t.time}</p>
-            {seats && <p className={s.seatsLeft != null && s.seatsLeft <= 5 ? "aa-cohort-seats aa-low" : "aa-cohort-seats"}>{seats}</p>}
-            {s.full ? (
-              <a className="aa-btn aa-btn--line aa-btn--block" href={`${INTEREST_HREF}?course=${course.slug}&reason=waitlist`}>Full · Join waitlist<span className="sr-only"> for {t.date}</span></a>
-            ) : (
-              <a className="aa-btn aa-btn--wine aa-btn--block" href={registerHref(course.series, s)}>
-                Register · {money(s.priceCents, course.series.currency)}<span className="sr-only"> for {t.date}</span>
-              </a>
-            )}
-          </li>
-        );
-      })}
-    </ul>
+    <div className="aa-dates">
+      {months.map(({ month, sessions: list }) => (
+        <section className="aa-month" key={month} aria-label={month}>
+          <h3 className="aa-month-h">{month}</h3>
+          <ul className="aa-date-list" role="list">
+            {list.map((s) => {
+              const t = sessionTimes(s);
+              const seats = seatsText(s);
+              const next = s === firstOpen;
+              return (
+                <li key={s.id} className={[s.full ? "aa-date aa-date--full" : "aa-date", next ? "aa-date--next" : ""].join(" ").trim()}>
+                  <p className="aa-date-when">
+                    <time dateTime={t.iso}>{t.date}</time>
+                    {next && <span className="aa-date-tag">Next cohort</span>}
+                    {!next && isReduced(s) && !s.full && <span className="aa-date-tag aa-date-tag--quiet">Founding</span>}
+                  </p>
+                  <p className="aa-date-time">{t.time}</p>
+                  <p className={s.seatsLeft != null && s.seatsLeft <= 5 && !s.full ? "aa-date-seats aa-low" : "aa-date-seats"}>{seats || "Seats available"}</p>
+                  <p className="aa-date-price">
+                    {money(s.priceCents, cur)}
+                    {isReduced(s) && <> <s><span className="sr-only">regular price </span>{money(s.regularPriceCents, cur)}</s></>}
+                  </p>
+                  <div className="aa-date-go">
+                    {s.full ? (
+                      <a className="aa-btn aa-btn--line aa-btn--sm" href={`${INTEREST_HREF}?course=${course.slug}&reason=waitlist`}>Join waitlist<span className="sr-only"> for {t.date}</span></a>
+                    ) : (
+                      <a className="aa-btn aa-btn--wine aa-btn--sm" href={registerHref(course.series, s)}>Register<span className="sr-only"> for {t.date}</span></a>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      ))}
+    </div>
   );
 }
 
@@ -178,7 +207,8 @@ export default async function CoursePage({ params }) {
       <section className="aa-band" id="cohorts" aria-labelledby="aa-cohorts-h">
         <div className="wrap">
           <h2 className="aa-h2" id="aa-cohorts-h">Choose a cohort</h2>
-          <CohortCards course={course} page={page} />
+          {course.sessions.length > 0 && page.sessionsIntro && <p className="aa-intro aa-intro--tight">{page.sessionsIntro}</p>}
+          <CohortList course={course} />
           {course.sessions.length > 0 && <WaitlistLine page={page} course={course} />}
         </div>
       </section>
