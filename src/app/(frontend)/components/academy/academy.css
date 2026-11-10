@@ -126,12 +126,12 @@
 .tr .aa-card-line { font-family: var(--sans); font-size: .9rem; line-height: 1.55; color: var(--ink-body); margin: 0 0 12px; }
 .tr .aa-card-format { font-family: var(--sans); font-size: .8rem; line-height: 1.45; color: var(--ink-mute); margin: 0; }
 .tr .aa-card-foot { margin-top: auto; padding-top: 18px; display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
-.tr .aa-card-price { font-family: var(--sans); font-size: .95rem; color: var(--ink); margin: 0; }
+.tr .aa-card-price, .tr .aa-card-status { font-family: var(--sans); font-size: .95rem; color: var(--ink); margin: 0; }
 .tr .aa-card-price span { color: var(--ink-mute); }
 .tr .aa-card--featured { background: var(--aa-oxblood); border-color: var(--aa-oxblood); color: var(--aa-on-ox); }
 .tr .aa-card--featured .aa-card-code { color: var(--aa-gold-on-ox); }
 .tr .aa-card--featured .aa-tag { color: var(--aa-on-ox); background: rgba(255, 255, 255, .14); }
-.tr .aa-card--featured .aa-card-title, .tr .aa-card--featured .aa-card-price { color: #fbf6ef; }
+.tr .aa-card--featured .aa-card-title, .tr .aa-card--featured .aa-card-price, .tr .aa-card--featured .aa-card-status { color: #fbf6ef; }
 .tr .aa-card--featured .aa-card-line { color: var(--aa-on-ox-mute); }
 .tr .aa-card--featured .aa-card-format { color: var(--aa-on-ox-mute); }
 .tr .aa-card--featured .aa-card-price span { color: var(--aa-gold-on-ox); }

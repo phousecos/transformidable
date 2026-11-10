@@ -118,6 +118,7 @@ export default async function CoursePage({ params }) {
   const primary = next
     ? { label: `Register for ${nextDate}`, href: registerHref(course.series, next) }
     : { label: "Join the interest list", href: `${INTEREST_HREF}?course=${course.slug}` };
+  const dedicatedHref = `${DEDICATED_HREF}?course=${course.slug}`;
   const facts = [...(course.facts || []).map((f) => f.text), priceFact(course, next, page.foundingLabel)].filter(Boolean);
   const nextCourse = course.nextCourse && typeof course.nextCourse === "object" ? course.nextCourse : null;
   const nextCourseHref = nextCourse
@@ -171,7 +172,7 @@ export default async function CoursePage({ params }) {
             ))}
           </ul>
         )}
-        <ButtonRow primary={primary} secondary={{ label: page.heroSecondary, href: "#two-ways" }} />
+        <ButtonRow primary={primary} secondary={{ label: page.heroSecondary, href: dedicatedHref }} />
       </AcademyHero>
 
       <section className="aa-band" id="cohorts" aria-labelledby="aa-cohorts-h">
@@ -269,7 +270,7 @@ export default async function CoursePage({ params }) {
 
       <FinalCta headline={course.finalHeadline} accent={course.finalAccent} button={primary.label} href={primary.href}>
         <p className="aa-final-links">
-          {page.heroSecondary && <a href="#two-ways">{page.heroSecondary}</a>}
+          {page.heroSecondary && <a href={dedicatedHref}>{page.heroSecondary}</a>}
           {nextCourse && nextCourseHref && (
             <>
               {page.heroSecondary && <span aria-hidden="true"> · </span>}

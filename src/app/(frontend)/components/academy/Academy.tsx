@@ -122,30 +122,24 @@ export function FoundingBand({ page, href }) {
 
 // ---- Courses --------------------------------------------------------------
 
-/** Where a card's button goes, and what it says. */
-function cardAction(c) {
-  if (c.next) {
-    const t = sessionTimes(c.next);
-    return { label: c.next.full ? "Join the waitlist" : `Next: ${t.date}`, href: c.next.full ? `${INTEREST_HREF}?course=${c.slug}&reason=waitlist` : c.href || registerHref(c.series, c.next), primary: true };
+/**
+ * A card's one-line status and its button. Courses with open dates say when
+ * the next one is and offer "Find a cohort" (the course page's dates, or the
+ * sessions table); the others say where they stand.
+ */
+function cardStatus(c) {
+  if (c.availability === "scheduled") {
+    const href = c.href ? `${c.href}#cohorts` : "#sessions";
+    if (c.next) {
+      const line = c.next.full ? "Next cohort full · more dates soon" : `Next cohort: ${sessionTimes(c.next).date}`;
+      return { line, label: "Find a cohort", href, primary: true };
+    }
+    return { line: c.statusLabel || "New dates soon", label: "Find a cohort", href };
   }
-  if (c.availability === "private") return { label: c.href ? "Course details" : "Ask about a session", href: c.href || `${DEDICATED_HREF}?course=${c.slug}` };
-  if (c.availability === "coming") return { label: c.buyingModel === "per-seat" ? "Join the interest list" : "Register interest", href: `${INTEREST_HREF}?course=${c.slug}` };
-  return { label: "Course details", href: c.href || `${INTEREST_HREF}?course=${c.slug}` };
-}
-
-function CardPrice({ c }) {
-  if (c.next) {
-    const s = c.next;
-    const cur = c.series.currency;
-    return (
-      <p className="aa-card-price">
-        <b>{money(s.priceCents, cur)}{isReduced(s) ? " founding" : ""}</b>
-        {isReduced(s) && <span> ({money(s.regularPriceCents, cur)})</span>}
-      </p>
-    );
+  if (c.availability === "private") {
+    return { line: c.statusLabel || "Available on request", label: c.href ? "Course details" : "Ask about a session", href: c.href || `${DEDICATED_HREF}?course=${c.slug}` };
   }
-  const line = c.availability === "private" ? c.priceLabel || c.statusLabel : c.statusLabel || c.priceLabel;
-  return line ? <p className="aa-card-price"><b>{line}</b></p> : null;
+  return { line: c.statusLabel || "Coming soon", label: "Register interest", href: `${INTEREST_HREF}?course=${c.slug}` };
 }
 
 export function CourseCards({ catalog }) {
@@ -153,7 +147,7 @@ export function CourseCards({ catalog }) {
   return (
     <ul className="aa-cards" role="list">
       {catalog.map((c, i) => {
-        const action = cardAction(c);
+        const status = cardStatus(c);
         const featured = i === 0 && Boolean(c.next);
         return (
           <li className={featured ? "aa-card aa-card--featured" : "aa-card"} key={c.id}>
@@ -167,9 +161,9 @@ export function CourseCards({ catalog }) {
             {c.oneLine && <p className="aa-card-line"><Em>{c.oneLine}</Em></p>}
             <p className="aa-card-format">{[c.format, BUYING_MODEL_TEXT[c.buyingModel]].filter(Boolean).join(" · ")}</p>
             <div className="aa-card-foot">
-              <CardPrice c={c} />
-              <a className={action.primary ? "aa-btn aa-btn--gold aa-btn--sm" : "aa-btn aa-btn--line aa-btn--sm"} href={action.href}>
-                {action.label}<span className="sr-only">: {fullName(c)}</span>
+              <p className="aa-card-status"><b>{status.line}</b></p>
+              <a className={status.primary ? "aa-btn aa-btn--gold aa-btn--sm" : "aa-btn aa-btn--line aa-btn--sm"} href={status.href}>
+                {status.label}<span className="sr-only">: {fullName(c)}</span>
               </a>
             </div>
           </li>

@@ -22,7 +22,7 @@ import {
   TwoWays,
   WaitlistLine,
 } from "../components/academy/Academy";
-import { INTEREST_HREF, fullName, getAcademyPage, getCatalog, registerHref } from "../../../lib/academy.ts";
+import { DEDICATED_HREF, INTEREST_HREF, fullName, getAcademyPage, getCatalog, registerHref } from "../../../lib/academy.ts";
 import { SITE_URL, pageMetadata } from "../../../lib/seo.ts";
 
 export const dynamic = "force-dynamic";
@@ -79,7 +79,7 @@ export default async function AcademyPage({ searchParams }) {
       />
 
       <AcademyHero eyebrow={page.heroEyebrow} headline={page.heroHeadline} accent={page.heroAccent} subhead={page.heroSubhead}>
-        <ButtonRow primary={{ label: page.heroPrimary, href: "#sessions" }} secondary={{ label: page.heroSecondary, href: "#two-ways" }} />
+        <ButtonRow primary={{ label: page.heroPrimary, href: "#sessions" }} secondary={{ label: page.heroSecondary, href: DEDICATED_HREF }} />
         <NextSessionStrip course={next} foundingLabel={page.foundingLabel} />
       </AcademyHero>
 
