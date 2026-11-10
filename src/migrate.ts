@@ -98,6 +98,7 @@ try {
     { table: 'courses', column: 'level', validValues: ['foundations', 'workshop', 'applied'] },
     { table: 'courses', column: 'buying_model', validValues: ['per-seat', 'private-organization', 'private-program'] },
     { table: 'courses', column: 'availability', validValues: ['scheduled', 'private', 'coming'] },
+    { table: 'courses_offerings', column: 'value', validValues: ['open', 'private'] },
     // Subscribers
     { table: 'subscribers_lists', column: 'value', validValues: ['brief', 'book'] },
     // Newsletter Issues
@@ -259,6 +260,9 @@ try {
           column: `sizes_${size}_${field}`,
         })),
       ),
+      // Courses: every course now has a page, in the same change that added
+      // the private-session fields (an add+drop pair on one table).
+      { table: 'courses', column: 'has_page' },
     ]
     for (const { table, column } of staleColumns) {
       try {

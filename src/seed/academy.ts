@@ -7,6 +7,9 @@ import type { Payload } from 'payload'
 // when the collection is empty, and the global only before it is first
 // saved. Edits and deletions in the admin are never overwritten.
 //
+// upgradeCourses() brings courses made before "Ways to take it" existed up to
+// date, once each (a course whose Ways to take it is still empty).
+//
 // Left out on purpose until decided (open items in the copy doc): the
 // transfer/refund and continuing-education answers, TA-102's title (seeded
 // unlisted), the instructor photo and the take-away card image (uploads).
@@ -19,7 +22,9 @@ const TA101 = {
   slug: 'know-what-youre-governing',
   topicTag: 'AI',
   level: 'foundations',
-  buyingModel: 'per-seat',
+  offerings: ['open', 'private'],
+  privateFormat: 'Online or in person · can be tailored to your body’s agenda',
+  privateTerms: 'Same per-seat price · 8-seat minimum',
   oneLine: 'What AI is, where it shows up, how it goes wrong, and six questions to ask before you vote.',
   format: '90 minutes · live online',
   availability: 'scheduled',
@@ -28,7 +33,6 @@ const TA101 = {
   priceLabel: '$199 founding ($249)',
   creditRule: 'Fee credited toward any Academy course within six months; credit follows whoever paid.',
   listed: true,
-  hasPage: true,
   sortOrder: 10,
 
   takeawayName: 'Before You Vote on AI',
@@ -114,21 +118,90 @@ const TA101 = {
     'A 90-minute live course for city and county councils, commissions, legislatures and school boards: what AI is, where it shows up, how it goes wrong, and what to ask before you approve it.',
 }
 
+// The workshop and the applied program: catalog fields plus page copy from
+// the earlier Academy site, so their course pages say what is covered.
+const WORKSHOP_PAGE = {
+  eyebrow: 'Workshop · half day · private for your organization',
+  headline: 'Governing AI',
+  headlineAccent: 'adoption.',
+  subhead:
+    'An interactive workshop that helps governing bodies and executive teams turn AI awareness into practical governance expectations.',
+  facts: list(['Half day, or two online sessions', 'For one organization', 'Adapted to your sector']),
+  whyHeadline: 'Understanding AI is only the beginning.',
+  whyAccent: 'Governing it is the work.',
+  whyBody:
+    'As organizations introduce AI, leaders must decide who has authority to make decisions, how risks are evaluated, what evidence supports deployment, and when concerns require escalation. Using realistic scenarios, your team works through the decisions, responsibilities and oversight needed to govern AI adoption.',
+  outcomesHeadline: 'What you’ll work through',
+  outcomes: list([
+    'Establishing AI decision rights and accountability',
+    'Evaluating proposed AI uses against your objectives and risk',
+    'Distinguishing operational management from governance oversight',
+    'Identifying the information leaders need before authorizing AI initiatives',
+    'Designing escalation, monitoring and reporting expectations',
+    'Developing priorities for the next 90 days',
+  ]),
+  leaveWithHeadline: 'You leave with',
+  leaveWith: list(['A preliminary AI Governance Oversight Scorecard', 'A 90-Day Governance Action Plan for your organization']),
+  whoFor: 'Governing boards, councils, executive teams, CIOs, AI program sponsors, and leaders responsible for organizational risk and accountability.',
+  howItRuns: list([
+    'Four hours, as a half-day session or two online sessions.',
+    'Adapted to your sector, the AI already in use, and your governance responsibilities.',
+  ]),
+  finalHeadline: 'Move beyond AI awareness.',
+  finalAccent: 'Govern what comes next.',
+  seoTitle: 'Governing AI Adoption: a private workshop | Transformidable Academy',
+  seoDescription:
+    'A half-day private workshop that helps governing bodies and executive teams set AI decision rights, oversight and reporting, and leave with a 90-day governance action plan.',
+}
+
+const APPLIED_PAGE = {
+  eyebrow: 'Applied program · about a full day · private',
+  headline: 'Build AI governance',
+  headlineAccent: 'in practice.',
+  subhead:
+    'An applied program that helps your leaders build a working approach to governing AI, from first evaluation through ongoing oversight, with your own people and systems.',
+  facts: list(['About seven hours', 'For one organization', 'Applied to your own context']),
+  whyHeadline: 'A policy is not a governance approach.',
+  whyAccent: 'Clear authority is.',
+  whyBody:
+    'Effective AI governance needs clear authority, defined accountability, reliable information, and the ability to respond when circumstances change. Participants work through governance scenarios and apply structured decision tools to their own organization.',
+  outcomesHeadline: 'What you’ll work through',
+  outcomes: list([
+    'Defining AI governance roles and decision-making authority',
+    'Setting requirements for evaluating proposed AI uses',
+    'Assigning accountability across leadership, technology, legal, risk and operations',
+    'Designing escalation and exception-management processes',
+    'Identifying the evidence governance decisions need',
+    'Setting oversight measures, reporting expectations and review cycles',
+    'Developing an implementation roadmap',
+  ]),
+  leaveWithHeadline: 'You leave with',
+  leaveWith: list(['An AI Governance Action Brief: priorities, decision rights, oversight expectations and next steps']),
+  whoFor: 'Executive leaders, governance and risk professionals, AI program sponsors, CIOs, and teams responsible for establishing or strengthening AI governance.',
+  howItRuns: list(['About seven hours of facilitated instruction and applied exercises.', 'Delivered privately for your organization.']),
+  finalHeadline: 'Turn governance principles',
+  finalAccent: 'into a plan.',
+  seoTitle: 'Building AI Governance in Practice | Transformidable Academy',
+  seoDescription:
+    'An applied program for leadership teams to define AI decision rights, accountability, escalation and oversight, and leave with an AI Governance Action Brief.',
+}
+
 const WORKSHOP = {
   title: 'Governing AI Adoption',
   slug: 'governing-ai-adoption',
   topicTag: 'AI',
   level: 'workshop',
-  buyingModel: 'private-organization',
+  offerings: ['private'],
+  privateFormat: 'Half day in person, or two online sessions · adapted to your organization',
+  privateTerms: '$8,000 per organization',
   oneLine: 'Turn the questions into decisions, accountability and oversight for your organization.',
   format: 'Half day',
-  availability: 'private',
-  statusLabel: 'Available',
-  priceLabel: '$8,000 per organization',
+  availability: 'scheduled',
+  statusLabel: 'Available for your organization',
   creditRule: 'Course credits apply, capped at 25% of the fee ($2,000).',
   listed: true,
-  hasPage: false,
   sortOrder: 20,
+  ...WORKSHOP_PAGE,
 }
 
 const APPLIED = {
@@ -136,14 +209,16 @@ const APPLIED = {
   slug: 'building-ai-governance',
   topicTag: 'AI',
   level: 'applied',
-  buyingModel: 'private-program',
+  offerings: ['private'],
+  privateFormat: 'About a full day, in person or online · built around your own systems',
+  privateTerms: 'Priced to your organization',
   oneLine: 'Build your organization’s working governance approach, with your own people and systems.',
   format: 'About a full day',
   availability: 'coming',
   statusLabel: 'Coming next',
   listed: true,
-  hasPage: false,
   sortOrder: 30,
+  ...APPLIED_PAGE,
 }
 
 const TA102 = {
@@ -152,7 +227,8 @@ const TA102 = {
   slug: 'ta-102',
   topicTag: 'Data centers',
   level: 'foundations',
-  buyingModel: 'per-seat',
+  offerings: ['open', 'private'],
+  privateTerms: 'Same per-seat price · 8-seat minimum',
   oneLine: 'What to ask before you approve a data center: power, water, land use, tax incentives and community impact.',
   format: '90 minutes · live online',
   availability: 'coming',
@@ -160,8 +236,36 @@ const TA102 = {
   priceLabel: '$199 founding',
   // Unlisted until it has a title.
   listed: false,
-  hasPage: false,
   sortOrder: 40,
+}
+
+// What upgradeCourses() fills in, by slug, on courses made before Ways to
+// take it. Only empty fields are filled.
+const UPGRADES: Record<string, Record<string, unknown>> = {
+  [TA101.slug]: { offerings: TA101.offerings, privateFormat: TA101.privateFormat, privateTerms: TA101.privateTerms },
+  [WORKSHOP.slug]: { ...WORKSHOP_PAGE, offerings: WORKSHOP.offerings, privateFormat: WORKSHOP.privateFormat, privateTerms: WORKSHOP.privateTerms, availability: 'scheduled', statusLabel: WORKSHOP.statusLabel },
+  [APPLIED.slug]: { ...APPLIED_PAGE, offerings: APPLIED.offerings, privateFormat: APPLIED.privateFormat, privateTerms: APPLIED.privateTerms },
+  [TA102.slug]: { offerings: TA102.offerings, privateTerms: TA102.privateTerms },
+}
+
+const isEmpty = (v: unknown) => v == null || v === '' || (Array.isArray(v) && v.length === 0)
+
+/** Fills Ways to take it, the private session and missing page copy, once per course. */
+async function upgradeCourses(payload: Payload): Promise<void> {
+  const { docs } = await payload.find({ collection: 'courses', limit: 200, depth: 0 })
+  for (const c of docs as Record<string, any>[]) {
+    if (!isEmpty(c.offerings)) continue
+    const known = UPGRADES[c.slug] || {}
+    const data: Record<string, unknown> = {}
+    for (const [k, v] of Object.entries(known)) {
+      // The workshop's old "Private" availability and status line are replaced outright.
+      if (isEmpty(c[k]) || (c.slug === WORKSHOP.slug && (k === 'availability' || k === 'statusLabel'))) data[k] = v
+    }
+    if (isEmpty(data.offerings)) data.offerings = c.buyingModel === 'per-seat' ? ['open', 'private'] : ['private']
+    if (c.availability === 'private') data.availability = 'scheduled'
+    await payload.update({ collection: 'courses', id: c.id, data: data as any })
+    console.log(`[seed:academy] Upgraded ${c.slug}.`)
+  }
 }
 
 const ACADEMY_PAGE = {
@@ -290,6 +394,7 @@ export async function seedAcademy(payload: Payload): Promise<void> {
     await payload.create({ collection: 'courses', data: { ...TA101, nextCourse: workshop.id } as any })
     console.log('[seed:academy] Courses created.')
   }
+  await upgradeCourses(payload)
 
   const page = (await payload.findGlobal({ slug: 'academy-page', depth: 0 })) as { heroHeadline?: string }
   if (!page?.heroHeadline) {

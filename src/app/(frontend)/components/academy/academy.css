@@ -202,6 +202,10 @@
 .tr .aa-attend ul { margin: 0 0 18px; padding-left: 18px; font-family: var(--sans); font-size: .92rem; line-height: 1.55; color: var(--ink-body); }
 .tr .aa-attend li + li { margin-top: 6px; }
 .tr .aa-attend-foot { margin-top: auto; display: grid; gap: 12px; justify-items: start; }
+.tr .aa-attend-grid--one { max-width: 640px; }
+@media (min-width: 860px) { .tr .aa-attend-grid--one { grid-template-columns: 1fr; } }
+.tr .aa-attend-format { font-family: var(--sans); font-size: .88rem; color: var(--ink-mute); margin: 0; }
+.tr .aa-attend--wine .aa-attend-format { color: var(--aa-on-ox-mute); }
 .tr .aa-attend-price { font-family: var(--sans); font-size: .95rem; font-weight: 700; color: var(--ink); margin: 0; }
 .tr .aa-attend--wine { background: var(--aa-oxblood); border-color: var(--aa-oxblood); }
 .tr .aa-attend--wine .aa-attend-label { color: var(--aa-gold-on-ox); }

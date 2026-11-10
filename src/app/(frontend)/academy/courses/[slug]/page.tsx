@@ -4,7 +4,7 @@
 // entry and the Academy Page global; dates, seats and prices from the class
 // platform. The date, price and Register button come before any explanation.
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import {
   AcademyHero,
   AcademyShell,
@@ -31,6 +31,8 @@ import {
   getCourses,
   isReduced,
   money,
+  offersOpen,
+  offersPrivate,
   registerHref,
   seatsText,
   sessionTimes,
@@ -48,7 +50,7 @@ async function load(slug: string) {
 export async function generateMetadata({ params }) {
   const { slug } = await params;
   const { course } = await load(slug);
-  if (!course?.hasPage) return {};
+  if (!course) return {};
   return pageMetadata({
     title: course.seoTitle || `${fullName(course)} | Transformidable Academy`,
     absolute: true,
@@ -139,20 +141,23 @@ export default async function CoursePage({ params }) {
   const { slug } = await params;
   const { course, page } = await load(slug);
   if (!course) notFound();
-  // A course without its own page yet: its card on the Academy page says what's on offer.
-  if (!course.hasPage) redirect("/academy#courses");
-
+  const open = offersOpen(course);
+  const priv = offersPrivate(course);
   const next = course.sessions.find((s) => !s.full) || null;
-  const nextDate = next ? sessionTimes(next).date : null;
-  const primary = next
-    ? { label: `Register for ${nextDate}`, href: registerHref(course.series, next) }
-    : { label: "Join the interest list", href: `${INTEREST_HREF}?course=${course.slug}` };
   const dedicatedHref = `${DEDICATED_HREF}?course=${course.slug}`;
-  const facts = [...(course.facts || []).map((f) => f.text), priceFact(course, next, page.foundingLabel)].filter(Boolean);
+  const planLabel = page.attendBody?.button || "Plan a private session";
+  // The page's one main action: the next open date; else a private session;
+  // else the waitlist or interest list.
+  const primary = next
+    ? { label: `Register for ${sessionTimes(next).date}`, href: registerHref(course.series, next) }
+    : priv && !open
+      ? { label: planLabel, href: dedicatedHref }
+      : { label: open ? "Tell me when dates open" : "Join the interest list", href: `${INTEREST_HREF}?course=${course.slug}${open ? "&reason=waitlist" : ""}` };
+  // "Bring your whole board" when the main action is a seat and a private session is also offered.
+  const secondary = priv && primary.href !== dedicatedHref ? { label: page.heroSecondary, href: dedicatedHref } : null;
+  const priceLine = open ? priceFact(course, next, page.foundingLabel) : priv ? course.privateTerms : null;
+  const facts = [...(course.facts || []).map((f) => f.text), priceLine].filter(Boolean);
   const nextCourse = course.nextCourse && typeof course.nextCourse === "object" ? course.nextCourse : null;
-  const nextCourseHref = nextCourse
-    ? nextCourse.hasPage ? courseHref(nextCourse.slug) : nextCourse.availability === "private" ? `${DEDICATED_HREF}?course=${nextCourse.slug}` : `${INTEREST_HREF}?course=${nextCourse.slug}`
-    : null;
 
   return (
     <AcademyShell>
@@ -201,19 +206,23 @@ export default async function CoursePage({ params }) {
             ))}
           </ul>
         )}
-        <ButtonRow primary={primary} secondary={{ label: page.heroSecondary, href: dedicatedHref }} />
+        <ButtonRow primary={primary} secondary={secondary} />
       </AcademyHero>
 
-      <section className="aa-band" id="cohorts" aria-labelledby="aa-cohorts-h">
-        <div className="wrap">
-          <h2 className="aa-h2" id="aa-cohorts-h">Choose a cohort</h2>
-          {course.sessions.length > 0 && page.sessionsIntro && <p className="aa-intro aa-intro--tight">{page.sessionsIntro}</p>}
-          <CohortList course={course} />
-          {course.sessions.length > 0 && <WaitlistLine page={page} course={course} />}
-        </div>
-      </section>
+      {open && (
+        <section className="aa-band" id="cohorts" aria-labelledby="aa-cohorts-h">
+          <div className="wrap">
+            <h2 className="aa-h2" id="aa-cohorts-h">Choose a cohort</h2>
+            {course.sessions.length > 0 && page.sessionsIntro && <p className="aa-intro aa-intro--tight">{page.sessionsIntro}</p>}
+            <CohortList course={course} />
+            {course.sessions.length > 0 && <WaitlistLine page={page} course={course} />}
+          </div>
+        </section>
+      )}
 
-      <TwoWays page={page} ownHref="#cohorts" ownButton="Register for a seat" course={course} />
+      {/* With open cohorts, the ways to attend sit beside the dates. A private-only
+          course describes itself first, then offers the booking. */}
+      {open && <TwoWays page={page} ownHref="#cohorts" ownButton="Register for a seat" course={course} />}
 
       {(course.whyHeadline || course.whyBody) && (
         <section className="aa-why" aria-labelledby="aa-why-h">
@@ -295,16 +304,17 @@ export default async function CoursePage({ params }) {
         </section>
       )}
 
-      <Instructors page={page} sand />
+      {!open && <TwoWays page={page} ownHref="#cohorts" course={course} />}
+      <Instructors page={page} sand={open} />
       <Faq heading={page.faqHeadline} items={course.faq} />
 
       <FinalCta headline={course.finalHeadline} accent={course.finalAccent} button={primary.label} href={primary.href}>
         <p className="aa-final-links">
-          {page.heroSecondary && <a href={dedicatedHref}>{page.heroSecondary}</a>}
-          {nextCourse && nextCourseHref && (
+          {secondary?.label && <a href={secondary.href}>{secondary.label}</a>}
+          {nextCourse && (
             <>
-              {page.heroSecondary && <span aria-hidden="true"> · </span>}
-              <a href={nextCourseHref}>Next course: {nextCourse.title} <span aria-hidden="true">→</span></a>
+              {secondary?.label && <span aria-hidden="true"> · </span>}
+              <a href={courseHref(nextCourse.slug)}>Next course: {nextCourse.title} <span aria-hidden="true">→</span></a>
             </>
           )}
         </p>

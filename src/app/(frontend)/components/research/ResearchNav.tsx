@@ -40,9 +40,9 @@ const NAV = [
     // current list from Courses (/api/academy-menu) once loaded.
     label: "Academy", href: "/academy", children: [
       { name: "Transformidable Academy", desc: "Live courses for the bodies that govern technology", href: "/academy" },
-      { name: "TA-101 Know What You’re Governing", desc: "90 minutes · live online · per seat", href: "/academy/courses/know-what-youre-governing" },
-      { name: "Governing AI Adoption", desc: "Half day · private for your organization", href: "/academy#courses" },
-      { name: "Building AI Governance in Practice", desc: "About a full day · private program", href: "/academy#courses" },
+      { name: "TA-101 Know What You’re Governing", desc: "90 minutes · live online · per seat or private for your organization", href: "/academy/courses/know-what-youre-governing" },
+      { name: "Governing AI Adoption", desc: "Half day · private for your organization", href: "/academy/courses/governing-ai-adoption" },
+      { name: "Building AI Governance in Practice", desc: "About a full day · private for your organization", href: "/academy/courses/building-ai-governance" },
       { name: "Dedicated Sessions", desc: "A session for your whole board", href: "/academy/dedicated-sessions" },
       { name: "FAQ", desc: "Questions officials ask", href: "/academy#faq" },
     ],

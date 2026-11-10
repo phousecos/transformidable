@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { BUYING_MODEL_TEXT, courseHref, fullName, getCourses } from '../../../../lib/academy.ts'
+import { courseHref, fullName, getCourses, offeringsText } from '../../../../lib/academy.ts'
 
 export const dynamic = 'force-dynamic'
 
@@ -11,8 +11,8 @@ export async function GET() {
   const courses = (await getCourses()).filter((c) => c.listed)
   const items = courses.map((c) => ({
     name: fullName(c),
-    desc: [c.format, BUYING_MODEL_TEXT[c.buyingModel]].filter(Boolean).join(' · '),
-    href: c.hasPage ? courseHref(c.slug) : '/academy#courses',
+    desc: [c.format, offeringsText(c)].filter(Boolean).join(' · '),
+    href: courseHref(c.slug),
   }))
   return NextResponse.json(
     { courses: items },

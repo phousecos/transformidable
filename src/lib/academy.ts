@@ -84,7 +84,7 @@ export const getCourses = cache(async (): Promise<Record<string, any>[]> => {
 })
 
 export type CatalogCourse = Record<string, any> & {
-  href: string | null
+  href: string
   series: AcademySeries | null
   sessions: AcademySession[]
   next: AcademySession | null
@@ -94,15 +94,29 @@ export const courseHref = (slug: string) => `/academy/courses/${slug}`
 export const DEDICATED_HREF = '/academy/dedicated-sessions'
 export const INTEREST_HREF = '/academy/interest'
 
+const offers = (c: Record<string, any>, what: 'open' | 'private') => Array.isArray(c.offerings) && c.offerings.includes(what)
+/** Offered now (not "Coming") in open cohorts, per seat. */
+export const offersOpen = (c: Record<string, any>) => c.availability !== 'coming' && offers(c, 'open')
+/** Offered now as a private session for one organization. */
+export const offersPrivate = (c: Record<string, any>) => c.availability !== 'coming' && offers(c, 'private')
+/** Open cohorts, whether offered now or coming. */
+export const isPerSeat = (c: Record<string, any>) => offers(c, 'open')
+
+/** "per seat or private for your organization", "per seat", "private for your organization". */
+export function offeringsText(c: Record<string, any>) {
+  const parts = [offers(c, 'open') && 'per seat', offers(c, 'private') && 'private for your organization'].filter(Boolean)
+  return parts.join(' or ')
+}
+
 /** Courses joined to their dates: dated courses first, soonest first, then by Order. */
 export function buildCatalog(courses: Record<string, any>[], feed: Feed | null): CatalogCourse[] {
   const bySlug = new Map((feed?.series || []).map((s) => [s.slug, s]))
   const out: CatalogCourse[] = courses.map((c) => {
     const series: AcademySeries | null = (c.webinarSeries && bySlug.get(String(c.webinarSeries).trim())) || null
-    const sessions: AcademySession[] = c.availability === 'scheduled' && series ? series.sessions : []
+    const sessions: AcademySession[] = offersOpen(c) && series ? series.sessions : []
     return {
       ...c,
-      href: c.hasPage ? courseHref(c.slug) : null,
+      href: courseHref(c.slug),
       series,
       sessions,
       next: sessions.find((s) => !s.full) || sessions[0] || null,
@@ -170,11 +184,18 @@ export function seatsText(s: AcademySession) {
   return `${s.seatsLeft} of ${s.capacity} seats left`
 }
 
-/** The buying model's wording on a card, e.g. "per seat". */
-export const BUYING_MODEL_TEXT: Record<string, string> = {
-  'per-seat': 'per seat',
-  'private-organization': 'private for your organization',
-  'private-program': 'private program',
+/**
+ * The open-cohort price for the "Two ways to attend" card, from the class
+ * platform: "$249 per seat · $199 founding" when some dates are priced lower,
+ * else "$249 per seat". The course's own price line when there are no dates.
+ */
+export function openPriceLine(c: CatalogCourse): string | null {
+  if (!c.series || !c.sessions.length) return c.priceLabel || null
+  const cur = c.series.currency
+  const regular = c.series.priceCents || Math.max(...c.sessions.map((s) => s.priceCents))
+  const reduced = c.sessions.filter(isReduced).map((s) => s.priceCents)
+  const low = reduced.length ? Math.min(...reduced) : null
+  return [`${money(regular, cur)} per seat`, low != null && `${money(low, cur)} founding`].filter(Boolean).join(' · ')
 }
 
 export const LEVEL_TEXT: Record<string, string> = { foundations: 'Foundations', workshop: 'Workshop', applied: 'Applied' }

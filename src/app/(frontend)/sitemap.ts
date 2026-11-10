@@ -72,9 +72,9 @@ export default async function sitemap() {
     });
   }
 
-  // Academy course pages (Courses: listed, with a page).
+  // Academy course pages (listed courses).
   for (const c of await getCourses()) {
-    if (!c.listed || !c.hasPage) continue;
+    if (!c.listed) continue;
     entries.push({ url: `${siteUrl}${courseHref(c.slug)}`, lastModified: c.updatedAt ? new Date(c.updatedAt) : now, changeFrequency: "weekly", priority: 0.8 });
   }
 
