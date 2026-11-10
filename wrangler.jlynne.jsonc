@@ -34,14 +34,12 @@
       "binding": "BRIEFINGS",
       "service": "briefings",
     },
-    {
-      // The Academy class platform (same repo, `academy` Worker,
-      // live.betransformidable.com), read for course dates, seats and prices
-      // on the /academy pages (src/lib/academy.ts). Deploy that Worker first:
-      // a binding to a Worker that doesn't exist yet fails the deploy.
-      "binding": "ACADEMY",
-      "service": "academy",
-    },
+    // The Academy class platform (repo phousecos/webinar, `academy` Worker,
+    // live.betransformidable.com) supplies course dates, seats and prices for
+    // the /academy pages (src/lib/academy.ts). Add this binding back once that
+    // Worker is deployed: a binding to a Worker that doesn't exist fails the
+    // deploy. Until then the pages show courses without dates.
+    //   { "binding": "ACADEMY", "service": "academy" },
   ],
   "routes": [
     // The public website.
