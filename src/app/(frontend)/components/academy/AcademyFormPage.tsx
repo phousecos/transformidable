@@ -4,11 +4,12 @@
 // came from (?course=slug) preselected.
 import { AcademyShell, Em, PublicNote } from "./Academy";
 import { AcademyForm } from "./AcademyForm";
-import { fullName, getAcademyPage, getCourses } from "../../../../lib/academy.ts";
+import { fullName, getAcademyPage, getCourses, offersPrivate } from "../../../../lib/academy.ts";
 
 export async function AcademyFormPage({ kind, searchParams }) {
   const [{ course = "", reason = "" } = {}, page, courses] = await Promise.all([searchParams, getAcademyPage(), getCourses()]);
-  const listed = courses.filter((c) => c.listed && (kind !== "dedicated" || c.availability !== "coming"));
+  // The dedicated-session form offers courses with a private session; the interest form, every listed course.
+  const listed = courses.filter((c) => c.listed && (kind !== "dedicated" || offersPrivate(c)));
   const options = listed.map((c) => ({ slug: c.slug, label: fullName(c) }));
   const chosen = options.some((o) => o.slug === course) ? course : "";
   const eyebrow = kind === "dedicated" ? page.dedicatedEyebrow : page.interestEyebrow;

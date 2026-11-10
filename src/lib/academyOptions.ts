@@ -65,11 +65,17 @@ export const ACADEMY_BUYING_MODELS = [
   { label: 'private program', value: 'private-program' },
 ]
 
-// scheduled: dates from the class platform. private: arranged per
-// organization. coming: no dates yet; the card offers the interest list.
+// How a course can be taken (Courses → Ways to take it).
+export const ACADEMY_OFFERINGS = [
+  { label: 'Open cohorts (per seat)', value: 'open' },
+  { label: 'Private session', value: 'private' },
+]
+
+// Whether a course is offered yet. "private" is an older value that means the
+// same as "scheduled" now that Ways to take it says how a course is offered.
 export const ACADEMY_AVAILABILITY = [
-  { label: 'Scheduled (open dates)', value: 'scheduled' },
-  { label: 'Private (on request)', value: 'private' },
+  { label: 'Offered now', value: 'scheduled' },
+  { label: 'Offered now (older setting)', value: 'private' },
   { label: 'Coming (interest list)', value: 'coming' },
 ]
 

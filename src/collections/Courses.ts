@@ -1,13 +1,17 @@
 import type { CollectionConfig, Field } from 'payload'
 import { isAdmin, isAdminOrEditor } from '../access/checkRole.ts'
-import { ACADEMY_BUYING_MODELS, ACADEMY_LEVELS, ACADEMY_AVAILABILITY } from '../lib/academyOptions.ts'
+import { ACADEMY_AVAILABILITY, ACADEMY_BUYING_MODELS, ACADEMY_LEVELS, ACADEMY_OFFERINGS } from '../lib/academyOptions.ts'
 
 // One Academy course. Everything the website says about a course lives here;
 // dates, seats and prices come from the class platform (repo phousecos/webinar,
 // live.betransformidable.com), matched by `webinarSeries`. The /academy page
-// lists every listed course and /academy/courses/{slug} renders any course
-// whose page is switched on, so adding a course is adding an entry here and
-// scheduling its sessions there. No page code changes.
+// lists every listed course and /academy/courses/{slug} renders each one, so
+// adding a course is adding an entry here and scheduling its sessions there.
+// No page code changes.
+//
+// A course can be taken in an open cohort (per seat, dated in the class
+// platform), as a private session for one organization, or both; the private
+// session has its own format and price, since it can be in person or tailored.
 //
 // Text fields accept *asterisks* for italics, e.g. *Before You Vote on AI*.
 
@@ -26,7 +30,7 @@ export const Courses: CollectionConfig = {
   labels: { singular: 'Course', plural: 'Courses' },
   admin: {
     useAsTitle: 'title',
-    defaultColumns: ['code', 'title', 'level', 'availability', 'webinarSeries', 'listed'],
+    defaultColumns: ['code', 'title', 'offerings', 'availability', 'webinarSeries', 'listed'],
     description:
       'Academy courses. Dates, seats and prices are set in the class platform (live.betransformidable.com/admin); link a course to its series there with "Webinar series slug".',
   },
@@ -75,9 +79,18 @@ export const Courses: CollectionConfig = {
               fields: [
                 { name: 'topicTag', label: 'Topic tag', type: 'text', required: true, admin: { width: '33%', description: 'e.g. AI, Data centers. The sessions table offers a filter when courses span more than one.' } },
                 { name: 'level', type: 'select', required: true, options: ACADEMY_LEVELS, admin: { width: '33%', description: 'Internal. Shown only as the card label for workshops and programs.' } },
-                { name: 'buyingModel', label: 'Buying model', type: 'select', required: true, options: ACADEMY_BUYING_MODELS, admin: { width: '34%' } },
+                {
+                  name: 'offerings',
+                  label: 'Ways to take it',
+                  type: 'select',
+                  hasMany: true,
+                  options: ACADEMY_OFFERINGS,
+                  admin: { width: '34%', description: 'Open cohorts list dates from the class platform; a private session offers "Plan a private session".' },
+                },
               ],
             },
+            // Replaced by "Ways to take it"; read once to fill it in (seed/academy.ts).
+            { name: 'buyingModel', type: 'select', options: ACADEMY_BUYING_MODELS, admin: { hidden: true } },
             {
               name: 'oneLine',
               label: 'One line',
@@ -100,7 +113,7 @@ export const Courses: CollectionConfig = {
                   required: true,
                   defaultValue: 'scheduled',
                   options: ACADEMY_AVAILABILITY,
-                  admin: { width: '50%', description: 'Scheduled courses show their dates from the class platform; the others show the status below.' },
+                  admin: { width: '50%', description: 'Coming: no dates or bookings yet; the course page offers the interest list.' },
                 },
                 {
                   name: 'statusLabel',
@@ -119,16 +132,24 @@ export const Courses: CollectionConfig = {
             {
               type: 'row',
               fields: [
-                { name: 'priceLabel', label: 'Price line', type: 'text', admin: { width: '50%', description: 'For courses without open dates, e.g. "$8,000 per organization" or "$199 founding". Dated courses show the price from the class platform.' } },
+                { name: 'priceLabel', label: 'Open cohort price line', type: 'text', admin: { width: '50%', description: 'Shown only when the class platform has no dates, e.g. "$199 founding". Otherwise built from its prices.' } },
                 { name: 'creditRule', label: 'Credit rule', type: 'text', admin: { width: '50%', description: 'Internal note, e.g. "Fee credited toward any Academy course within six months".' } },
               ],
             },
             {
               type: 'row',
               fields: [
-                { name: 'listed', type: 'checkbox', defaultValue: true, admin: { width: '25%', description: 'Show on the Academy page and menu.' } },
-                { name: 'hasPage', label: 'Has a course page', type: 'checkbox', defaultValue: true, admin: { width: '35%', description: 'Off: the card links to the dedicated-session or interest form instead.' } },
-                { name: 'sortOrder', label: 'Order', type: 'number', defaultValue: 100, admin: { width: '40%', description: 'Ties and courses without dates are ordered by this, lowest first. Dated courses come first, soonest first.' } },
+                { name: 'listed', type: 'checkbox', defaultValue: true, admin: { width: '40%', description: 'Show on the Academy page and menu. Unlisted course pages stay reachable by link but are hidden from search.' } },
+                { name: 'sortOrder', label: 'Order', type: 'number', defaultValue: 100, admin: { width: '60%', description: 'Ties and courses without dates are ordered by this, lowest first. Dated courses come first, soonest first.' } },
+              ],
+            },
+            {
+              type: 'collapsible',
+              label: 'Private session',
+              admin: { condition: (data) => Array.isArray(data?.offerings) && data.offerings.includes('private') },
+              fields: [
+                { name: 'privateFormat', label: 'Format', type: 'text', admin: { description: 'e.g. "In person or online · tailored to your organization".' } },
+                { name: 'privateTerms', label: 'Price or terms', type: 'text', admin: { description: 'e.g. "Same per-seat price · 8-seat minimum", "$8,000 per organization" or "Priced to your needs".' } },
               ],
             },
           ],

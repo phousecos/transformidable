@@ -8,13 +8,17 @@ import Link from "next/link";
 import { ResearchShell } from "../research/ResearchShell";
 import { Sky } from "../research/Sky";
 import {
-  BUYING_MODEL_TEXT,
   DEDICATED_HREF,
   INTEREST_HREF,
   cardLabel,
   fullName,
   isReduced,
   money,
+  isPerSeat,
+  offeringsText,
+  offersOpen,
+  offersPrivate,
+  openPriceLine,
   registerHref,
   seatsText,
   sessionTimes,
@@ -122,30 +126,18 @@ export function FoundingBand({ page, href }) {
 
 // ---- Courses --------------------------------------------------------------
 
-/** Where a card's button goes, and what it says. */
-function cardAction(c) {
-  if (c.next) {
-    const t = sessionTimes(c.next);
-    return { label: c.next.full ? "Join the waitlist" : `Next: ${t.date}`, href: c.next.full ? `${INTEREST_HREF}?course=${c.slug}&reason=waitlist` : c.href || registerHref(c.series, c.next), primary: true };
+/**
+ * A card's one-line status and its button. Every card leads to its course
+ * page: "Find a cohort" (straight to its dates) when open cohorts have a next
+ * date, else "Learn more".
+ */
+function cardStatus(c) {
+  if (offersOpen(c) && c.next) {
+    const line = c.next.full ? "Next cohort full · more dates soon" : `Next cohort: ${sessionTimes(c.next).date}`;
+    return { line, label: "Find a cohort", href: `${c.href}#cohorts`, primary: true };
   }
-  if (c.availability === "private") return { label: c.href ? "Course details" : "Ask about a session", href: c.href || `${DEDICATED_HREF}?course=${c.slug}` };
-  if (c.availability === "coming") return { label: c.buyingModel === "per-seat" ? "Join the interest list" : "Register interest", href: `${INTEREST_HREF}?course=${c.slug}` };
-  return { label: "Course details", href: c.href || `${INTEREST_HREF}?course=${c.slug}` };
-}
-
-function CardPrice({ c }) {
-  if (c.next) {
-    const s = c.next;
-    const cur = c.series.currency;
-    return (
-      <p className="aa-card-price">
-        <b>{money(s.priceCents, cur)}{isReduced(s) ? " founding" : ""}</b>
-        {isReduced(s) && <span> ({money(s.regularPriceCents, cur)})</span>}
-      </p>
-    );
-  }
-  const line = c.availability === "private" ? c.priceLabel || c.statusLabel : c.statusLabel || c.priceLabel;
-  return line ? <p className="aa-card-price"><b>{line}</b></p> : null;
+  const line = c.statusLabel || (c.availability === "coming" ? "Coming soon" : offersOpen(c) ? "New dates soon" : "Available for your organization");
+  return { line, label: "Learn more", href: c.href };
 }
 
 export function CourseCards({ catalog }) {
@@ -153,7 +145,7 @@ export function CourseCards({ catalog }) {
   return (
     <ul className="aa-cards" role="list">
       {catalog.map((c, i) => {
-        const action = cardAction(c);
+        const status = cardStatus(c);
         const featured = i === 0 && Boolean(c.next);
         return (
           <li className={featured ? "aa-card aa-card--featured" : "aa-card"} key={c.id}>
@@ -165,11 +157,11 @@ export function CourseCards({ catalog }) {
               {c.href ? <Link href={c.href}>{c.title}</Link> : c.title}
             </h3>
             {c.oneLine && <p className="aa-card-line"><Em>{c.oneLine}</Em></p>}
-            <p className="aa-card-format">{[c.format, BUYING_MODEL_TEXT[c.buyingModel]].filter(Boolean).join(" · ")}</p>
+            <p className="aa-card-format">{[c.format, offeringsText(c)].filter(Boolean).join(" · ")}</p>
             <div className="aa-card-foot">
-              <CardPrice c={c} />
-              <a className={action.primary ? "aa-btn aa-btn--gold aa-btn--sm" : "aa-btn aa-btn--line aa-btn--sm"} href={action.href}>
-                {action.label}<span className="sr-only">: {fullName(c)}</span>
+              <p className="aa-card-status"><b>{status.line}</b></p>
+              <a className={status.primary ? "aa-btn aa-btn--gold aa-btn--sm" : "aa-btn aa-btn--line aa-btn--sm"} href={status.href}>
+                {status.label}<span className="sr-only">: {fullName(c)}</span>
               </a>
             </div>
           </li>
@@ -205,7 +197,7 @@ export function SessionsTable({ catalog, topic = "", basePath = "/academy" }) {
     for (const s of c.sessions) rows.push({ c, s });
   }
   rows.sort((a, b) => a.s.startsAt.localeCompare(b.s.startsAt));
-  const coming = catalog.filter((c) => !c.sessions.length && c.availability !== "private" && c.buyingModel === "per-seat");
+  const coming = catalog.filter((c) => !c.sessions.length && c.availability === "coming" && isPerSeat(c));
   const topics = [...new Set([...rows.map((r) => r.c.topicTag), ...coming.map((c) => c.topicTag)].filter(Boolean))];
   const show = (c) => !topic || c.topicTag === topic;
   const shown = rows.filter((r) => show(r.c));
@@ -379,6 +371,7 @@ function AttendCard({ card, href, wine = false }) {
         </ul>
       )}
       <div className="aa-attend-foot">
+        {card.format && <p className="aa-attend-format"><Em>{card.format}</Em></p>}
         {card.priceLine && <p className="aa-attend-price"><Em>{card.priceLine}</Em></p>}
         {card.button && <a className={wine ? "aa-btn aa-btn--gold aa-btn--sm" : "aa-btn aa-btn--line aa-btn--sm"} href={href}>{card.button}</a>}
       </div>
@@ -396,20 +389,45 @@ export function PublicNote({ page }) {
   );
 }
 
+/**
+ * The ways to take a course. On the Academy page: both cards, with the shared
+ * price lines. On a course page: only the ways that course offers, with its
+ * own prices (open cohorts from the class platform, the private session from
+ * its Private session fields). A course with one way shows that card alone.
+ */
 export function TwoWays({ page, ownHref, ownButton = null, course = null }) {
   if (!page.attendOwn?.title && !page.attendBody?.title) return null;
   const dedicated = course ? `${DEDICATED_HREF}?course=${course.slug}` : DEDICATED_HREF;
+  const showOwn = course ? offersOpen(course) : true;
+  const showBody = course ? offersPrivate(course) : true;
+  if (!showOwn && !showBody) return null;
+  const own = {
+    ...page.attendOwn,
+    ...(ownButton && { button: ownButton }),
+    ...(course && { priceLine: openPriceLine(course) }),
+  };
+  const body = {
+    ...page.attendBody,
+    ...(course && { format: course.privateFormat, priceLine: course.privateTerms || page.attendBody?.priceLine }),
+  };
+  const both = showOwn && showBody;
   return (
     <section className="aa-band aa-band--sand" id="two-ways" aria-labelledby="aa-attend-h">
       <div className="wrap">
-        {page.attendEyebrow && <p className="aa-eyebrow">{page.attendEyebrow}</p>}
-        <Headline id="aa-attend-h" text={page.attendHeadline} accent={page.attendAccent} />
-        {page.attendIntro && <p className="aa-intro"><Em>{page.attendIntro}</Em></p>}
-        <div className="aa-attend-grid">
-          <AttendCard card={ownButton ? { ...page.attendOwn, button: ownButton } : page.attendOwn} href={ownHref} />
-          <AttendCard card={page.attendBody} href={dedicated} wine />
+        {both ? (
+          <>
+            {page.attendEyebrow && <p className="aa-eyebrow">{page.attendEyebrow}</p>}
+            <Headline id="aa-attend-h" text={page.attendHeadline} accent={page.attendAccent} />
+            {page.attendIntro && <p className="aa-intro"><Em>{page.attendIntro}</Em></p>}
+          </>
+        ) : (
+          <h2 className="sr-only" id="aa-attend-h">How to book</h2>
+        )}
+        <div className={both ? "aa-attend-grid" : "aa-attend-grid aa-attend-grid--one"}>
+          {showOwn && <AttendCard card={own} href={ownHref} />}
+          {showBody && <AttendCard card={both ? body : { ...body, badge: null }} href={dedicated} wine />}
         </div>
-        <PublicNote page={page} />
+        {showBody && <PublicNote page={page} />}
       </div>
     </section>
   );
