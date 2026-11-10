@@ -79,13 +79,24 @@ const nextConfig = {
         destination: 'https://betransformidable.com/',
         permanent: true,
       },
-      // The Academy's first Course 1 was replaced by the Boards & Councils
-      // briefing.
+      // The Academy's 90-minute course is now TA-101 Know What You're
+      // Governing; its earlier addresses land on it.
       {
         source: '/academy/courses/ai-explained',
-        destination: '/academy/courses/ai-governance-for-boards-and-councils',
+        destination: '/academy/courses/know-what-youre-governing',
         permanent: true,
       },
+      {
+        source: '/academy/courses/ai-governance-for-boards-and-councils',
+        destination: '/academy/courses/know-what-youre-governing',
+        permanent: true,
+      },
+      // Retired Academy pages (Nov 2026 redesign). Temporary, so they can
+      // return when they are recast for their courses.
+      { source: '/academy/organizations', destination: '/academy/dedicated-sessions', permanent: false },
+      { source: '/academy/board-governance-training', destination: '/academy', permanent: false },
+      { source: '/academy/individuals', destination: '/academy/interest', permanent: false },
+      { source: '/academy/faq', destination: '/academy#faq', permanent: false },
       // The certificate is not advertised while its curriculum and
       // requirements are settled. Temporary, so the page can return.
       {

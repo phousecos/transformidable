@@ -2,24 +2,26 @@ import type { CollectionConfig } from 'payload'
 import { isAdmin, isAdminOrEditor } from '../access/checkRole.ts'
 import {
   ACADEMY_DELIVERY,
+  ACADEMY_INQUIRY_TYPES,
   ACADEMY_PARTICIPANTS,
   ACADEMY_PROGRAMS,
   ACADEMY_SECTORS,
   ACADEMY_TIMEFRAMES,
 } from '../lib/academyOptions.ts'
 
-// Interest and cohort inquiries from the public /academy pages. Organizations
-// asking about a private cohort and individuals joining the interest list
-// land in the same inbox, told apart by `type`, so one list can be filtered
-// and exported for follow-up.
+// Inquiries from the public /academy pages: requests for a dedicated session
+// for a whole governing body, and interest-list and waitlist sign-ups, told
+// apart by `type`, so one list can be filtered and exported for follow-up.
+// Registration and payment for open sessions happen on the class platform
+// (live.betransformidable.com), not here.
 export const AcademyInquiries: CollectionConfig = {
   slug: 'academy-inquiries',
   labels: { singular: 'Academy Inquiry', plural: 'Academy Inquiries' },
   admin: {
     useAsTitle: 'name',
-    defaultColumns: ['type', 'beta', 'name', 'organization', 'program', 'status', 'submittedAt'],
+    defaultColumns: ['type', 'name', 'organization', 'course', 'status', 'submittedAt'],
     description:
-      'Private cohort inquiries and interest-list registrations from the Academy pages. Registering interest is not enrollment.',
+      'Dedicated-session requests and interest-list sign-ups from the Academy pages. Registering interest is not enrollment.',
   },
   access: {
     // Only the /api/academy-inquiry route creates these (it validates and
@@ -35,17 +37,49 @@ export const AcademyInquiries: CollectionConfig = {
       name: 'type',
       type: 'select',
       required: true,
-      options: [
-        { label: 'Organization (private cohort)', value: 'organization' },
-        { label: 'Individual (interest list)', value: 'individual' },
-      ],
+      options: ACADEMY_INQUIRY_TYPES,
+    },
+    {
+      name: 'course',
+      type: 'text',
+      admin: { description: 'The course it was about, as code and title.' },
+    },
+    {
+      name: 'governingBody',
+      label: 'Body',
+      type: 'text',
+      admin: { description: 'The body they serve on, e.g. Riverbend County Board of Commissioners.' },
+    },
+    {
+      name: 'members',
+      label: 'Members',
+      type: 'number',
+      admin: { condition: (data) => data?.type === 'dedicated', description: 'Members of the body.' },
+    },
+    {
+      name: 'staff',
+      label: 'Staff who might join',
+      type: 'number',
+      admin: { condition: (data) => data?.type === 'dedicated' },
+    },
+    {
+      name: 'preferredMonths',
+      label: 'Preferred months',
+      type: 'text',
+      admin: { condition: (data) => data?.type === 'dedicated' },
+    },
+    {
+      name: 'publicNotice',
+      label: 'Who handles public notice',
+      type: 'text',
+      admin: { condition: (data) => data?.type === 'dedicated' },
     },
     {
       name: 'beta',
       type: 'checkbox',
       label: 'Beta application',
       defaultValue: false,
-      admin: { description: 'Applied for the beta (50% off the first two classes) from the Academy page.' },
+      admin: { description: 'Applied for the beta from the earlier Academy page.', condition: (data) => Boolean(data?.beta) },
     },
     {
       name: 'name',

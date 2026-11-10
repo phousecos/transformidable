@@ -47,6 +47,8 @@ export const SKY_VARIANTS = {
   publishing:   { seed: 59, count: 20, region: { x0: 0.52, x1: 1, y0: 0,    y1: 0.7  }, focal: { x: 70, y: 24 } },
   // Media — far right, full, medium.
   media:        { seed: 71, count: 28, region: { x0: 0.5,  x1: 1, y0: 0,    y1: 1    }, focal: { x: 84, y: 58 } },
+  // Academy — drawn into the right half of the hero (academy.css), full height.
+  academy:      { seed: 101, count: 42, region: { x0: 0.08, x1: 1, y0: 0,   y1: 1    }, focal: { x: 62, y: 42 } },
   default:      { seed: 7,  count: 34, region: { x0: 0.38, x1: 1, y0: 0,    y1: 1    }, focal: { x: 74, y: 30 } },
 };
 

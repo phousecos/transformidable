@@ -163,9 +163,9 @@ export default function AiPolicyPage() {
         </li>
         <li>
           <strong>Academy.</strong>{" "}
-          <Link href="/academy/courses/ai-governance-for-boards-and-councils">AI Governance for Boards &amp; Councils</Link>,
-          a 90-minute briefing, gives your board a shared vocabulary, oversight questions, and an AI Governance
-          Oversight Checklist. See all <Link href="/academy/board-governance-training">board governance training</Link>.
+          <Link href="/academy/courses/know-what-youre-governing">TA-101 Know What You&rsquo;re Governing</Link>,
+          a 90-minute live course, gives your board a shared vocabulary, the questions to ask, and
+          the <em>Before You Vote on AI</em> card. See all <Link href="/academy">Academy courses</Link>.
         </li>
         <li>
           <strong>Briefings.</strong> <Link href="/briefings/live">Upcoming live briefings</Link> and{" "}

@@ -87,13 +87,17 @@ try {
     { table: 'documents', column: 'document_type', validValues: ['overview', 'checklist', 'guide', 'brief', 'framework', 'template', 'worksheet', 'report'] },
     { table: 'documents', column: 'status', validValues: ['draft', 'published'] },
     // Academy Inquiries
-    { table: 'academy_inquiries', column: 'type', validValues: ['organization', 'individual'] },
+    { table: 'academy_inquiries', column: 'type', validValues: ['dedicated', 'interest', 'organization', 'individual'] },
     { table: 'academy_inquiries', column: 'sector', validValues: ['local-government', 'higher-education', 'financial-services', 'nonprofit', 'healthcare', 'corporate', 'other'] },
     { table: 'academy_inquiries', column: 'program', validValues: ['foundation-certificate', 'course-1', 'course-2', 'course-3', 'executive-briefing', 'not-sure'] },
     { table: 'academy_inquiries', column: 'participants', validValues: ['1-9', '10-24', '25-49', '50-plus', 'not-sure'] },
     { table: 'academy_inquiries', column: 'delivery', validValues: ['in-person', 'virtual', 'hybrid', 'no-preference'] },
     { table: 'academy_inquiries', column: 'timeframe', validValues: ['0-3-months', '3-6-months', '6-12-months', 'exploring'] },
     { table: 'academy_inquiries', column: 'status', validValues: ['new', 'contacted', 'qualified', 'closed'] },
+    // Courses
+    { table: 'courses', column: 'level', validValues: ['foundations', 'workshop', 'applied'] },
+    { table: 'courses', column: 'buying_model', validValues: ['per-seat', 'private-organization', 'private-program'] },
+    { table: 'courses', column: 'availability', validValues: ['scheduled', 'private', 'coming'] },
     // Subscribers
     { table: 'subscribers_lists', column: 'value', validValues: ['brief', 'book'] },
     // Newsletter Issues
@@ -376,6 +380,15 @@ try {
     }
   } catch (e: any) {
     console.error('[migrate] Coding sheet load error:', e.message)
+  }
+
+  // ── Phase 2.55: Academy courses and page copy (first run only) ─────────
+  try {
+    const { seedAcademy } = await import('./seed/academy.ts')
+    await seedAcademy(payload)
+    console.log('[migrate] Academy seed complete.')
+  } catch (e: any) {
+    console.error('[migrate] Academy seed error:', e.message)
   }
 
   // ── Phase 2.6: Retire Unlimited Powerhouse (authors + brand pillars) ───

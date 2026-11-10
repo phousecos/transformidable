@@ -43,9 +43,9 @@ const DIVISIONS = [
     no: "03",
     name: "Academy",
     href: "/academy",
-    purpose: "Executive education: governance briefings, workshops, and applied programs for leadership teams and governing bodies.",
-    primary: { label: "Explore Programs", href: "/academy" },
-    secondary: { label: "Inquire About a Cohort", href: "/academy/organizations" },
+    purpose: "Live, small-group courses for the councils, commissions, legislatures and boards that approve and oversee technology.",
+    primary: { label: "See upcoming sessions", href: "/academy#sessions" },
+    secondary: { label: "Bring your whole board", href: "/academy/dedicated-sessions" },
   },
   {
     no: "04",
@@ -235,11 +235,11 @@ export default async function HomePage() {
               <span className="hm-feat-go">See how we help <Arrow s={12} /></span>
             </Link>
 
-            <Link className="hm-feat" href="/academy/courses/ai-governance-for-boards-and-councils">
-              <span className="hm-feat-label">Academy &middot; Executive briefing</span>
-              <span className="hm-feat-title">AI Governance for Boards &amp; Councils</span>
-              <span className="hm-feat-desc">A 90-minute briefing for city councils, county commissions, university boards, and leadership teams, available as a private session.</span>
-              <span className="hm-feat-go">View the briefing <Arrow s={12} /></span>
+            <Link className="hm-feat" href="/academy/courses/know-what-youre-governing">
+              <span className="hm-feat-label">Academy &middot; TA-101</span>
+              <span className="hm-feat-title">Know What You&rsquo;re Governing</span>
+              <span className="hm-feat-desc">A 90-minute live course for legislators, council members, commissioners and board members: what to ask before you approve AI.</span>
+              <span className="hm-feat-go">See dates <Arrow s={12} /></span>
             </Link>
 
             <Link className="hm-feat" href={episode ? `/podcast/${episode.slug}` : "/podcast"}>
