@@ -8,8 +8,8 @@
   "main": "src/index.ts",
   "compatibility_date": "2026-10-01",
   "compatibility_flags": ["nodejs_compat"],
-  // Cron only; no public URL until the review queue page exists.
-  "workers_dev": false,
+  // The review page is served at the workers.dev URL, behind Cloudflare Access (src/auth.ts fails closed without it).
+  "workers_dev": true,
   "d1_databases": [
     {
       "binding": "DB",
@@ -33,10 +33,17 @@
     "KADE_API_URL": "https://kade-research-dev.kade-analytics.workers.dev",
     // Client ID of the `bd-agents` Access service token in KADE's account (not a secret).
     "KADE_ACCESS_CLIENT_ID": "b304d3df80d972d01d5fc8d35aded8d7.access",
+    // Cloudflare Access app protecting this Worker (Transformidable account Zero Trust). Empty: the page refuses everyone.
+    "ACCESS_TEAM_DOMAIN": "",
+    "ACCESS_AUD": "",
+    // Second check on top of the Access policy: who may use the review page.
+    "ALLOWED_EMAIL_DOMAINS": "jerribland.com",
+    // Model for drafts. The key is the ANTHROPIC_API_KEY secret; without it, drafts use plain templates.
+    "AI_MODEL": "claude-sonnet-5-5",
   },
   // Secrets (set with `npx wrangler secret put <NAME>`, never committed):
   //   KADE_ACCESS_CLIENT_SECRET — the `bd-agents` service token's Client Secret
-  //   ANTHROPIC_API_KEY         — Claude API for the drafting and reviewer agents (later)
+  //   ANTHROPIC_API_KEY         — Claude API for drafting connection notes and follow-ups
   "observability": {
     "enabled": true,
   },

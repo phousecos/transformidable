@@ -28,8 +28,8 @@ function upsert(db: D1Database, p: KadePerson, syncedAt: string) {
   return db
     .prepare(
       `INSERT INTO people (id, kade_contact_id, kade_account_id, full_name, title, organization, segment, linkedin_url,
-         kade_tier, kade_heat, pursued, in_kade_scope, synced_at, updated_at)
-       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, 1, ?12, ?12)
+         kade_tier, kade_heat, pursued, in_kade_scope, synced_at, updated_at, kade_summary, role_category)
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, 1, ?12, ?12, ?13, ?14)
        ON CONFLICT(kade_contact_id) DO UPDATE SET
          kade_account_id = excluded.kade_account_id,
          full_name = excluded.full_name,
@@ -39,12 +39,14 @@ function upsert(db: D1Database, p: KadePerson, syncedAt: string) {
          kade_tier = excluded.kade_tier,
          kade_heat = excluded.kade_heat,
          pursued = excluded.pursued,
+         kade_summary = excluded.kade_summary,
+         role_category = excluded.role_category,
          in_kade_scope = 1,
          synced_at = excluded.synced_at,
          updated_at = excluded.updated_at`,
     )
     .bind(crypto.randomUUID(), p.person_id, p.organization_id, p.full_name, p.title, p.organization_name, segmentFor(p),
-      p.linkedin_url, p.tier, p.heat, p.pursued ? 1 : 0, syncedAt);
+      p.linkedin_url, p.tier, p.heat, p.pursued ? 1 : 0, syncedAt, p.summary ?? null, p.role_category);
 }
 
 export interface SyncResult {
