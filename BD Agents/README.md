@@ -43,7 +43,7 @@ Then run it once from the dashboard (Workers → bd-agents → Settings → Trig
 
 ## Review page (daily LinkedIn list + research needed)
 
-The Worker's workers.dev URL serves the page, behind Cloudflare Access. Each weekday at 5 a.m. ET the cron syncs hot people from KADE, syncs hot organizations with no leadership contact (`research_gaps`), and builds the day's list:
+The page is at **https://dash.betransformidable.com**, behind Cloudflare Access (Access cannot protect workers.dev, so the Worker uses this custom domain and has no workers.dev URL). Each weekday at 5 a.m. ET the cron syncs hot people from KADE, syncs hot organizations with no leadership contact (`research_gaps`), and builds the day's list:
 
 - about 5 **follow-ups** (people marked accepted in the last 14 days) and about 9 **connection requests** (pursued accounts first, then buyer roles, then heat; at most 2 per account per week), each with a Claude draft in `review_queue`;
 - **withdraw** actions for invites pending 21+ days.
@@ -52,7 +52,7 @@ On the page: copy the draft (edit it first if you like), open the profile, send 
 
 ### Turning the page on
 
-1. Workers → bd-agents → Settings → Domains & Routes → workers.dev → turn on **Cloudflare Access**. That creates an Access application; set its policy to your email domains.
+1. Deploy once (`npx wrangler deploy`); that creates `dash.betransformidable.com` and its certificate. Then in **Zero Trust → Access → Applications → Add an application → Self-hosted**, protect subdomain `dash` on `betransformidable.com` with an **Allow** policy for emails ending in `@jerribland.com` and `@jlynne.co`.
 2. Copy the application's **AUD tag** and your Zero Trust **team domain** (`https://<team>.cloudflareaccess.com`) into `ACCESS_AUD` and `ACCESS_TEAM_DOMAIN` in `wrangler.jsonc`, and list the allowed email domains in `ALLOWED_EMAIL_DOMAINS`.
 3. `npx wrangler secret put ANTHROPIC_API_KEY` (without it, drafts are plain templates), then `npx wrangler deploy`.
 
