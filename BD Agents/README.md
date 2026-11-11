@@ -31,6 +31,16 @@ Shared services: the **reviewer** agent checks every draft, and **conversation s
 - `touches`: every contact, per person and channel, which enforces the no-double-touch rules.
 - `results`: metrics from every source, per system, track and day.
 
+## Deploy
+
+```sh
+cd "BD Agents"
+npx wrangler secret put KADE_ACCESS_CLIENT_SECRET   # the bd-agents service token's Client Secret
+npx wrangler deploy
+```
+
+Then run it once from the dashboard (Workers → bd-agents → Settings → Trigger events, or the cron's "Run now") and check `SELECT value FROM sync_state WHERE key = 'people:last_run'`. KADE must have `BD_SERVICE_CLIENT_ID` set and the Service Auth policy in place, or KADE answers 503 or Access answers with a redirect.
+
 ## Rules the code must enforce
 
 - **No LinkedIn automation.** LinkedIn connections, DMs and comments are never sent by code. The Worker only prepares `actions` with copy-ready text and a profile link. Posts publish only through an official-API scheduler, after approval.
@@ -43,8 +53,8 @@ Shared services: the **reviewer** agent checks every draft, and **conversation s
 
 ## Build order (for Claude Code)
 
-1. **KADE read API** (in KADE's repo and account): authenticated `GET` endpoints for scored accounts, signals and contacts, with an `updated_since` filter.
-2. **Sync** (`src/sync.ts`): pull changes from KADE and upsert into `people` by `kade_contact_id`.
+1. **KADE read API:** **built** in KADE (PR #21): `/api/integrations/bd/people`, `/signals`, `/pursuits`, behind the `bd-agents` Access service token.
+2. **Sync** (`src/sync.ts`): **built.** Weekday mornings it pulls people at pursued, then watched, organizations from KADE and upserts them into `people` by `kade_contact_id`. Cursors live in `sync_state`; the last run's summary is under `people:last_run`.
 3. **Review queue page:** list, approve, edit and reject `review_queue` items. Record the approver, and write a `touches` row when an item is marked sent.
 4. **Results intake:** manual and CSV entry first (LinkedIn analytics, webinar attendance, booked calls), then integrations.
 5. **Agents:** research and outreach drafting, reviewer, engagement engine, then the content, Academy, media and strategist agents.

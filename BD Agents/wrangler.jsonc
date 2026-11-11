@@ -6,6 +6,8 @@
   "main": "src/index.ts",
   "compatibility_date": "2026-10-01",
   "compatibility_flags": ["nodejs_compat"],
+  // Cron only; no public URL until the review queue page exists.
+  "workers_dev": false,
   "d1_databases": [
     {
       "binding": "DB",
@@ -25,11 +27,14 @@
   },
   "vars": {
     // KADE lives in its own Cloudflare account; reach it over its API only.
-    "KADE_API_URL": "https://REPLACE-with-kade-api-host",
+    // KADE development Worker (behind Cloudflare Access).
+    "KADE_API_URL": "https://kade-research-dev.kade-analytics.workers.dev",
+    // Client ID of the `bd-agents` Access service token in KADE's account (not a secret).
+    "KADE_ACCESS_CLIENT_ID": "b304d3df80d972d01d5fc8d35aded8d7.access",
   },
   // Secrets (set with `npx wrangler secret put <NAME>`, never committed):
-  //   KADE_API_TOKEN     — read token for KADE's signals/accounts/contacts API
-  //   ANTHROPIC_API_KEY  — Claude API for the drafting and reviewer agents
+  //   KADE_ACCESS_CLIENT_SECRET — the `bd-agents` service token's Client Secret
+  //   ANTHROPIC_API_KEY         — Claude API for the drafting and reviewer agents (later)
   "observability": {
     "enabled": true,
   },
