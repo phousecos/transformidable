@@ -1,6 +1,6 @@
 /**
- * Morning sync: copies people at KADE's open pursuits and active hot/warm prospects into
- * bd-agents `people`, keyed by KADE's person ID. The hot/warm list is small, so every run
+ * Morning sync: copies people at KADE's open pursuits and active hot prospects into
+ * bd-agents `people`, keyed by KADE's person ID (owner decision: hot only). Every run
  * pulls all of it: anyone not returned has cooled off in KADE and is marked out of scope
  * (in_kade_scope = 0), never deleted, so their touch history stays. KADE stays the source
  * of truth; fields the BD side owns (segment once set, connection status, email, Apollo ID,
@@ -12,7 +12,7 @@ export interface SyncEnv extends KadeEnv {
   DB: D1Database;
 }
 
-/** Stops a runaway pull; 20 pages of 500 is 10,000 rows, far above a hot/warm list. */
+/** Stops a runaway pull; 20 pages of 500 is 10,000 rows, far above the hot list. */
 const MAX_PAGES = 20;
 
 function writeState(db: D1Database, key: string, value: string) {
@@ -60,7 +60,7 @@ export async function syncPeople(env: SyncEnv): Promise<SyncResult> {
   let pages = 0;
   let complete = false;
   for (; pages < MAX_PAGES; ) {
-    const { people } = await peoplePage(env, "hot_warm", undefined, pages * PAGE_SIZE);
+    const { people } = await peoplePage(env, "hot", undefined, pages * PAGE_SIZE);
     pages++;
     if (people.length) {
       await env.DB.batch(people.map((p) => upsert(env.DB, p, syncedAt)));
