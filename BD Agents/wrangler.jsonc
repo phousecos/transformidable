@@ -37,7 +37,7 @@
     "ACCESS_TEAM_DOMAIN": "",
     "ACCESS_AUD": "",
     // Second check on top of the Access policy: who may use the review page.
-    "ALLOWED_EMAIL_DOMAINS": "jerribland.com",
+    "ALLOWED_EMAIL_DOMAINS": "jerribland.com,jlynne.co",
     // Model for drafts. The key is the ANTHROPIC_API_KEY secret; without it, drafts use plain templates.
     "AI_MODEL": "claude-sonnet-5-5",
   },
