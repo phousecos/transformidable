@@ -8,8 +8,10 @@
   "main": "src/index.ts",
   "compatibility_date": "2026-10-01",
   "compatibility_flags": ["nodejs_compat"],
-  // The review page is served at the workers.dev URL, behind Cloudflare Access (src/auth.ts fails closed without it).
-  "workers_dev": true,
+  // The review page lives on our own domain so Cloudflare Access can protect it (Access cannot
+  // protect workers.dev). src/auth.ts also fails closed until ACCESS_* below are set.
+  "workers_dev": false,
+  "routes": [{ "pattern": "dash.betransformidable.com", "custom_domain": true }],
   "d1_databases": [
     {
       "binding": "DB",
