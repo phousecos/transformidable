@@ -1,0 +1,14 @@
+{
+  // Editor and `npx tsc --noEmit -p .` only; wrangler bundles without type-checking.
+  // Run `npx wrangler types` once to generate worker-configuration.d.ts (Workers globals and Env).
+  "compilerOptions": {
+    "target": "es2022",
+    "module": "es2022",
+    "moduleResolution": "bundler",
+    "lib": ["es2022"],
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true
+  },
+  "include": ["src/**/*.ts", "worker-configuration.d.ts"]
+}
