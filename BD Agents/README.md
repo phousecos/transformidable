@@ -41,6 +41,23 @@ npx wrangler deploy
 
 Then run it once from the dashboard (Workers → bd-agents → Settings → Trigger events, or the cron's "Run now") and check `SELECT value FROM sync_state WHERE key = 'people:last_run'`. KADE must have `BD_SERVICE_CLIENT_ID` set and the Service Auth policy in place, or KADE answers 503 or Access answers with a redirect.
 
+## Review page (daily LinkedIn list + research needed)
+
+The Worker's workers.dev URL serves the page, behind Cloudflare Access. Each weekday at 5 a.m. ET the cron syncs hot people from KADE, syncs hot organizations with no leadership contact (`research_gaps`), and builds the day's list:
+
+- about 5 **follow-ups** (people marked accepted in the last 14 days) and about 9 **connection requests** (pursued accounts first, then buyer roles, then heat; at most 2 per account per week), each with a Claude draft in `review_queue`;
+- **withdraw** actions for invites pending 21+ days.
+
+On the page: copy the draft (edit it first if you like), open the profile, send it on LinkedIn yourself, then press **Done**; that records the touch and who sent it. Mark invites **Accepted** when LinkedIn shows them. **Research needed** links each organization to KADE; approving records the request, and the research itself runs in KADE. Comments and reshares are not on the list yet: they need post data from Sales Navigator alerts.
+
+### Turning the page on
+
+1. Workers → bd-agents → Settings → Domains & Routes → workers.dev → turn on **Cloudflare Access**. That creates an Access application; set its policy to your email domains.
+2. Copy the application's **AUD tag** and your Zero Trust **team domain** (`https://<team>.cloudflareaccess.com`) into `ACCESS_AUD` and `ACCESS_TEAM_DOMAIN` in `wrangler.jsonc`, and list the allowed email domains in `ALLOWED_EMAIL_DOMAINS`.
+3. `npx wrangler secret put ANTHROPIC_API_KEY` (without it, drafts are plain templates), then `npx wrangler deploy`.
+
+Until step 2 is done the page answers 503 to everyone.
+
 ## Rules the code must enforce
 
 - **No LinkedIn automation.** LinkedIn connections, DMs and comments are never sent by code. The Worker only prepares `actions` with copy-ready text and a profile link. Posts publish only through an official-API scheduler, after approval.
@@ -55,7 +72,7 @@ Then run it once from the dashboard (Workers → bd-agents → Settings → Trig
 
 1. **KADE read API:** **built** in KADE (PR #21): `/api/integrations/bd/people`, `/signals`, `/pursuits`, behind the `bd-agents` Access service token.
 2. **Sync** (`src/sync.ts`): **built.** Weekday mornings it pulls everyone at KADE's open pursuits and active hot prospects (scope `hot`) and upserts them into `people` by `kade_contact_id`, with tier, heat and pursued. Anyone no longer returned is marked `in_kade_scope = 0`, not deleted. The last run's summary is in `sync_state` under `people:last_run`. The uploaded-list pool in KADE is never copied.
-3. **Review queue page:** list, approve, edit and reject `review_queue` items. Record the approver, and write a `touches` row when an item is marked sent.
+3. **Review queue page:** **built (v1)** as the daily LinkedIn list and research needed (above). The general approve/edit/reject queue for other systems comes later.
 4. **Results intake:** manual and CSV entry first (LinkedIn analytics, webinar attendance, booked calls), then integrations.
 5. **Agents:** research and outreach drafting, reviewer, engagement engine, then the content, Academy, media and strategist agents.
 

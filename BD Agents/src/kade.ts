@@ -22,8 +22,21 @@ export interface KadePerson {
   title: string;
   tier: string | null;
   heat: number | null;
+  /** Why the organization scored as it did (KADE screening summary). */
+  summary: string | null;
   pursued: number;
   updated_at: string;
+}
+
+export interface KadeGap {
+  organization_id: string;
+  organization_name: string;
+  entity_type: string | null;
+  state_province: string | null;
+  tier: string | null;
+  heat: number | null;
+  summary: string | null;
+  pursued: number;
 }
 
 export type PeopleScope = "pursued" | "hot" | "hot_warm";
@@ -59,3 +72,11 @@ export const PAGE_SIZE = 500;
 export function peoplePage(env: KadeEnv, scope: PeopleScope, updatedSince: string | undefined, offset: number) {
   return get<{ people: KadePerson[] }>(env, "people", { scope, updated_since: updatedSince, limit: PAGE_SIZE, offset });
 }
+
+/** One page of organizations in the scope with no leadership contact in KADE, hottest first. */
+export function gapsPage(env: KadeEnv, scope: PeopleScope, offset: number) {
+  return get<{ organizations: KadeGap[] }>(env, "people-gaps", { scope, limit: PAGE_SIZE, offset });
+}
+
+/** Where a person or account opens in KADE's dashboard. */
+export const kadeOrgUrl = (env: KadeEnv, organizationId: string) => new URL(`/#org/${encodeURIComponent(organizationId)}`, env.KADE_API_URL).toString();

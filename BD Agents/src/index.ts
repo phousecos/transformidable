@@ -1,28 +1,41 @@
 /**
- * bd-agents Worker. No HTTP routes yet: it only runs on the weekday cron in
- * wrangler.jsonc. Trigger a run by hand from the dashboard (Workers > bd-agents >
- * Triggers) or locally with `npx wrangler dev --test-scheduled`.
+ * bd-agents Worker.
+ * - Weekday cron (wrangler.jsonc): sync hot people from KADE, sync research-needed
+ *   organizations, then build and draft today's LinkedIn list.
+ * - HTTP: the review page and its API, behind Cloudflare Access (src/auth.ts).
+ * Trigger the cron locally with `npx wrangler dev --remote --test-scheduled`.
  */
-import { syncPeople, type SyncEnv } from "./sync";
+import { handle, type ApiEnv } from "./api";
+import { buildToday } from "./daily";
+import { syncGaps } from "./gaps";
+import { syncPeople } from "./sync";
 
-export interface Env extends SyncEnv {}
+export interface Env extends ApiEnv {}
+
+async function step<T>(name: string, run: () => Promise<T>): Promise<T | undefined> {
+  const started = Date.now();
+  try {
+    const results = await run();
+    console.log(JSON.stringify({ level: "info", job: name, ms: Date.now() - started, results }));
+    return results;
+  } catch (e) {
+    console.log(JSON.stringify({ level: "error", job: name, ms: Date.now() - started, error: String(e) }));
+    return undefined;
+  }
+}
 
 export default {
-  async fetch(): Promise<Response> {
-    return new Response("Not found", { status: 404 });
+  fetch(req: Request, env: Env): Promise<Response> {
+    return handle(req, env);
   },
 
   async scheduled(_controller: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
     ctx.waitUntil(
       (async () => {
-        const started = Date.now();
-        try {
-          const results = await syncPeople(env);
-          console.log(JSON.stringify({ level: "info", job: "kade-people-sync", ms: Date.now() - started, results }));
-        } catch (e) {
-          console.log(JSON.stringify({ level: "error", job: "kade-people-sync", ms: Date.now() - started, error: String(e) }));
-          throw e;
-        }
+        // Each step runs even if an earlier one failed: yesterday's people still make a usable list.
+        await step("kade-people-sync", () => syncPeople(env));
+        await step("kade-gaps-sync", () => syncGaps(env));
+        await step("daily-list", () => buildToday(env));
       })(),
     );
   },
