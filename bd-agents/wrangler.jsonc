@@ -36,8 +36,8 @@
     // Client ID of the `bd-agents` Access service token in KADE's account (not a secret).
     "KADE_ACCESS_CLIENT_ID": "b304d3df80d972d01d5fc8d35aded8d7.access",
     // Cloudflare Access app protecting this Worker (Transformidable account Zero Trust). Empty: the page refuses everyone.
-    "ACCESS_TEAM_DOMAIN": "",
-    "ACCESS_AUD": "",
+    "ACCESS_TEAM_DOMAIN": "https://frosty-star-95f3.cloudflareaccess.com",
+    "ACCESS_AUD": "0ff1aa66b2047fd768063454b10beef9bb543f0c7d21eab59e203aee58bdded6",
     // Second check on top of the Access policy: who may use the review page.
     "ALLOWED_EMAIL_DOMAINS": "jerribland.com,jlynne.co",
     // Model for drafts. The key is the ANTHROPIC_API_KEY secret; without it, drafts use plain templates.
