@@ -3,6 +3,8 @@
 {
   "$schema": "../node_modules/wrangler/config-schema.json",
   "name": "bd-agents",
+  // Transformidable account. A CLOUDFLARE_ACCOUNT_ID in your shell or a .env file overrides this.
+  "account_id": "eafd097bc9914edce898c4d47bd6d875",
   "main": "src/index.ts",
   "compatibility_date": "2026-10-01",
   "compatibility_flags": ["nodejs_compat"],
