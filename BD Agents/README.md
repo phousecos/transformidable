@@ -54,7 +54,7 @@ Then run it once from the dashboard (Workers → bd-agents → Settings → Trig
 ## Build order (for Claude Code)
 
 1. **KADE read API:** **built** in KADE (PR #21): `/api/integrations/bd/people`, `/signals`, `/pursuits`, behind the `bd-agents` Access service token.
-2. **Sync** (`src/sync.ts`): **built.** Weekday mornings it pulls people at pursued, then watched, organizations from KADE and upserts them into `people` by `kade_contact_id`. Cursors live in `sync_state`; the last run's summary is under `people:last_run`.
+2. **Sync** (`src/sync.ts`): **built.** Weekday mornings it pulls everyone at KADE's open pursuits and active hot/warm prospects (scope `hot_warm`) and upserts them into `people` by `kade_contact_id`, with tier, heat and pursued. Anyone no longer returned is marked `in_kade_scope = 0`, not deleted. The last run's summary is in `sync_state` under `people:last_run`. The uploaded-list pool in KADE is never copied.
 3. **Review queue page:** list, approve, edit and reject `review_queue` items. Record the approver, and write a `touches` row when an item is marked sent.
 4. **Results intake:** manual and CSV entry first (LinkedIn analytics, webinar attendance, booked calls), then integrations.
 5. **Agents:** research and outreach drafting, reviewer, engagement engine, then the content, Academy, media and strategist agents.
