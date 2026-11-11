@@ -1,5 +1,5 @@
 // BD Agent Team Worker — separate from the transformidable-cms Worker.
-// Deploy from this folder:  cd "BD Agents" && npx wrangler deploy
+// Deploy from this folder:  cd bd-agents && npx wrangler deploy
 {
   "$schema": "../node_modules/wrangler/config-schema.json",
   "name": "bd-agents",
