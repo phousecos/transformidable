@@ -33,6 +33,10 @@ Shared services: the **reviewer** agent checks every draft, and **conversation s
 
 ## Deploy
 
+**Automatic:** Workers Builds deploys `bd-agents` on every merge to `main` that touches `BD Agents/` (root directory `BD Agents`, deploy command `npx wrangler deploy`, preview builds off: previews would share the live database). Secrets persist across deploys. Database migrations are applied separately, not by the build.
+
+**By hand**, if ever needed:
+
 ```sh
 cd "BD Agents"
 npx wrangler secret put KADE_ACCESS_CLIENT_SECRET   # the bd-agents service token's Client Secret
