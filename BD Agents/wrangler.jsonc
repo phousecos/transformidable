@@ -1,0 +1,36 @@
+// BD Agent Team Worker — separate from the transformidable-cms Worker.
+// Deploy from this folder:  cd "BD Agents" && npx wrangler deploy
+{
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "name": "bd-agents",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "bd-agents",
+      "database_id": "8233a541-8b61-49fc-8cfd-5ac02477f4c3",
+      // 0001 is already applied in production and recorded in d1_migrations.
+      // New changes: add 0002_*.sql here, then
+      //   npx wrangler d1 migrations apply bd-agents --remote
+      "migrations_dir": "migrations",
+    },
+  ],
+  "triggers": {
+    // Weekdays 10:00 UTC (5 a.m. ET in winter): KADE sync, then the daily
+    // LinkedIn action list and draft generation. Each schedule needs a
+    // branch in the scheduled() handler.
+    "crons": ["0 10 * * 1-5"],
+  },
+  "vars": {
+    // KADE lives in its own Cloudflare account; reach it over its API only.
+    "KADE_API_URL": "https://REPLACE-with-kade-api-host",
+  },
+  // Secrets (set with `npx wrangler secret put <NAME>`, never committed):
+  //   KADE_API_TOKEN     — read token for KADE's signals/accounts/contacts API
+  //   ANTHROPIC_API_KEY  — Claude API for the drafting and reviewer agents
+  "observability": {
+    "enabled": true,
+  },
+}
