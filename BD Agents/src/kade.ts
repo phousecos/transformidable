@@ -26,7 +26,7 @@ export interface KadePerson {
   updated_at: string;
 }
 
-export type PeopleScope = "pursued" | "hot_warm";
+export type PeopleScope = "pursued" | "hot" | "hot_warm";
 
 export class KadeError extends Error {
   constructor(readonly status: number, message: string) {
@@ -55,7 +55,7 @@ async function get<T>(env: KadeEnv, path: string, params: Record<string, string 
 
 export const PAGE_SIZE = 500;
 
-/** One page of people at pursued or hot/warm organizations, oldest change first. */
+/** One page of people at pursued, hot or hot/warm organizations, oldest change first. */
 export function peoplePage(env: KadeEnv, scope: PeopleScope, updatedSince: string | undefined, offset: number) {
   return get<{ people: KadePerson[] }>(env, "people", { scope, updated_since: updatedSince, limit: PAGE_SIZE, offset });
 }
