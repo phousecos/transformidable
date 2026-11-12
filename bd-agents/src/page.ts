@@ -22,6 +22,12 @@ main { max-width: 1440px; margin: 0 auto; padding: 24px 24px 64px; }
 h1 { font-size: 22px; margin: 0 0 4px; }
 h2 { font-size: 16px; margin: 32px 0 10px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
 .sub { color: var(--muted); margin: 0 0 16px; }
+table.results { width:100%; border-collapse:collapse; font-size:13px; margin:6px 0; }
+table.results th, table.results td { padding:4px 6px; border-bottom:1px solid var(--line); text-align:right; white-space:nowrap; }
+table.results th:first-child, table.results td:first-child { text-align:left; }
+form.stats { display:flex; flex-wrap:wrap; gap:6px; align-items:end; font-size:13px; }
+form.stats label { display:flex; flex-direction:column; gap:2px; }
+form.stats input { width:96px; }
 .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px 16px; margin:10px 0; }
 .card.done { opacity:.55; }
 .row { display:flex; gap:8px; align-items:baseline; flex-wrap:wrap; }
@@ -67,6 +73,22 @@ button:disabled { opacity:.5; cursor:default; }
       <h2>Waiting for research</h2>
       <p class="sub" id="gapsub">Hot organizations with no leadership contact in KADE yet. KADE researches them automatically.</p>
       <div id="gaps"></div>
+      <h2>Results</h2>
+      <p class="sub">People reached each week, counted in KADE from the contact history, with posts and your LinkedIn numbers. Weeks start Monday.</p>
+      <div id="results"><p class="empty">Loading…</p></div>
+      <div class="card">
+        <div class="name">LinkedIn numbers for a week</div>
+        <p class="sub">From LinkedIn's analytics (your profile and the company page). About two minutes, once a week.</p>
+        <form class="stats" id="statsform">
+          <label>Week of <select name="week" id="statsweek"></select></label>
+          <label>Followers (you) <input name="followers_profile" type="number" min="0"></label>
+          <label>Followers (page) <input name="followers_page" type="number" min="0"></label>
+          <label>Impressions (you) <input name="impressions_profile" type="number" min="0"></label>
+          <label>Impressions (page) <input name="impressions_page" type="number" min="0"></label>
+          <label>Profile views <input name="profile_views" type="number" min="0"></label>
+          <button class="primary">Save</button>
+        </form>
+      </div>
     </section>
   </div>
 </main>
@@ -250,6 +272,72 @@ function gapCard(g) {
   return c;
 }
 
+var RESULT_ROWS = [["connect_sent", "Invites sent"], ["connect_accepted", "Accepted"], ["message_sent", "Messages"], ["comment", "Comments"],
+  ["reply", "Replies"], ["meeting_booked", "Meetings booked"], ["pursuits_opened", "Pursuits opened"], ["not_interested", "Not interested"]];
+var STAT_ROWS = [["followers_profile", "Followers (you)"], ["followers_page", "Followers (page)"], ["impressions_profile", "Impressions (you)"],
+  ["impressions_page", "Impressions (page)"], ["profile_views", "Profile views"]];
+function pct(a, b) { return b ? Math.round(100 * a / b) + "%" : "–"; }
+function mondays(n) {
+  var d = new Date(); d.setUTCHours(0, 0, 0, 0); d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
+  var out = []; for (var i = 0; i < n; i++) { out.push(d.toISOString().slice(0, 10)); d.setUTCDate(d.getUTCDate() - 7); }
+  return out;
+}
+function cell(tr, text, tag) { tr.appendChild(el(tag || "td", "", text)); }
+function loadResults() {
+  var box = document.getElementById("results");
+  return fetch("/api/results").then(function (r) { return r.json(); }).then(function (d) {
+    box.textContent = "";
+    var weeks = mondays(4);
+    var t = el("table", "results"), h = el("tr");
+    cell(h, "", "th"); weeks.forEach(function (w) { cell(h, w.slice(5), "th"); }); cell(h, "8 weeks", "th"); t.appendChild(h);
+    if (d.kade && d.kade.error) { box.appendChild(el("p", "empty", "KADE results not available: " + d.kade.error)); }
+    else {
+      var byWeek = {}; d.kade.weeks.forEach(function (w) { byWeek[w.week] = w; });
+      RESULT_ROWS.forEach(function (row) {
+        var tr = el("tr"); cell(tr, row[1]);
+        weeks.forEach(function (w) { cell(tr, String((byWeek[w] || {})[row[0]] || 0)); });
+        cell(tr, String(d.kade.weeks.reduce(function (s, w) { return s + (w[row[0]] || 0); }, 0)));
+        t.appendChild(tr);
+      });
+      var sent = d.kade.weeks.reduce(function (s, w) { return s + (w.connect_sent || 0); }, 0);
+      var acc = d.kade.weeks.reduce(function (s, w) { return s + (w.connect_accepted || 0); }, 0);
+      var rep = d.kade.weeks.reduce(function (s, w) { return s + (w.reply || 0); }, 0);
+      var rr = el("tr"); cell(rr, "Accept rate / reply rate"); weeks.forEach(function (w) { var x = byWeek[w] || {}; cell(rr, pct(x.connect_accepted || 0, x.connect_sent || 0)); });
+      cell(rr, pct(acc, sent) + " / " + pct(rep, acc)); t.appendChild(rr);
+    }
+    var posts = {}; d.posts.forEach(function (p) { posts[p.week] = (posts[p.week] || 0) + p.n; });
+    var pr = el("tr"); cell(pr, "Posts published"); weeks.forEach(function (w) { cell(pr, String(posts[w] || 0)); });
+    cell(pr, String(d.posts.reduce(function (s, p) { return s + p.n; }, 0))); t.appendChild(pr);
+    var stats = {}; d.linkedin.forEach(function (x) { (stats[x.week] = stats[x.week] || {})[x.metric] = x.value; });
+    STAT_ROWS.forEach(function (row) {
+      var tr = el("tr"); cell(tr, row[1]);
+      weeks.forEach(function (w) { var v = (stats[w] || {})[row[0]]; cell(tr, v == null ? "–" : String(v)); });
+      cell(tr, ""); t.appendChild(tr);
+    });
+    box.appendChild(t);
+    if (d.kade && d.kade.tracks && d.kade.tracks.length) {
+      var tt = el("table", "results"), th = el("tr");
+      ["By track (8 weeks)", "Invites", "Accepted", "Replies", "Meetings"].forEach(function (x) { cell(th, x, "th"); }); tt.appendChild(th);
+      d.kade.tracks.forEach(function (k) {
+        var tr = el("tr"); cell(tr, k.track); cell(tr, String(k.connect_sent || 0));
+        cell(tr, (k.connect_accepted || 0) + " (" + pct(k.connect_accepted || 0, k.connect_sent || 0) + ")");
+        cell(tr, String(k.reply || 0)); cell(tr, String(k.meeting_booked || 0)); tt.appendChild(tr);
+      });
+      box.appendChild(tt);
+    }
+  }).catch(function (e) { box.textContent = ""; box.appendChild(el("p", "empty", "Could not load results: " + e.message)); });
+}
+function setupStats() {
+  var sel = document.getElementById("statsweek");
+  mondays(5).slice(1).forEach(function (w, i) { var o = el("option", "", w); o.value = w; if (i === 0) o.selected = true; sel.appendChild(o); });
+  document.getElementById("statsform").onsubmit = function (e) {
+    e.preventDefault();
+    var f = new FormData(e.target), body = {};
+    f.forEach(function (v, k) { body[k] = v; });
+    post("/api/results/linkedin", body).then(function () { toast("Saved."); e.target.reset(); sel.value = body.week; return loadResults(); }).catch(function (err) { toast(err.message); });
+  };
+}
+
 function fill(id, items, make, emptyText) {
   var box = document.getElementById(id); box.textContent = "";
   if (!items.length) { box.appendChild(el("p", "empty", emptyText)); return; }
@@ -293,6 +381,8 @@ function load() {
   }).catch(function (e) { document.getElementById("sub").textContent = "Could not load: " + e.message; });
 }
 load();
+setupStats();
+loadResults();
 </script>
 </body>
 </html>`;

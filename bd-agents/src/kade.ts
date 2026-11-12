@@ -129,3 +129,13 @@ export interface KadeSignal {
 export function recentSignals(env: KadeEnv, since: string) {
   return get<{ total: number; items: KadeSignal[] }>(env, "signals", { updated_since: since, limit: PAGE_SIZE });
 }
+
+export interface KadeResults {
+  since: string;
+  weeks: ({ week: string } & Record<string, number>)[];
+  tracks: ({ track: string } & Record<string, number>)[];
+}
+/** Outreach results counted in KADE from its contact history and pursuits. */
+export function results(env: KadeEnv, weeks: number) {
+  return get<KadeResults>(env, "results", { weeks });
+}
