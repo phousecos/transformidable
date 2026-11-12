@@ -1,388 +1,546 @@
 /**
- * The review page: today's LinkedIn list, pending invites, and research needed.
- * One self-contained page; all data via /api/*. Text from the database is only ever set
- * with textContent or value, never as HTML. (No template literals inside the script below,
- * because this whole page is itself a template literal.)
+ * Transformidable Daily: the BD review page (design: the "Transformidable Daily redesign" canvas,
+ * November 12, 2026). Three tabs: Today (what to act on), Posts (this week's drafts) and Results
+ * (weekly numbers), with a status line on top. One self-contained page; all data via /api/*.
+ * Text from the database is only ever set with textContent or value, never as HTML. (No template
+ * literals inside the script below, because this whole page is itself a template literal.)
  */
 export const PAGE = `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>BD Daily</title>
+<title>Transformidable Daily</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-:root { --bg:#f7f6f3; --card:#fff; --ink:#1d1d1b; --muted:#6b6a66; --line:#e4e2dc; --accent:#8a3b12; --ok:#2f6b3a; --chip:#f0ede6; }
-@media (prefers-color-scheme: dark) { :root { --bg:#161614; --card:#1f1f1c; --ink:#ecebe7; --muted:#a19f98; --line:#33322e; --accent:#e58a5a; --ok:#7cc48a; --chip:#2a2926; } }
+:root { --bg:#F6F5F1; --card:#FFFFFF; --ink:#1C1B19; --muted:#5E5A53; --line:#E4E1DA; --soft:#F0EDE7; --field:#FCFBF9; --fieldline:#D6D2C9;
+  --accent:#9A3F14; --accent-ink:#FFFFFF; --accent-soft:#F1E6DF; --accent-text:#6E2C0C; --ok:#1E5A3B; --ok-soft:#E8F2EC; --ok-line:#C9E0D2;
+  --warn:#8A5300; --warn-soft:#FBF0DC; --chip:#F3F1EC; --chip-ink:#3F3C37; --visual:#F7F1EC; --visual-line:#EADBD0; --bad:#B42318; }
+@media (prefers-color-scheme: dark) { :root { --bg:#161614; --card:#1F1F1C; --ink:#ECEBE7; --muted:#A8A59E; --line:#34332F; --soft:#2A2926; --field:#191917; --fieldline:#45433E;
+  --accent:#E58A5A; --accent-ink:#1C1B19; --accent-soft:#3A2A21; --accent-text:#F2B08C; --ok:#8FD0A2; --ok-soft:#1D2B22; --ok-line:#2E4536;
+  --warn:#F0C27A; --warn-soft:#2F2617; --chip:#2A2926; --chip-ink:#D8D6D0; --visual:#2A231E; --visual-line:#45362B; --bad:#FF8A80; } }
 * { box-sizing: border-box; }
-body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.45 -apple-system, "Segoe UI", system-ui, sans-serif; }
-main { max-width: 1440px; margin: 0 auto; padding: 24px 24px 64px; }
-.cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 40px; align-items: start; }
-.cols > section > h2:first-child { margin-top: 8px; }
-@media (max-width: 1000px) { .cols { grid-template-columns: minmax(0, 1fr); gap: 0; } main { padding: 24px 16px 64px; } }
-h1 { font-size: 22px; margin: 0 0 4px; }
-h2 { font-size: 16px; margin: 32px 0 10px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
-.sub { color: var(--muted); margin: 0 0 16px; }
-table.results { width:100%; border-collapse:collapse; font-size:13px; margin:6px 0; }
-table.results th, table.results td { padding:4px 6px; border-bottom:1px solid var(--line); text-align:right; white-space:nowrap; }
-table.results th:first-child, table.results td:first-child { text-align:left; }
-form.stats { display:flex; flex-wrap:wrap; gap:6px; align-items:end; font-size:13px; }
-form.stats label { display:flex; flex-direction:column; gap:2px; }
-form.stats input { width:96px; }
-.card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px 16px; margin:10px 0; }
-.card.done { opacity:.55; }
-.row { display:flex; gap:8px; align-items:baseline; flex-wrap:wrap; }
-.name { font-weight:600; }
-.meta { color:var(--muted); font-size:13px; }
-.chip { font-size:12px; background:var(--chip); border-radius:999px; padding:2px 8px; }
-.chip.connect { color:var(--accent); } .chip.follow_up { color:var(--ok); }
-textarea { width:100%; margin:10px 0 6px; padding:8px 10px; border:1px solid var(--line); border-radius:8px; background:var(--bg); color:var(--ink); font:inherit; resize:vertical; min-height:64px; }
-.count { font-size:12px; color:var(--muted); }
-.count.over { color:#c0392b; font-weight:600; }
-.actions { display:flex; gap:8px; flex-wrap:wrap; margin-top:6px; }
-button, a.btn { font:inherit; font-size:14px; border:1px solid var(--line); background:var(--card); color:var(--ink); border-radius:8px; padding:6px 12px; cursor:pointer; text-decoration:none; }
-button.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
-button:disabled { opacity:.5; cursor:default; }
-.summary { color:var(--muted); font-size:13px; margin-top:6px; }
-.empty { color:var(--muted); font-style:italic; }
-.visual { margin:10px 0 4px; padding:10px 12px; border-left:3px solid var(--accent); background:var(--chip); border-radius:6px; }
-.vlabel { font-size:12px; text-transform:uppercase; letter-spacing:.04em; color:var(--accent); }
-.vhead { font-weight:600; margin:4px 0; }
-.vnotes { font-size:13px; color:var(--muted); white-space:pre-wrap; margin-bottom:6px; }
-#status { position:fixed; bottom:16px; left:50%; transform:translateX(-50%); background:var(--ink); color:var(--bg); padding:8px 14px; border-radius:8px; font-size:14px; display:none; }
+body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.45 Inter, -apple-system, "Segoe UI", system-ui, sans-serif; }
+a { color:var(--accent); }
+button, input, select, textarea { font:inherit; color:inherit; }
+button { cursor:pointer; }
+.wrap { max-width:1200px; margin:0 auto; padding:0 24px; }
+header { background:var(--card); border-bottom:1px solid var(--line); }
+.top { display:flex; flex-wrap:wrap; align-items:baseline; justify-content:space-between; gap:8px; padding-top:18px; }
+.brand { display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; }
+h1 { margin:0; font-size:22px; font-weight:700; letter-spacing:-.01em; }
+.muted { color:var(--muted); }
+.small { font-size:13px; }
+nav { display:flex; gap:4px; flex-wrap:wrap; margin-top:12px; }
+nav a { padding:10px 14px; border-bottom:3px solid transparent; color:var(--muted); text-decoration:none; }
+nav a[aria-current="page"] { border-bottom-color:var(--accent); color:var(--ink); font-weight:600; }
+.badge { background:var(--accent-soft); color:var(--accent-text); border-radius:10px; padding:1px 7px; font-size:12px; font-weight:600; }
+.page { padding-top:20px; padding-bottom:48px; display:flex; flex-direction:column; gap:20px; }
+.status { display:flex; flex-wrap:wrap; gap:8px; }
+.pill { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:8px 12px; font-size:13px; }
+.pill.ok { background:var(--ok-soft); border-color:var(--ok-line); color:var(--ok); }
+.pill.warn { background:var(--warn-soft); border-color:var(--warn-soft); color:var(--warn); }
+.split { display:flex; flex-wrap:wrap; gap:24px; align-items:flex-start; }
+.main { flex:999 1 560px; min-width:0; display:flex; flex-direction:column; gap:16px; }
+.side { flex:1 1 320px; min-width:0; display:flex; flex-direction:column; gap:16px; }
+h2 { margin:0; font-size:17px; font-weight:600; }
+h3.group { margin:4px 0 0; font-size:12px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); }
+.bar { height:6px; background:var(--line); border-radius:3px; overflow:hidden; }
+.bar > div { height:6px; background:var(--accent); }
+.card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px 18px; display:flex; flex-direction:column; gap:10px; }
+.card.done { opacity:.7; }
+.panel { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px 18px; display:flex; flex-direction:column; gap:12px; }
+.panel p { margin:4px 0 0; }
+.item { border-top:1px solid var(--soft); padding-top:12px; display:flex; flex-direction:column; gap:8px; }
+.head { display:flex; flex-wrap:wrap; align-items:center; gap:8px 10px; }
+.name { font-weight:600; font-size:16px; }
+.tags { margin-left:auto; display:flex; gap:6px; }
+.tag { background:var(--chip); color:var(--chip-ink); border-radius:6px; padding:2px 8px; font-size:12px; font-weight:600; }
+.tag.accent { background:var(--accent-soft); color:var(--accent-text); }
+.tag.ok { background:var(--ok-soft); color:var(--ok); }
+.tag.warn { background:var(--warn-soft); color:var(--warn); }
+label.field { font-size:12px; color:var(--muted); display:flex; flex-direction:column; gap:4px; }
+textarea { width:100%; border:1px solid var(--fieldline); border-radius:8px; padding:10px 12px; resize:vertical; background:var(--field); min-height:72px; }
+.count { font-size:12px; color:var(--muted); text-align:right; }
+.count.over { color:var(--bad); font-weight:600; }
+.actions { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.btn { min-height:44px; padding:0 14px; border-radius:8px; border:1px solid var(--fieldline); background:var(--card); display:inline-flex; align-items:center; justify-content:center; text-decoration:none; color:var(--chip-ink); }
+.btn.primary { background:var(--accent); border-color:var(--accent); color:var(--accent-ink); font-weight:600; padding:0 18px; }
+.btn.outline { border-color:var(--accent); color:var(--accent); font-weight:600; }
+.btn.quiet { border-color:transparent; background:transparent; color:var(--muted); }
+.btn.small { min-height:40px; padding:0 12px; }
+.btn:disabled { opacity:.5; cursor:not-allowed; }
+.respond { margin-left:auto; display:flex; align-items:center; gap:6px; font-size:13px; color:var(--muted); }
+select { min-height:44px; border:1px solid var(--fieldline); border-radius:8px; padding:0 8px; background:var(--card); }
+.ok-line { display:flex; align-items:center; gap:8px; color:var(--ok); font-weight:600; font-size:14px; }
+.empty { color:var(--muted); font-style:italic; margin:0; }
+.days { flex:1 1 300px; min-width:0; display:flex; flex-direction:column; gap:10px; }
+.day { text-align:left; min-height:64px; padding:12px 14px; border-radius:10px; border:1px solid var(--line); background:var(--card); display:flex; flex-direction:column; gap:4px; width:100%; }
+.day[aria-pressed="true"] { border:2px solid var(--accent); }
+.day .line { display:flex; justify-content:space-between; gap:8px; width:100%; }
+.visual { background:var(--visual); border:1px solid var(--visual-line); border-radius:10px; padding:14px 16px; display:flex; flex-direction:column; gap:6px; }
+.visual .label { font-size:12px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--accent-text); }
+.tiles { display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:12px; }
+.tile { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px 18px; display:flex; flex-direction:column; gap:4px; }
+.tile .big { font-size:30px; font-weight:700; letter-spacing:-.02em; }
+.scroll { overflow-x:auto; }
+table { width:100%; border-collapse:collapse; font-size:14px; font-variant-numeric:tabular-nums; }
+th, td { padding:8px 10px; border-bottom:1px solid var(--soft); text-align:right; white-space:nowrap; }
+th:first-child, td:first-child { text-align:left; }
+thead th { color:var(--muted); font-weight:600; border-bottom-color:var(--line); }
+td.total { font-weight:600; }
+.track .rate { height:8px; background:var(--soft); border-radius:4px; overflow:hidden; }
+.track .rate > div { height:8px; background:var(--accent); }
+form.stats { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:10px; }
+form.stats label { display:flex; flex-direction:column; gap:4px; font-size:13px; }
+form.stats input, form.stats select { min-height:44px; border:1px solid var(--fieldline); border-radius:8px; padding:0 10px; background:var(--card); }
+form.stats .wide { grid-column:1 / -1; }
+#toast { position:fixed; bottom:16px; left:50%; transform:translateX(-50%); background:var(--ink); color:var(--bg); padding:10px 16px; border-radius:8px; font-size:14px; display:none; max-width:90vw; }
+[hidden] { display:none !important; }
+@media (max-width: 640px) {
+  .wrap { padding:0 16px; }
+  nav a { flex:1; text-align:center; }
+  .status { flex-wrap:nowrap; overflow-x:auto; }
+  .pill { flex:none; }
+  .respond { margin-left:0; width:100%; }
+  .actions .btn { flex:1 1 auto; }
+}
 </style>
 </head>
 <body>
-<main>
-  <h1>BD Daily</h1>
-  <p class="sub" id="sub">Loading…</p>
-  <div class="cols">
-    <section>
-      <h2>Today's LinkedIn list</h2>
-      <div id="list"></div>
-      <h2>Pending invites</h2>
-      <p class="sub">Mark someone accepted when LinkedIn shows the connection. A thank-you follow-up is drafted the next morning.</p>
-      <div id="pending"></div>
-      <h2>Replies and meetings</h2>
-      <p class="sub">When someone replies, books a meeting or says no, record it here. It goes on their record in KADE: a reply pauses suggestions until you close the conversation, not interested pauses them for 12 months, asked to stop is permanent.</p>
-      <div id="contacts"></div>
-    </section>
-    <section>
-      <h2>Upcoming posts</h2>
-      <p class="sub" id="postsub">Company page Mon/Wed/Fri, your profile Tue/Thu. Edit, copy, post on LinkedIn, then press Posted.</p>
-      <div id="posts"></div>
-      <h2>Waiting for research</h2>
-      <p class="sub" id="gapsub">Hot organizations with no leadership contact in KADE yet. KADE researches them automatically.</p>
-      <div id="gaps"></div>
-      <h2>Results</h2>
-      <p class="sub">People reached each week, counted in KADE from the contact history, with posts and your LinkedIn numbers. Weeks start Monday.</p>
-      <div id="results"><p class="empty">Loading…</p></div>
-      <div class="card">
-        <div class="name">LinkedIn numbers for a week</div>
-        <p class="sub">From LinkedIn's analytics (your profile and the company page). About two minutes, once a week.</p>
-        <form class="stats" id="statsform">
-          <label>Week of <select name="week" id="statsweek"></select></label>
-          <label>Followers (you) <input name="followers_profile" type="number" min="0"></label>
-          <label>Followers (page) <input name="followers_page" type="number" min="0"></label>
-          <label>Impressions (you) <input name="impressions_profile" type="number" min="0"></label>
-          <label>Impressions (page) <input name="impressions_page" type="number" min="0"></label>
-          <label>Profile views <input name="profile_views" type="number" min="0"></label>
-          <button class="primary">Save</button>
-        </form>
-      </div>
-    </section>
+<header>
+  <div class="wrap">
+    <div class="top">
+      <div class="brand"><h1>Transformidable Daily</h1><span class="muted" id="date"></span></div>
+      <span class="muted small" id="me"></span>
+    </div>
+    <nav aria-label="Sections">
+      <a href="#today" data-tab="today">Today</a>
+      <a href="#posts" data-tab="posts">Posts <span class="badge" id="postbadge" hidden></span></a>
+      <a href="#results" data-tab="results">Results</a>
+    </nav>
   </div>
-</main>
-<div id="status"></div>
+</header>
+
+<div class="wrap page">
+  <div class="status" role="status" id="status"></div>
+
+  <section id="tab-today" class="split">
+    <main class="main">
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap">
+          <h2>Today's LinkedIn list</h2><span class="muted small">Follow-ups first, then invitations</span>
+        </div>
+        <div class="bar" aria-hidden="true"><div id="progress" style="width:0%"></div></div>
+      </div>
+      <div id="list"></div>
+    </main>
+    <aside class="side">
+      <section class="panel">
+        <div><h2 style="font-size:16px">Replies and meetings</h2>
+          <p class="muted small">Record a reply, meeting or no here; it goes on their record in KADE. Suggestions pause until you close the conversation; not interested pauses them for 12 months; asked to stop is permanent.</p></div>
+        <div id="contacts"></div>
+      </section>
+      <section class="panel">
+        <div style="display:flex;justify-content:space-between;align-items:baseline"><h2 style="font-size:16px">Pending invites</h2><span class="muted small" id="pendingcount"></span></div>
+        <p class="muted small" style="margin:0">Mark accepted when LinkedIn shows it; a thank-you is drafted the next morning.</p>
+        <div id="pending"></div>
+      </section>
+    </aside>
+  </section>
+
+  <section id="tab-posts" class="split" hidden>
+    <div class="days">
+      <div><h2>Upcoming posts</h2><p class="muted small" style="margin:4px 0 0">Company page Mon, Wed, Fri. Your profile Tue, Thu.</p></div>
+      <div id="days" style="display:flex;flex-direction:column;gap:10px"></div>
+      <button type="button" class="btn" id="buildposts" style="border-style:dashed">Draft upcoming posts now</button>
+    </div>
+    <section class="main panel" id="postdetail"></section>
+  </section>
+
+  <section id="tab-results" hidden style="display:flex;flex-direction:column;gap:20px">
+    <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:8px">
+      <h2>This week so far</h2><span class="muted small">Counted in KADE from the contact history. Weeks start Monday.</span>
+    </div>
+    <div class="tiles" id="tiles"></div>
+    <div class="split">
+      <section class="main panel"><h2 style="font-size:16px">By week</h2><div class="scroll" id="weektable"></div></section>
+      <div class="side">
+        <section class="panel"><h2 style="font-size:16px">By service track, 8 weeks</h2><div id="tracks"></div></section>
+        <section class="panel">
+          <div><h2 style="font-size:16px">LinkedIn numbers</h2><p class="muted small" id="statslast">From LinkedIn's analytics, once a week.</p></div>
+          <form class="stats" id="statsform">
+            <label class="wide">Week of <select name="week" id="statsweek"></select></label>
+            <label>Followers, you <input name="followers_profile" type="number" min="0"></label>
+            <label>Followers, page <input name="followers_page" type="number" min="0"></label>
+            <label>Impressions, you <input name="impressions_profile" type="number" min="0"></label>
+            <label>Impressions, page <input name="impressions_page" type="number" min="0"></label>
+            <label>Profile views <input name="profile_views" type="number" min="0"></label>
+            <div style="display:flex;align-items:flex-end"><button class="btn primary" style="width:100%">Save</button></div>
+          </form>
+        </section>
+      </div>
+    </div>
+  </section>
+</div>
+<div id="toast" role="status"></div>
+
 <script>
 var LIMITS = { connect: 200, follow_up: 600 };
-var LABELS = { connect: "Connect", follow_up: "Follow up", withdraw_invite: "Withdraw invite" };
+var GROUPS = [["follow_up", "Follow up", "Thank-you message"], ["connect", "Connect", "Invitation note (200 characters)"], ["withdraw_invite", "Withdraw invite", ""]];
+var OUTCOMES = [["reply", "Replied"], ["meeting_booked", "Meeting booked"], ["not_interested", "Not interested"], ["stop_request", "Asked to stop"]];
+var VISUALS = { quote_graphic: "Quote graphic", carousel: "Carousel", short_video: "Video short", text_only: "Text only" };
+var DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+var MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+var STATS = [["followers_profile", "Followers, you"], ["followers_page", "Followers, page"], ["impressions_profile", "Impressions, you"], ["impressions_page", "Impressions, page"], ["profile_views", "Profile views"]];
+var ROWS = [["connect_sent", "Invites sent"], ["connect_accepted", "Accepted"], ["rate", "Accept rate"], ["message_sent", "Messages"], ["comment", "Comments"],
+  ["reply", "Replies"], ["meeting_booked", "Meetings booked"], ["pursuits_opened", "Pursuits opened"], ["posts", "Posts published"]];
+var state = { today: null, posts: [], picked: null, showAllPending: false, results: null };
+
 function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
-function toast(msg) { var s = document.getElementById("status"); s.textContent = msg; s.style.display = "block"; clearTimeout(toast.t); toast.t = setTimeout(function () { s.style.display = "none"; }, 8000); }
+function add(parent) { for (var i = 1; i < arguments.length; i++) if (arguments[i]) parent.appendChild(arguments[i]); return parent; }
+function toast(msg) { var s = document.getElementById("toast"); s.textContent = msg; s.style.display = "block"; clearTimeout(toast.t); toast.t = setTimeout(function () { s.style.display = "none"; }, 6000); }
 function post(path, body) {
   return fetch(path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body || {}) })
     .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || r.status); return j; }); });
 }
 function who(p) { return [p.title, p.organization].filter(Boolean).join(", "); }
-function tierLine(a) {
-  var bits = [];
-  if (a.pursued) bits.push("pursued");
-  if (a.kade_tier) bits.push(a.kade_tier + (a.kade_heat != null ? " " + Number(a.kade_heat).toFixed(2) : ""));
-  return bits.join(" · ");
+function button(text, cls, onclick) { var b = el("button", "btn" + (cls ? " " + cls : ""), text); b.type = "button"; if (onclick) b.onclick = onclick; return b; }
+function link(text, href, cls) { var a = el("a", "btn" + (cls ? " " + cls : ""), text); a.href = href; a.target = "_blank"; a.rel = "noopener"; return a; }
+function nice(iso) { var d = new Date(iso + "T12:00:00Z"); return MONTHS[d.getUTCMonth()] + " " + d.getUTCDate(); }
+function longDate(iso) { var d = new Date(iso + "T12:00:00Z"); return ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][d.getUTCDay()] + ", " + ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"][d.getUTCMonth()] + " " + d.getUTCDate(); }
+function check() {
+  var ns = "http://www.w3.org/2000/svg", s = document.createElementNS(ns, "svg"), p = document.createElementNS(ns, "path");
+  s.setAttribute("width", "18"); s.setAttribute("height", "18"); s.setAttribute("viewBox", "0 0 24 24"); s.setAttribute("fill", "none");
+  s.setAttribute("stroke", "currentColor"); s.setAttribute("stroke-width", "2.5"); s.setAttribute("aria-hidden", "true");
+  p.setAttribute("d", "M5 12l5 5L20 7"); s.appendChild(p); return s;
+}
+function counter(ta, limit) {
+  var c = el("div", "count");
+  var upd = function () { c.textContent = ta.value.length + " / " + limit; c.className = "count" + (ta.value.length > limit ? " over" : ""); };
+  ta.addEventListener("input", upd); upd(); return c;
 }
 
-function actionCard(a) {
-  var c = el("div", "card" + (a.status !== "todo" ? " done" : ""));
-  var r = el("div", "row");
-  r.appendChild(el("span", "chip " + a.action_type, LABELS[a.action_type] || a.action_type));
-  r.appendChild(el("span", "name", a.full_name));
-  r.appendChild(el("span", "meta", who(a)));
-  c.appendChild(r);
-  c.appendChild(el("div", "meta", a.reason + (tierLine(a) && a.reason.indexOf(tierLine(a)) < 0 ? " · " + tierLine(a) : "")));
-  var ta = null, count = null;
-  if (a.text != null) {
-    ta = el("textarea"); ta.value = a.text; ta.disabled = a.status !== "todo";
-    count = el("div", "count");
-    var limit = LIMITS[a.action_type] || 600;
-    var upd = function () { count.textContent = ta.value.length + " / " + limit; count.className = "count" + (ta.value.length > limit ? " over" : ""); };
-    ta.addEventListener("input", upd); upd();
-    c.appendChild(ta); c.appendChild(count);
-  }
-  var bar = el("div", "actions");
-  if (a.status === "todo") {
-    if (ta) { var cp = el("button", "", "Copy text"); cp.onclick = function () { navigator.clipboard.writeText(ta.value).then(function () { toast("Copied"); }); }; bar.appendChild(cp); }
-    if (ta && a.drafted_by === "template") {
-      var rd = el("button", "", "Redraft with Claude");
-      rd.onclick = function () {
-        rd.disabled = true; rd.textContent = "Drafting…";
-        post("/api/actions/" + a.id + "/redraft").then(function (r) { ta.value = r.text; ta.dispatchEvent(new Event("input")); rd.remove(); toast("Redrafted"); })
-          .catch(function (e) { toast(e.message); rd.disabled = false; rd.textContent = "Redraft with Claude"; });
-      };
-      bar.appendChild(rd);
-    }
-    if (a.target_url) { var lk = el("a", "btn", "Open profile"); lk.href = a.target_url; lk.target = "_blank"; lk.rel = "noopener"; bar.appendChild(lk); }
-    if (a.kade_url) { var kd = el("a", "btn", "KADE"); kd.href = a.kade_url; kd.target = "_blank"; kd.rel = "noopener"; bar.appendChild(kd); }
-    var done = el("button", "primary", "Done");
-    done.onclick = function () {
-      if (ta && ta.value.length > (LIMITS[a.action_type] || 600)) { toast("Too long for LinkedIn. Shorten it first."); return; }
-      done.disabled = true;
-      post("/api/actions/" + a.id, { status: "done", text: ta ? ta.value : undefined }).then(load).catch(function (e) { toast(e.message); done.disabled = false; });
-    };
-    var skip = el("button", "", "Skip");
-    skip.onclick = function () { post("/api/actions/" + a.id, { status: "skipped" }).then(load).catch(function (e) { toast(e.message); }); };
-    bar.appendChild(done); bar.appendChild(skip);
-    if (a.action_type === "follow_up") bar.appendChild(outcomeMenu(a.person_id));
-  } else {
-    bar.appendChild(el("span", "meta", a.status === "done" ? "Done" : "Skipped"));
-  }
-  c.appendChild(bar);
-  return c;
+// ---- Tabs ----
+function showTab() {
+  var tab = (location.hash || "#today").slice(1);
+  if (["today", "posts", "results"].indexOf(tab) < 0) tab = "today";
+  ["today", "posts", "results"].forEach(function (t) {
+    document.getElementById("tab-" + t).hidden = t !== tab;
+    var a = document.querySelector('nav a[data-tab="' + t + '"]');
+    if (t === tab) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
+  });
+  if (tab === "results" && !state.results) loadResults();
 }
+window.addEventListener("hashchange", showTab);
 
-var DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-var VISUALS = { quote_graphic: "Quote graphic", carousel: "Carousel", short_video: "Video short" };
-function postCard(p) {
-  var c = el("div", "card" + (p.status !== "proposed" ? " done" : ""));
-  var r = el("div", "row");
-  var d = new Date(p.due_date + "T12:00:00Z");
-  r.appendChild(el("span", "chip " + (p.channel === "page" ? "connect" : "follow_up"), (p.channel === "page" ? "Company page" : "Your profile")));
-  r.appendChild(el("span", "name", DAYS[d.getUTCDay()] + " " + p.due_date.slice(5)));
-  r.appendChild(el("span", "meta", p.title || ""));
-  c.appendChild(r);
-  var src = p.context && p.context.source ? "From: " + p.context.source : "";
-  if (src) c.appendChild(el("div", "meta", src));
-  var v = p.context && p.context.visual;
-  if (v && v.format && v.format !== "text_only") {
-    var vb = el("div", "visual");
-    vb.appendChild(el("div", "vlabel", VISUALS[v.format] || v.format));
-    if (v.headline) vb.appendChild(el("div", "vhead", v.headline));
-    if (v.notes) vb.appendChild(el("div", "vnotes", v.notes));
-    var vc = el("button", "", "Copy for Canva");
-    vc.onclick = function () { navigator.clipboard.writeText([v.headline, v.notes].filter(Boolean).join("\\n\\n")).then(function () { toast("Copied"); }); };
-    vb.appendChild(vc);
-    c.appendChild(vb);
-  }
-  var ta = el("textarea"); ta.value = p.text || ""; ta.rows = 8; ta.disabled = p.status !== "proposed";
-  var count = el("div", "count");
-  var upd = function () { count.textContent = ta.value.length + " / 3000"; count.className = "count" + (ta.value.length > 3000 ? " over" : ""); };
-  ta.addEventListener("input", upd); upd();
-  c.appendChild(ta); c.appendChild(count);
-  var bar = el("div", "actions");
-  if (p.status === "proposed") {
-    var cp = el("button", "", "Copy text"); cp.onclick = function () { navigator.clipboard.writeText(ta.value).then(function () { toast("Copied"); }); }; bar.appendChild(cp);
-    if (p.context && p.context.link) { var lk = el("a", "btn", "Open link"); lk.href = p.context.link; lk.target = "_blank"; lk.rel = "noopener"; bar.appendChild(lk); }
-    var done = el("button", "primary", "Posted");
-    done.onclick = function () { done.disabled = true; post("/api/posts/" + p.id, { status: "posted", text: ta.value }).then(load).catch(function (e) { toast(e.message); done.disabled = false; }); };
-    var skip = el("button", "", "Skip");
-    skip.onclick = function () { post("/api/posts/" + p.id, { status: "skipped" }).then(load).catch(function (e) { toast(e.message); }); };
-    bar.appendChild(done); bar.appendChild(skip);
-  } else {
-    bar.appendChild(el("span", "meta", p.status === "sent" ? "Posted" + (p.approved_by ? " by " + p.approved_by : "") : "Skipped"));
-  }
-  c.appendChild(bar);
-  return c;
-}
-
-var OUTCOMES = [["reply", "Replied"], ["meeting_booked", "Meeting booked"], ["not_interested", "Not interested"], ["stop_request", "Asked to stop"]];
-var STATE_TEXT = { in_conversation: "in conversation", paused: "paused", stopped: "do not contact" };
-function outcomeMenu(personId, extra) {
+// ---- Outcomes ----
+function outcomeMenu(personId) {
+  var lab = el("label", "respond", "They responded");
   var sel = el("select");
-  sel.setAttribute("aria-label", "Record an outcome");
-  var first = el("option", "", "Record outcome…"); first.value = ""; sel.appendChild(first);
-  OUTCOMES.concat(extra || []).forEach(function (o) { var op = el("option", "", o[1]); op.value = o[0]; sel.appendChild(op); });
+  var first = el("option", "", "Choose…"); first.value = ""; sel.appendChild(first);
+  OUTCOMES.forEach(function (o) { var op = el("option", "", o[1]); op.value = o[0]; sel.appendChild(op); });
   sel.onchange = function () {
     var kind = sel.value; if (!kind) return;
     if (kind === "stop_request" && !confirm("Asked to stop is permanent: they will never be suggested again, on any channel. Record it?")) { sel.value = ""; return; }
     var note = kind === "reply" || kind === "meeting_booked" ? (prompt("A short note (optional), e.g. what they said or the meeting date:") || "") : "";
     sel.disabled = true;
     post("/api/people/" + personId + "/outcome", { kind: kind, note: note }).then(function (r) {
-      toast(r.kade && r.kade.sent ? "Recorded in KADE." : "Saved; it will reach KADE on the next retry.");
+      toast(r.kade && r.kade.sent ? "Recorded in KADE." : "Saved. It will reach KADE on the next retry.");
       return load();
     }).catch(function (e) { toast(e.message); sel.disabled = false; sel.value = ""; });
   };
-  return sel;
+  lab.appendChild(sel);
+  return lab;
 }
-function contactCard(p) {
-  var c = el("div", "card");
-  var r = el("div", "row");
-  r.appendChild(el("span", "name", p.full_name));
-  r.appendChild(el("span", "meta", who(p)));
-  r.appendChild(el("span", "chip", p.contact_state === "in_conversation" ? "in conversation" : "connected " + (p.connected_at || "").slice(0, 10)));
-  c.appendChild(r);
-  var bar = el("div", "actions");
-  if (p.linkedin_url) { var lk = el("a", "btn", "Open profile"); lk.href = p.linkedin_url; lk.target = "_blank"; lk.rel = "noopener"; bar.appendChild(lk); }
-  if (p.kade_url) { var kd = el("a", "btn", "KADE"); kd.href = p.kade_url; kd.target = "_blank"; kd.rel = "noopener"; bar.appendChild(kd); }
-  if (p.contact_state === "in_conversation") {
-    var close = el("button", "", "Close conversation");
-    close.onclick = function () { close.disabled = true; post("/api/people/" + p.person_id + "/outcome", { kind: "conversation_closed" }).then(load).catch(function (e) { toast(e.message); close.disabled = false; }); };
-    bar.appendChild(close);
+
+// ---- Today ----
+function actionCard(a, draftLabel) {
+  var c = el("article", "card" + (a.status !== "todo" ? " done" : ""));
+  var head = add(el("div", "head"), el("span", "name", a.full_name), el("span", "muted", who(a)));
+  var tags = el("span", "tags");
+  if (a.pursued) tags.appendChild(el("span", "tag accent", "Pursuit"));
+  if (a.kade_tier) tags.appendChild(el("span", "tag", a.kade_tier.charAt(0).toUpperCase() + a.kade_tier.slice(1)));
+  head.appendChild(tags);
+  add(c, head, el("div", "muted small", a.reason));
+  if (a.status !== "todo") {
+    var line = el("div", "ok-line"); line.appendChild(check());
+    line.appendChild(document.createTextNode(a.status === "done" ? "Done · recorded in KADE" : "Skipped"));
+    if (a.status !== "done") line.style.color = "var(--muted)";
+    c.appendChild(line);
+    return c;
   }
-  bar.appendChild(outcomeMenu(p.person_id));
-  c.appendChild(bar);
-  return c;
-}
-
-function pendingCard(p) {
-  var c = el("div", "card");
-  var r = el("div", "row");
-  r.appendChild(el("span", "name", p.full_name));
-  r.appendChild(el("span", "meta", who(p)));
-  r.appendChild(el("span", "meta", "invited " + (p.invited_at || "").slice(0, 10)));
-  c.appendChild(r);
+  var ta = null;
+  if (a.text != null) {
+    var id = "t-" + a.id;
+    var lab = el("label", "field", draftLabel || "Draft"); lab.setAttribute("for", id);
+    ta = el("textarea"); ta.id = id; ta.rows = 3; ta.value = a.text;
+    add(c, lab, ta, counter(ta, LIMITS[a.action_type] || 600));
+  }
   var bar = el("div", "actions");
-  if (p.linkedin_url) { var lk = el("a", "btn", "Open profile"); lk.href = p.linkedin_url; lk.target = "_blank"; lk.rel = "noopener"; bar.appendChild(lk); }
-  var b = el("button", "primary", "Accepted");
-  b.onclick = function () { b.disabled = true; post("/api/people/" + p.person_id + "/connected").then(load).catch(function (e) { toast(e.message); b.disabled = false; }); };
-  bar.appendChild(b);
-  bar.appendChild(outcomeMenu(p.person_id));
+  if (ta && a.target_url) {
+    bar.appendChild(button("Copy and open profile", "outline", function () {
+      navigator.clipboard.writeText(ta.value).then(function () { toast("Copied. Paste it on LinkedIn."); }).catch(function () {});
+      window.open(a.target_url, "_blank", "noopener");
+    }));
+  } else if (a.target_url) bar.appendChild(link("Open profile", a.target_url, "outline"));
+  else if (ta) bar.appendChild(button("Copy text", "outline", function () { navigator.clipboard.writeText(ta.value).then(function () { toast("Copied"); }); }));
+  var done = button("Done", "primary", function () {
+    if (ta && ta.value.length > (LIMITS[a.action_type] || 600)) { toast("Too long for LinkedIn. Shorten it first."); return; }
+    done.disabled = true;
+    post("/api/actions/" + a.id, { status: "done", text: ta ? ta.value : undefined }).then(load).catch(function (e) { toast(e.message); done.disabled = false; });
+  });
+  bar.appendChild(done);
+  bar.appendChild(button("Skip", "", function () { post("/api/actions/" + a.id, { status: "skipped" }).then(load).catch(function (e) { toast(e.message); }); }));
+  if (ta) {
+    var rd = button(a.drafted_by === "template" ? "Redraft with Claude" : "Redraft", "quiet", function () {
+      rd.disabled = true; rd.textContent = "Drafting…";
+      post("/api/actions/" + a.id + "/redraft").then(function (r) { ta.value = r.text; ta.dispatchEvent(new Event("input")); rd.disabled = false; rd.textContent = "Redraft"; toast("Redrafted"); })
+        .catch(function (e) { toast(e.message); rd.disabled = false; rd.textContent = "Redraft"; });
+    });
+    bar.appendChild(rd);
+  }
+  if (a.kade_url) bar.appendChild(link("KADE", a.kade_url, "quiet"));
+  if (a.action_type === "follow_up") bar.appendChild(outcomeMenu(a.person_id));
   c.appendChild(bar);
   return c;
 }
 
-function gapCard(g) {
-  var c = el("div", "card");
-  var r = el("div", "row");
-  r.appendChild(el("span", "name", g.organization));
-  r.appendChild(el("span", "meta", [g.entity_type, g.state_province].filter(Boolean).join(" · ")));
-  r.appendChild(el("span", "chip", tierLine(g) || "no tier"));
-  c.appendChild(r);
-  if (g.kade_summary) c.appendChild(el("div", "summary", g.kade_summary));
+function renderToday(d) {
+  var box = document.getElementById("list"); box.textContent = "";
+  var todo = d.actions.filter(function (a) { return a.status === "todo"; }).length;
+  var doneN = d.actions.length - todo;
+  document.getElementById("progress").style.width = (d.actions.length ? Math.round(100 * doneN / d.actions.length) : 0) + "%";
+  if (!d.actions.length) {
+    box.appendChild(el("p", "empty", "No list for today yet. It is built each weekday at 5 a.m. ET."));
+    var b = button("Build today's list now", "primary", function () { b.disabled = true; b.textContent = "Drafting…"; post("/api/today/build").then(load).catch(function (e) { toast(e.message); b.disabled = false; }); });
+    box.appendChild(b);
+  }
+  GROUPS.forEach(function (g) {
+    var items = d.actions.filter(function (a) { return a.action_type === g[0]; });
+    if (!items.length) return;
+    var sec = el("section"); sec.style.cssText = "display:flex;flex-direction:column;gap:10px;margin-bottom:16px";
+    sec.appendChild(el("h3", "group", g[1] + " · " + items.length));
+    items.forEach(function (a) { sec.appendChild(actionCard(a, g[2])); });
+    box.appendChild(sec);
+  });
+
+  var cbox = document.getElementById("contacts"); cbox.textContent = "";
+  if (!d.contacts.length) cbox.appendChild(el("p", "empty", "No conversations, and no one connected in the last 60 days."));
+  d.contacts.forEach(function (p) {
+    var it = el("div", "item");
+    add(it, add(el("div", "head"), el("span", "name", p.full_name), el("span", "muted small", who(p))));
+    var line = el("div", "head");
+    line.appendChild(el("span", "tag " + (p.contact_state === "in_conversation" ? "ok" : ""), p.contact_state === "in_conversation" ? "In conversation" : "Connected " + nice((p.connected_at || "").slice(0, 10))));
+    it.appendChild(line);
+    var bar = el("div", "actions");
+    if (p.linkedin_url) bar.appendChild(link("Open profile", p.linkedin_url, "small"));
+    if (p.contact_state === "in_conversation") {
+      var close = button("Close conversation", "small", function () { close.disabled = true; post("/api/people/" + p.person_id + "/outcome", { kind: "conversation_closed" }).then(load).catch(function (e) { toast(e.message); close.disabled = false; }); });
+      bar.appendChild(close);
+    }
+    bar.appendChild(outcomeMenu(p.person_id));
+    it.appendChild(bar);
+    cbox.appendChild(it);
+  });
+
+  var pbox = document.getElementById("pending"); pbox.textContent = "";
+  document.getElementById("pendingcount").textContent = String(d.pending.length);
+  var shown = state.showAllPending ? d.pending : d.pending.slice(0, 4);
+  if (!d.pending.length) pbox.appendChild(el("p", "empty", "No pending invites."));
+  shown.forEach(function (p) {
+    var it = el("div", "item"); it.style.flexDirection = "row"; it.style.alignItems = "center"; it.style.gap = "10px";
+    var txt = el("div"); txt.style.cssText = "flex:1;min-width:0";
+    add(txt, el("div", "name", p.full_name), el("div", "muted small", who(p) + " · invited " + nice((p.invited_at || "").slice(0, 10))));
+    txt.firstChild.style.fontSize = "14px";
+    var b = button("Accepted", "outline small", function () { b.disabled = true; post("/api/people/" + p.person_id + "/connected").then(load).catch(function (e) { toast(e.message); b.disabled = false; }); });
+    add(it, txt, b);
+    pbox.appendChild(it);
+  });
+  if (d.pending.length > 4) {
+    var more = button(state.showAllPending ? "Show fewer" : "Show all " + d.pending.length, "quiet small", function () { state.showAllPending = !state.showAllPending; renderToday(d); });
+    more.style.justifyContent = "flex-start"; more.style.padding = "0";
+    pbox.appendChild(more);
+  }
+}
+
+function renderStatus(d) {
+  var s = document.getElementById("status"); s.textContent = "";
+  var todo = d.actions.filter(function (a) { return a.status === "todo"; }).length;
+  function pill(strong, rest, cls) { var p = el("span", "pill" + (cls ? " " + cls : "")); var b = el("b", "", strong); p.appendChild(b); p.appendChild(document.createTextNode(rest)); return p; }
+  s.appendChild(pill((d.actions.length - todo) + " of " + d.actions.length, " done today"));
+  s.appendChild(pill(String(d.pending.length), " invites pending"));
+  var conv = d.contacts.filter(function (p) { return p.contact_state === "in_conversation"; }).length;
+  s.appendChild(pill(String(conv), " in conversation"));
+  s.appendChild(pill(String(d.openGaps), " hot accounts waiting for research in KADE"));
+  if (d.unsentToKade) s.appendChild(pill(String(d.unsentToKade), " not yet in KADE (retried each morning)", "warn"));
+  else s.appendChild(el("span", "pill ok", "All recorded in KADE"));
+}
+
+// ---- Posts ----
+function renderPosts() {
+  var days = document.getElementById("days"); days.textContent = "";
+  var detail = document.getElementById("postdetail"); detail.textContent = "";
+  var open = state.posts.filter(function (p) { return p.status === "proposed"; }).length;
+  var badge = document.getElementById("postbadge"); badge.hidden = !open; badge.textContent = String(open);
+  if (!state.posts.length) { days.appendChild(el("p", "empty", "No upcoming posts. Monday mornings fill the week.")); detail.appendChild(el("p", "empty", "Nothing to show.")); return; }
+  if (!state.picked || !state.posts.some(function (p) { return p.id === state.picked; })) {
+    var next = state.posts.filter(function (p) { return p.status === "proposed"; })[0] || state.posts[0];
+    state.picked = next.id;
+  }
+  state.posts.forEach(function (p) {
+    var d = new Date(p.due_date + "T12:00:00Z");
+    var st = p.status === "sent" ? "Posted" : p.status === "rejected" ? "Skipped" : p.due_date === state.today ? "Today" : "Draft";
+    var b = el("button", "day"); b.type = "button"; b.setAttribute("aria-pressed", p.id === state.picked ? "true" : "false");
+    var line = el("span", "line");
+    var s = el("span", "small", st); s.style.fontWeight = "600"; s.style.color = st === "Posted" ? "var(--ok)" : st === "Today" ? "var(--accent)" : "var(--muted)";
+    add(line, el("span", "name", DAYS[d.getUTCDay()] + " " + nice(p.due_date)), s);
+    add(b, line, el("span", "muted small", (p.channel === "page" ? "Company page" : "Your profile") + " · " + (p.title || "")));
+    b.onclick = function () { state.picked = p.id; renderPosts(); };
+    days.appendChild(b);
+  });
+  var p = state.posts.filter(function (x) { return x.id === state.picked; })[0];
+  var head = el("div", "head");
+  var t = el("h2", "", p.title || "Post"); t.style.fontSize = "18px";
+  add(head, t, el("span", "tag", p.channel === "page" ? "Company page" : "Your profile"));
+  if (p.context && p.context.source) head.appendChild(el("span", "muted small", "From: " + p.context.source));
+  detail.appendChild(head);
+  var lab = el("label", "field", "Post text"); lab.setAttribute("for", "posttext");
+  var ta = el("textarea"); ta.id = "posttext"; ta.rows = 11; ta.value = p.text || ""; ta.disabled = p.status !== "proposed";
+  add(detail, lab, ta, counter(ta, 3000));
+  var v = p.context && p.context.visual;
+  if (v && v.format && v.format !== "text_only") {
+    var vb = el("div", "visual");
+    var top = el("div", "head"); top.style.justifyContent = "space-between";
+    top.appendChild(el("span", "label", "Suggested visual: " + (VISUALS[v.format] || v.format)));
+    top.appendChild(button("Copy for Canva", "small", function () { navigator.clipboard.writeText([v.headline, v.notes].filter(Boolean).join("\\n\\n")).then(function () { toast("Copied"); }); }));
+    vb.appendChild(top);
+    if (v.headline) vb.appendChild(el("div", "name", v.headline));
+    if (v.notes) vb.appendChild(el("div", "muted small", v.notes));
+    detail.appendChild(vb);
+  }
   var bar = el("div", "actions");
-  var kd = el("a", "btn", "Open in KADE"); kd.href = g.kade_url; kd.target = "_blank"; kd.rel = "noopener"; bar.appendChild(kd);
-  c.appendChild(bar);
-  return c;
+  if (p.status === "proposed") {
+    bar.appendChild(button("Copy text", "outline", function () { navigator.clipboard.writeText(ta.value).then(function () { toast("Copied"); }); }));
+    if (p.context && p.context.link) bar.appendChild(link("Open link", p.context.link));
+    var done = button("Posted", "primary", function () { done.disabled = true; post("/api/posts/" + p.id, { status: "posted", text: ta.value }).then(load).catch(function (e) { toast(e.message); done.disabled = false; }); });
+    bar.appendChild(done);
+    bar.appendChild(button("Skip", "", function () { post("/api/posts/" + p.id, { status: "skipped" }).then(load).catch(function (e) { toast(e.message); }); }));
+  } else {
+    bar.appendChild(el("span", "muted", p.status === "sent" ? "Posted" + (p.approved_by ? " by " + p.approved_by : "") : "Skipped"));
+  }
+  detail.appendChild(bar);
 }
+document.getElementById("buildposts").onclick = function () {
+  var b = document.getElementById("buildposts");
+  b.disabled = true; b.textContent = "Drafting… (up to a minute)";
+  post("/api/posts/build").then(function (r) {
+    if (r.skipped) toast("Not drafted: " + r.reason); else if (!r.posts) toast("Claude returned no posts. Try again."); else toast(r.posts + " posts drafted.");
+    return load();
+  }).catch(function (e) { toast(e.message); }).then(function () { b.disabled = false; b.textContent = "Draft upcoming posts now"; });
+};
 
-var RESULT_ROWS = [["connect_sent", "Invites sent"], ["connect_accepted", "Accepted"], ["message_sent", "Messages"], ["comment", "Comments"],
-  ["reply", "Replies"], ["meeting_booked", "Meetings booked"], ["pursuits_opened", "Pursuits opened"], ["not_interested", "Not interested"]];
-var STAT_ROWS = [["followers_profile", "Followers (you)"], ["followers_page", "Followers (page)"], ["impressions_profile", "Impressions (you)"],
-  ["impressions_page", "Impressions (page)"], ["profile_views", "Profile views"]];
-function pct(a, b) { return b ? Math.round(100 * a / b) + "%" : "–"; }
+// ---- Results ----
 function mondays(n) {
   var d = new Date(); d.setUTCHours(0, 0, 0, 0); d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
   var out = []; for (var i = 0; i < n; i++) { out.push(d.toISOString().slice(0, 10)); d.setUTCDate(d.getUTCDate() - 7); }
   return out;
 }
-function cell(tr, text, tag) { tr.appendChild(el(tag || "td", "", text)); }
+function pct(a, b) { return b ? Math.round(100 * a / b) + "%" : "–"; }
 function loadResults() {
-  var box = document.getElementById("results");
-  return fetch("/api/results").then(function (r) { return r.json(); }).then(function (d) {
-    box.textContent = "";
-    var weeks = mondays(4);
-    var t = el("table", "results"), h = el("tr");
-    cell(h, "", "th"); weeks.forEach(function (w) { cell(h, w.slice(5), "th"); }); cell(h, "8 weeks", "th"); t.appendChild(h);
-    if (d.kade && d.kade.error) { box.appendChild(el("p", "empty", "KADE results not available: " + d.kade.error)); }
-    else {
-      var byWeek = {}; d.kade.weeks.forEach(function (w) { byWeek[w.week] = w; });
-      RESULT_ROWS.forEach(function (row) {
-        var tr = el("tr"); cell(tr, row[1]);
-        weeks.forEach(function (w) { cell(tr, String((byWeek[w] || {})[row[0]] || 0)); });
-        cell(tr, String(d.kade.weeks.reduce(function (s, w) { return s + (w[row[0]] || 0); }, 0)));
-        t.appendChild(tr);
-      });
-      var sent = d.kade.weeks.reduce(function (s, w) { return s + (w.connect_sent || 0); }, 0);
-      var acc = d.kade.weeks.reduce(function (s, w) { return s + (w.connect_accepted || 0); }, 0);
-      var rep = d.kade.weeks.reduce(function (s, w) { return s + (w.reply || 0); }, 0);
-      var rr = el("tr"); cell(rr, "Accept rate / reply rate"); weeks.forEach(function (w) { var x = byWeek[w] || {}; cell(rr, pct(x.connect_accepted || 0, x.connect_sent || 0)); });
-      cell(rr, pct(acc, sent) + " / " + pct(rep, acc)); t.appendChild(rr);
-    }
-    var posts = {}; d.posts.forEach(function (p) { posts[p.week] = (posts[p.week] || 0) + p.n; });
-    var pr = el("tr"); cell(pr, "Posts published"); weeks.forEach(function (w) { cell(pr, String(posts[w] || 0)); });
-    cell(pr, String(d.posts.reduce(function (s, p) { return s + p.n; }, 0))); t.appendChild(pr);
-    var stats = {}; d.linkedin.forEach(function (x) { (stats[x.week] = stats[x.week] || {})[x.metric] = x.value; });
-    STAT_ROWS.forEach(function (row) {
-      var tr = el("tr"); cell(tr, row[1]);
-      weeks.forEach(function (w) { var v = (stats[w] || {})[row[0]]; cell(tr, v == null ? "–" : String(v)); });
-      cell(tr, ""); t.appendChild(tr);
-    });
-    box.appendChild(t);
-    if (d.kade && d.kade.tracks && d.kade.tracks.length) {
-      var tt = el("table", "results"), th = el("tr");
-      ["By track (8 weeks)", "Invites", "Accepted", "Replies", "Meetings"].forEach(function (x) { cell(th, x, "th"); }); tt.appendChild(th);
-      d.kade.tracks.forEach(function (k) {
-        var tr = el("tr"); cell(tr, k.track); cell(tr, String(k.connect_sent || 0));
-        cell(tr, (k.connect_accepted || 0) + " (" + pct(k.connect_accepted || 0, k.connect_sent || 0) + ")");
-        cell(tr, String(k.reply || 0)); cell(tr, String(k.meeting_booked || 0)); tt.appendChild(tr);
-      });
-      box.appendChild(tt);
-    }
-  }).catch(function (e) { box.textContent = ""; box.appendChild(el("p", "empty", "Could not load results: " + e.message)); });
+  return fetch("/api/results").then(function (r) { return r.json(); }).then(function (d) { state.results = d; renderResults(); })
+    .catch(function (e) { document.getElementById("weektable").textContent = "Could not load results: " + e.message; });
 }
-function setupStats() {
+function renderResults() {
+  var d = state.results, weeks = mondays(4);
+  var kadeOk = d.kade && !d.kade.error;
+  var byWeek = {};
+  if (kadeOk) d.kade.weeks.forEach(function (w) { byWeek[w.week] = w; });
+  var posts = {}; d.posts.forEach(function (p) { posts[p.week] = (posts[p.week] || 0) + p.n; });
+  function val(w, key) {
+    if (key === "posts") return posts[w] || 0;
+    var x = byWeek[w] || {};
+    if (key === "rate") return pct(x.connect_accepted || 0, x.connect_sent || 0);
+    return x[key] || 0;
+  }
+  function sum(key) {
+    if (key === "posts") return d.posts.reduce(function (s, p) { return s + p.n; }, 0);
+    if (!kadeOk) return 0;
+    if (key === "rate") return pct(sum("connect_accepted"), sum("connect_sent"));
+    return d.kade.weeks.reduce(function (s, w) { return s + (w[key] || 0); }, 0);
+  }
+  var tiles = document.getElementById("tiles"); tiles.textContent = "";
+  [["connect_sent", "Invites sent", function () { return val(weeks[1], "connect_sent") + " last week"; }],
+   ["rate", "Accept rate", function () { return val(weeks[1], "rate") + " last week"; }],
+   ["reply", "Replies", function () { return sum("reply") + " in 8 weeks"; }],
+   ["meeting_booked", "Meetings booked", function () { return sum("meeting_booked") + " in 8 weeks"; }]].forEach(function (t) {
+    add(tiles, add(el("div", "tile"), el("span", "muted small", t[1]), el("span", "big", String(val(weeks[0], t[0]))), el("span", "muted small", t[2]())));
+  });
+  var box = document.getElementById("weektable"); box.textContent = "";
+  if (!kadeOk) box.appendChild(el("p", "empty", "KADE results not available" + (d.kade && d.kade.error ? ": " + d.kade.error : "") + ". Posts and LinkedIn numbers are shown."));
+  var table = el("table"), thead = el("thead"), hr = el("tr");
+  hr.appendChild(el("th", "", ""));
+  weeks.forEach(function (w) { var th = el("th", "", nice(w)); th.scope = "col"; hr.appendChild(th); });
+  var th8 = el("th", "", "8 weeks"); th8.scope = "col"; hr.appendChild(th8);
+  thead.appendChild(hr); table.appendChild(thead);
+  var tb = el("tbody");
+  ROWS.forEach(function (r) {
+    if (!kadeOk && r[0] !== "posts") return;
+    var tr = el("tr"), th = el("th", "", r[1]); th.scope = "row"; th.style.fontWeight = "500"; tr.appendChild(th);
+    weeks.forEach(function (w) { tr.appendChild(el("td", "", String(val(w, r[0])))); });
+    tr.appendChild(el("td", "total", String(sum(r[0]))));
+    tb.appendChild(tr);
+  });
+  var stats = {}; d.linkedin.forEach(function (x) { (stats[x.week] = stats[x.week] || {})[x.metric] = x.value; });
+  STATS.forEach(function (r) {
+    var tr = el("tr"), th = el("th", "", r[1]); th.scope = "row"; th.style.fontWeight = "500"; tr.appendChild(th);
+    weeks.forEach(function (w) { var v = (stats[w] || {})[r[0]]; tr.appendChild(el("td", "", v == null ? "–" : Number(v).toLocaleString())); });
+    tr.appendChild(el("td", "", "")); tb.appendChild(tr);
+  });
+  table.appendChild(tb); box.appendChild(table);
+  var entered = Object.keys(stats).sort().pop();
+  document.getElementById("statslast").textContent = "From LinkedIn's analytics, once a week." + (entered ? " Last entered: week of " + nice(entered) + "." : "");
+  var tr = document.getElementById("tracks"); tr.textContent = "";
+  var tracks = kadeOk ? d.kade.tracks : [];
+  if (!tracks.length) tr.appendChild(el("p", "empty", "No invitations in the last 8 weeks yet."));
+  tracks.forEach(function (k) {
+    var it = el("div", "item track");
+    var head = el("div", "head"); head.style.justifyContent = "space-between";
+    add(head, el("span", "name", k.track), el("span", "muted small", (k.connect_sent || 0) + " invites"));
+    head.firstChild.style.fontSize = "15px";
+    var rate = el("div", "rate"); rate.setAttribute("aria-hidden", "true");
+    var fill = el("div"); fill.style.width = pct(k.connect_accepted || 0, k.connect_sent || 0).replace("–", "0%"); rate.appendChild(fill);
+    add(it, head, rate, el("div", "small", (k.connect_accepted || 0) + " accepted (" + pct(k.connect_accepted || 0, k.connect_sent || 0) + ") · " + (k.reply || 0) + " replies · " + (k.meeting_booked || 0) + " meetings"));
+    tr.appendChild(it);
+  });
+}
+(function setupStats() {
   var sel = document.getElementById("statsweek");
-  mondays(5).slice(1).forEach(function (w, i) { var o = el("option", "", w); o.value = w; if (i === 0) o.selected = true; sel.appendChild(o); });
+  mondays(5).slice(1).forEach(function (w, i) { var o = el("option", "", "Week of " + nice(w)); o.value = w; if (i === 0) o.selected = true; sel.appendChild(o); });
   document.getElementById("statsform").onsubmit = function (e) {
     e.preventDefault();
-    var f = new FormData(e.target), body = {};
-    f.forEach(function (v, k) { body[k] = v; });
+    var body = {}; new FormData(e.target).forEach(function (v, k) { body[k] = v; });
     post("/api/results/linkedin", body).then(function () { toast("Saved."); e.target.reset(); sel.value = body.week; return loadResults(); }).catch(function (err) { toast(err.message); });
   };
-}
+})();
 
-function fill(id, items, make, emptyText) {
-  var box = document.getElementById(id); box.textContent = "";
-  if (!items.length) { box.appendChild(el("p", "empty", emptyText)); return; }
-  items.forEach(function (i) { box.appendChild(make(i)); });
-}
-
+// ---- Load ----
 function load() {
   return fetch("/api/today").then(function (r) { return r.json(); }).then(function (d) {
-    if (d.error) { document.getElementById("sub").textContent = d.error; return; }
-    var todo = d.actions.filter(function (a) { return a.status === "todo"; }).length;
-    document.getElementById("sub").textContent = d.date + " · " + todo + " of " + d.actions.length + " left · signed in as " + d.me;
-    var box = document.getElementById("list");
-    if (!d.actions.length) {
-      box.textContent = "";
-      box.appendChild(el("p", "empty", "No list for today yet. It is built each weekday at 5 a.m. ET."));
-      var b = el("button", "primary", "Build today's list now");
-      b.onclick = function () { b.disabled = true; b.textContent = "Drafting…"; post("/api/today/build").then(load).catch(function (e) { toast(e.message); b.disabled = false; }); };
-      box.appendChild(b);
-    } else fill("list", d.actions, actionCard, "");
-    var pbox = document.getElementById("posts");
-    if (!d.posts.length) {
-      pbox.textContent = "";
-      pbox.appendChild(el("p", "empty", "No upcoming posts. Monday mornings fill the week; this button drafts the next five weekdays from tomorrow."));
-      var pb = el("button", "primary", "Draft upcoming posts now");
-      pb.onclick = function () {
-        pb.disabled = true; pb.textContent = "Drafting… (up to a minute)";
-        post("/api/posts/build").then(function (r) {
-          if (r.skipped) toast("Not drafted: " + r.reason);
-          else if (!r.posts) toast("Claude returned no posts. Try again.");
-          else toast(r.posts + " posts drafted.");
-          return load();
-        }).catch(function (e) { toast(e.message); }).then(function () { pb.disabled = false; pb.textContent = "Draft upcoming posts now"; });
-      };
-      pbox.appendChild(pb);
-    } else fill("posts", d.posts, postCard, "");
-    fill("pending", d.pending, pendingCard, "No pending invites.");
-    fill("contacts", d.contacts || [], contactCard, "No conversations, and no one connected in the last 60 days.");
-    if (d.unsentToKade) toast(d.unsentToKade + " recorded item(s) have not reached KADE yet; they are retried each morning.");
-    document.getElementById("gapsub").textContent = d.openGaps + " hot organizations with no leadership contact in KADE yet (hottest first). KADE researches hot accounts automatically each day, finding leaders on their pages and through AI Ark; the people it finds join this list on the next morning's sync. To research one now, open it in KADE and run research.";
-    fill("gaps", d.gaps, gapCard, "Nothing needs research.");
-  }).catch(function (e) { document.getElementById("sub").textContent = "Could not load: " + e.message; });
+    if (d.error) { document.getElementById("date").textContent = d.error; return; }
+    state.today = d.date;
+    document.getElementById("date").textContent = longDate(d.date);
+    document.getElementById("me").textContent = "Signed in as " + d.me;
+    state.posts = d.posts;
+    renderStatus(d);
+    renderToday(d);
+    renderPosts();
+    if (state.results) loadResults();
+  }).catch(function (e) { document.getElementById("date").textContent = "Could not load: " + e.message; });
 }
+showTab();
 load();
-setupStats();
-loadResults();
 </script>
 </body>
 </html>`;

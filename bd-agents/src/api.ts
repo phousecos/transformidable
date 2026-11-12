@@ -33,10 +33,6 @@ async function today(env: ApiEnv, date: string) {
      ORDER BY contact_state = 'in_conversation' DESC, connected_at DESC LIMIT 100`,
   ).all<{ kade_account_id: string | null }>();
   const unsent = await env.DB.prepare("SELECT COUNT(*) AS n FROM touches WHERE kade_sent_at IS NULL AND kade_kind IS NOT NULL").first<{ n: number }>();
-  const gaps = await env.DB.prepare(
-    `SELECT kade_account_id, organization, entity_type, state_province, kade_tier, kade_heat, kade_summary, pursued, status
-     FROM research_gaps WHERE status = 'open' ORDER BY pursued DESC, kade_heat DESC LIMIT 50`,
-  ).all<{ kade_account_id: string }>();
   const openGaps = await env.DB.prepare("SELECT COUNT(*) AS n FROM research_gaps WHERE status = 'open'").first<{ n: number }>();
   const monday = weekOf(date);
   const posts = await env.DB.prepare(
@@ -50,7 +46,6 @@ async function today(env: ApiEnv, date: string) {
     pending: pending.results,
     contacts: contacts.results.map((p) => ({ ...p, kade_url: p.kade_account_id ? kadeOrgUrl(env, p.kade_account_id) : null })),
     unsentToKade: unsent?.n ?? 0,
-    gaps: gaps.results.map((g) => ({ ...g, kade_url: kadeOrgUrl(env, g.kade_account_id) })),
     openGaps: openGaps?.n ?? 0,
     week: monday,
     posts: posts.results.map(({ context_json, ...p }) => ({ ...p, context: context_json ? JSON.parse(context_json) : {} })),
