@@ -130,10 +130,39 @@ ${JSON.stringify(input, null, 2)}
 
 Mix the sources across the week: at least two posts from the themes, one from a podcast episode if there is one, and one about an upcoming session or course if there is one. Do not repeat a topic.
 
-Answer with only a JSON array of five objects, in schedule order, each {"day": "Monday", "channel": "page" or "profile", "theme": "a few words", "source": "themes" | "podcast" | "event" | "course", "link": "url or null", "text": "the post"}.`;
+Call save_posts once with all five posts, in schedule order.`;
 }
 
 interface Draft { day: string; channel: "page" | "profile"; theme: string; source: string; link: string | null; text: string }
+
+/** Structured output: Claude must call this tool, so the posts always arrive as data. */
+const SAVE_POSTS = {
+  name: "save_posts",
+  description: "Save the week's five LinkedIn post drafts, in schedule order.",
+  input_schema: {
+    type: "object",
+    properties: {
+      posts: {
+        type: "array",
+        minItems: 5,
+        maxItems: 5,
+        items: {
+          type: "object",
+          properties: {
+            day: { type: "string", description: "Monday to Friday" },
+            channel: { type: "string", enum: ["page", "profile"] },
+            theme: { type: "string", description: "A few words naming the topic" },
+            source: { type: "string", enum: ["themes", "podcast", "event", "course"] },
+            link: { type: ["string", "null"], description: "Episode, course or registration URL, or null" },
+            text: { type: "string", description: "The full post text" },
+          },
+          required: ["day", "channel", "theme", "source", "text"],
+        },
+      },
+    },
+    required: ["posts"],
+  },
+};
 
 export async function buildWeekPosts(env: ContentEnv, today: string) {
   const monday = weekOf(today);
@@ -148,16 +177,23 @@ export async function buildWeekPosts(env: ContentEnv, today: string) {
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: { "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-    body: JSON.stringify({ model, max_tokens: 4000, system: SYSTEM, messages: [{ role: "user", content: userPrompt(input, monday) }] }),
+    body: JSON.stringify({
+      model,
+      max_tokens: 8000,
+      system: SYSTEM,
+      tools: [SAVE_POSTS],
+      tool_choice: { type: "tool", name: "save_posts" },
+      messages: [{ role: "user", content: userPrompt(input, monday) }],
+    }),
   });
   if (!res.ok) throw new Error(`Claude: HTTP ${res.status} ${(await res.text()).slice(0, 200)}`);
-  const body = await res.json<{ content: { type: string; text?: string }[] }>();
-  const raw = body.content.filter((c) => c.type === "text").map((c) => c.text ?? "").join("");
-  const start = raw.indexOf("[");
-  const end = raw.lastIndexOf("]");
-  if (start < 0 || end < start) throw new Error("Claude did not return a JSON array");
-  const drafts = (JSON.parse(raw.slice(start, end + 1)) as Draft[]).filter((d) => d && typeof d.text === "string" && d.text.trim()).slice(0, PLAN.length);
-  if (!drafts.length) throw new Error(`Claude returned no usable posts: ${raw.slice(0, 200)}`);
+  const body = await res.json<{ stop_reason?: string; content: { type: string; name?: string; input?: { posts?: Draft[] }; text?: string }[] }>();
+  const call = body.content.find((c) => c.type === "tool_use" && c.name === "save_posts");
+  const drafts = (call?.input?.posts ?? []).filter((d) => d && typeof d.text === "string" && d.text.trim()).slice(0, PLAN.length);
+  if (!drafts.length) {
+    const said = body.content.filter((c) => c.type === "text").map((c) => c.text ?? "").join(" ").slice(0, 200);
+    throw new Error(`Claude returned no posts (stop: ${body.stop_reason ?? "unknown"})${said ? `: ${said}` : ""}`);
+  }
 
   const stmts = drafts.map((d, i) => {
     const plan = PLAN[i];
