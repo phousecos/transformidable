@@ -38,6 +38,10 @@ button.primary { background:var(--accent); border-color:var(--accent); color:#ff
 button:disabled { opacity:.5; cursor:default; }
 .summary { color:var(--muted); font-size:13px; margin-top:6px; }
 .empty { color:var(--muted); font-style:italic; }
+.visual { margin:10px 0 4px; padding:10px 12px; border-left:3px solid var(--accent); background:var(--chip); border-radius:6px; }
+.vlabel { font-size:12px; text-transform:uppercase; letter-spacing:.04em; color:var(--accent); }
+.vhead { font-weight:600; margin:4px 0; }
+.vnotes { font-size:13px; color:var(--muted); white-space:pre-wrap; margin-bottom:6px; }
 #status { position:fixed; bottom:16px; left:50%; transform:translateX(-50%); background:var(--ink); color:var(--bg); padding:8px 14px; border-radius:8px; font-size:14px; display:none; }
 </style>
 </head>
@@ -120,6 +124,7 @@ function actionCard(a) {
 }
 
 var DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+var VISUALS = { quote_graphic: "Quote graphic", carousel: "Carousel", short_video: "Video short" };
 function postCard(p) {
   var c = el("div", "card" + (p.status !== "proposed" ? " done" : ""));
   var r = el("div", "row");
@@ -130,6 +135,17 @@ function postCard(p) {
   c.appendChild(r);
   var src = p.context && p.context.source ? "From: " + p.context.source : "";
   if (src) c.appendChild(el("div", "meta", src));
+  var v = p.context && p.context.visual;
+  if (v && v.format && v.format !== "text_only") {
+    var vb = el("div", "visual");
+    vb.appendChild(el("div", "vlabel", VISUALS[v.format] || v.format));
+    if (v.headline) vb.appendChild(el("div", "vhead", v.headline));
+    if (v.notes) vb.appendChild(el("div", "vnotes", v.notes));
+    var vc = el("button", "", "Copy for Canva");
+    vc.onclick = function () { navigator.clipboard.writeText([v.headline, v.notes].filter(Boolean).join("\\n\\n")).then(function () { toast("Copied"); }); };
+    vb.appendChild(vc);
+    c.appendChild(vb);
+  }
   var ta = el("textarea"); ta.value = p.text || ""; ta.rows = 8; ta.disabled = p.status !== "proposed";
   var count = el("div", "count");
   var upd = function () { count.textContent = ta.value.length + " / 3000"; count.className = "count" + (ta.value.length > 3000 ? " over" : ""); };
