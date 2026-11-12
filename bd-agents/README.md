@@ -54,6 +54,10 @@ The page is at **https://dash.betransformidable.com**, behind Cloudflare Access 
 
 On the page: copy the draft (edit it first if you like), open the profile, send it on LinkedIn yourself, then press **Done**; that records the touch and who sent it. Mark invites **Accepted** when LinkedIn shows them. **Research needed** links each organization to KADE; approving records the request, and the research itself runs in KADE. Comments and reshares are not on the list yet: they need post data from Sales Navigator alerts.
 
+### Content agent (this week's posts)
+
+Each Monday the cron drafts the week's LinkedIn posts: 3 for the Transformidable company page (Mon/Wed/Fri) and 2 for Jerri's profile (Tue/Thu), in the voice of *The Transformidable Leader*. Material: themes across KADE's business events from the last 14 days (counted only; no organization is ever named), the latest podcast episodes and Academy courses (CMS public API at `SITE_URL`), and upcoming briefing sessions (the `BRIEFINGS` service binding to the briefings Worker). Drafts are `review_queue` rows with `system = 'media'`; on the page you edit, copy, post on LinkedIn by hand, and press **Posted**. If Monday's run is missed, **Draft this week's posts now** does the same.
+
 ### Turning the page on
 
 1. Deploy once (`npx wrangler deploy`); that creates `dash.betransformidable.com` and its certificate. Then in **Zero Trust → Access → Applications → Add an application → Self-hosted**, protect subdomain `dash` on `betransformidable.com` with an **Allow** policy for emails ending in `@jerribland.com` and `@jlynne.co`.

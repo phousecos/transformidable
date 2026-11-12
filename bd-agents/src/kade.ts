@@ -80,3 +80,20 @@ export function gapsPage(env: KadeEnv, scope: PeopleScope, offset: number) {
 
 /** Where a person or account opens in KADE's dashboard. */
 export const kadeOrgUrl = (env: KadeEnv, organizationId: string) => new URL(`/#org/${encodeURIComponent(organizationId)}`, env.KADE_API_URL).toString();
+
+export interface KadeSignal {
+  event_type: string;
+  trigger: string | null;
+  entity_type: string | null;
+  verdict_cause: string | null;
+  verdict_effect_kind: string | null;
+  areas: string[];
+  services: string[];
+  event_date: string | null;
+  first_observed_at: string;
+}
+
+/** Recent business events. The content agent counts them into themes and never passes names on. */
+export function recentSignals(env: KadeEnv, since: string) {
+  return get<{ total: number; items: KadeSignal[] }>(env, "signals", { updated_since: since, limit: PAGE_SIZE });
+}

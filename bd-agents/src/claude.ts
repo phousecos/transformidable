@@ -3,6 +3,8 @@
  * queue, edited or approved by a person, and sent by hand. Without an API key, or if the
  * call fails, a plain template is used so the daily list still works.
  */
+import { VOICE } from "./voice";
+
 export interface ClaudeEnv {
   ANTHROPIC_API_KEY?: string;
   AI_MODEL?: string;
@@ -22,6 +24,10 @@ export interface DraftSubject {
 export const LIMITS: Record<DraftKind, number> = { connection_note: 200, follow_up: 600 };
 
 const SYSTEM = `You draft short LinkedIn messages for Dr. Jerri Bland to send from her own account. She is a governance advisor (ERP and core systems, IT controls, AI governance, M&A technology integration) with 25 years of enterprise IT leadership, including Deputy CIO at Columbia University and leading enterprise applications at UNC-Chapel Hill. She writes peer to peer: plain, warm, specific, brief.
+
+${VOICE}
+
+In a short LinkedIn message, use only the plain, direct sentences and the habit of asking a good question; no hypotheticals, no hashtags.
 
 Rules:
 - Never pitch, name a service, mention pricing, or ask for a meeting or call.

@@ -43,6 +43,9 @@ button:disabled { opacity:.5; cursor:default; }
   <h1>Today's LinkedIn list</h1>
   <p class="sub" id="sub">Loading…</p>
   <div id="list"></div>
+  <h2>This week's posts</h2>
+  <p class="sub" id="postsub">Drafted Monday mornings: company page Mon/Wed/Fri, your profile Tue/Thu. Edit, copy, post on LinkedIn, then press Posted.</p>
+  <div id="posts"></div>
   <h2>Pending invites</h2>
   <p class="sub">Mark someone accepted when LinkedIn shows the connection. A thank-you follow-up is drafted the next morning.</p>
   <div id="pending"></div>
@@ -106,6 +109,38 @@ function actionCard(a) {
   return c;
 }
 
+var DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+function postCard(p) {
+  var c = el("div", "card" + (p.status !== "proposed" ? " done" : ""));
+  var r = el("div", "row");
+  var d = new Date(p.due_date + "T12:00:00Z");
+  r.appendChild(el("span", "chip " + (p.channel === "page" ? "connect" : "follow_up"), (p.channel === "page" ? "Company page" : "Your profile")));
+  r.appendChild(el("span", "name", DAYS[d.getUTCDay()] + " " + p.due_date.slice(5)));
+  r.appendChild(el("span", "meta", p.title || ""));
+  c.appendChild(r);
+  var src = p.context && p.context.source ? "From: " + p.context.source : "";
+  if (src) c.appendChild(el("div", "meta", src));
+  var ta = el("textarea"); ta.value = p.text || ""; ta.rows = 8; ta.disabled = p.status !== "proposed";
+  var count = el("div", "count");
+  var upd = function () { count.textContent = ta.value.length + " / 3000"; count.className = "count" + (ta.value.length > 3000 ? " over" : ""); };
+  ta.addEventListener("input", upd); upd();
+  c.appendChild(ta); c.appendChild(count);
+  var bar = el("div", "actions");
+  if (p.status === "proposed") {
+    var cp = el("button", "", "Copy text"); cp.onclick = function () { navigator.clipboard.writeText(ta.value).then(function () { toast("Copied"); }); }; bar.appendChild(cp);
+    if (p.context && p.context.link) { var lk = el("a", "btn", "Open link"); lk.href = p.context.link; lk.target = "_blank"; lk.rel = "noopener"; bar.appendChild(lk); }
+    var done = el("button", "primary", "Posted");
+    done.onclick = function () { done.disabled = true; post("/api/posts/" + p.id, { status: "posted", text: ta.value }).then(load).catch(function (e) { toast(e.message); done.disabled = false; }); };
+    var skip = el("button", "", "Skip");
+    skip.onclick = function () { post("/api/posts/" + p.id, { status: "skipped" }).then(load).catch(function (e) { toast(e.message); }); };
+    bar.appendChild(done); bar.appendChild(skip);
+  } else {
+    bar.appendChild(el("span", "meta", p.status === "sent" ? "Posted" + (p.approved_by ? " by " + p.approved_by : "") : "Skipped"));
+  }
+  c.appendChild(bar);
+  return c;
+}
+
 function pendingCard(p) {
   var c = el("div", "card");
   var r = el("div", "row");
@@ -160,6 +195,14 @@ function load() {
       b.onclick = function () { b.disabled = true; b.textContent = "Drafting…"; post("/api/today/build").then(load).catch(function (e) { toast(e.message); b.disabled = false; }); };
       box.appendChild(b);
     } else fill("list", d.actions, actionCard, "");
+    var pbox = document.getElementById("posts");
+    if (!d.posts.length) {
+      pbox.textContent = "";
+      pbox.appendChild(el("p", "empty", "No posts drafted for the week of " + d.week + " yet."));
+      var pb = el("button", "primary", "Draft this week's posts now");
+      pb.onclick = function () { pb.disabled = true; pb.textContent = "Drafting…"; post("/api/posts/build").then(load).catch(function (e) { toast(e.message); pb.disabled = false; pb.textContent = "Draft this week's posts now"; }); };
+      pbox.appendChild(pb);
+    } else fill("posts", d.posts, postCard, "");
     fill("pending", d.pending, pendingCard, "No pending invites.");
     document.getElementById("gapsub").textContent = d.openGaps + " hot organizations with no leadership contact in KADE (hottest first). Approve to queue research, then run it in KADE.";
     fill("gaps", d.gaps, gapCard, "Nothing needs research.");
