@@ -42,7 +42,11 @@
     "ALLOWED_EMAIL_DOMAINS": "jerribland.com,jlynne.co",
     // Model for drafts. The key is the ANTHROPIC_API_KEY secret; without it, drafts use plain templates.
     "AI_MODEL": "claude-sonnet-5-5",
+    // Public site, for podcast and course links and the CMS's public API.
+    "SITE_URL": "https://betransformidable.com",
   },
+  // Upcoming briefing and Academy sessions, from the briefings Worker in this account.
+  "services": [{ "binding": "BRIEFINGS", "service": "briefings" }],
   // Secrets (set with `npx wrangler secret put <NAME>`, never committed):
   //   KADE_ACCESS_CLIENT_SECRET — the `bd-agents` service token's Client Secret
   //   ANTHROPIC_API_KEY         — Claude API for drafting connection notes and follow-ups

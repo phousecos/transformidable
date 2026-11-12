@@ -3,11 +3,12 @@
  * action done or decides a research request is recorded as its approver.
  */
 import { AuthError, signedInEmail, type AuthEnv } from "./auth";
+import { buildWeekPosts, weekOf, type ContentEnv } from "./content";
 import { buildToday, todayET, type DailyEnv } from "./daily";
 import { kadeOrgUrl } from "./kade";
 import { PAGE } from "./page";
 
-export interface ApiEnv extends DailyEnv, AuthEnv {}
+export interface ApiEnv extends DailyEnv, ContentEnv, AuthEnv {}
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });
 
@@ -28,12 +29,20 @@ async function today(env: ApiEnv, date: string) {
      FROM research_gaps WHERE status = 'open' ORDER BY pursued DESC, kade_heat DESC LIMIT 50`,
   ).all<{ kade_account_id: string }>();
   const openGaps = await env.DB.prepare("SELECT COUNT(*) AS n FROM research_gaps WHERE status = 'open'").first<{ n: number }>();
+  const monday = weekOf(date);
+  const posts = await env.DB.prepare(
+    `SELECT id, item_type, channel, title, COALESCE(final_text, draft) AS text, context_json, status, due_date, approved_by, sent_at
+     FROM review_queue WHERE system = 'media' AND item_type IN ('post_page', 'post_profile') AND due_date BETWEEN ?1 AND date(?1, '+6 days')
+     ORDER BY due_date`,
+  ).bind(monday).all<{ context_json: string | null }>();
   return {
     date,
     actions: actions.results.map((a) => ({ ...a, kade_url: a.kade_account_id ? kadeOrgUrl(env, String(a.kade_account_id)) : null })),
     pending: pending.results,
     gaps: gaps.results.map((g) => ({ ...g, kade_url: kadeOrgUrl(env, g.kade_account_id) })),
     openGaps: openGaps?.n ?? 0,
+    week: monday,
+    posts: posts.results.map(({ context_json, ...p }) => ({ ...p, context: context_json ? JSON.parse(context_json) : {} })),
   };
 }
 
@@ -65,6 +74,19 @@ async function completeAction(env: ApiEnv, id: string, who: string, body: { stat
     if (a.action_type === "withdraw_invite") stmts.push(env.DB.prepare("UPDATE people SET connection_status = 'withdrawn', updated_at = ?2 WHERE id = ?1").bind(a.person_id, now));
   }
   await env.DB.batch(stmts);
+  return json({ ok: true });
+}
+
+async function completePost(env: ApiEnv, id: string, who: string, body: { status?: string; text?: string }) {
+  if (body.status !== "posted" && body.status !== "skipped") return json({ error: "status must be posted or skipped" }, 422);
+  const q = await env.DB.prepare("SELECT draft, status FROM review_queue WHERE id = ?1 AND system = 'media'").bind(id).first<{ draft: string; status: string }>();
+  if (!q) return json({ error: "No such post" }, 404);
+  if (q.status !== "proposed") return json({ error: `Already ${q.status}` }, 409);
+  const now = new Date().toISOString();
+  const text = typeof body.text === "string" && body.text.trim() ? body.text.trim() : q.draft;
+  const posted = body.status === "posted";
+  await env.DB.prepare("UPDATE review_queue SET final_text = ?2, status = ?3, approved_by = ?4, approved_at = ?5, sent_at = ?6, updated_at = ?5 WHERE id = ?1")
+    .bind(id, text, posted ? "sent" : "rejected", who, now, posted ? now : null).run();
   return json({ ok: true });
 }
 
@@ -100,6 +122,10 @@ export async function handle(req: Request, env: ApiEnv): Promise<Response> {
     return json({ ...(await today(env, date)), me: who });
   }
   if (req.method === "POST" && url.pathname === "/api/today/build") return json(await buildToday(env));
+  if (req.method === "POST" && url.pathname === "/api/posts/build") {
+    try { return json(await buildWeekPosts(env, todayET())); } catch (e) { return json({ error: String(e) }, 502); }
+  }
+  if (req.method === "POST" && parts[0] === "api" && parts[1] === "posts" && parts[2]) return completePost(env, parts[2], who, await body());
   if (req.method === "POST" && parts[0] === "api" && parts[1] === "actions" && parts[2]) return completeAction(env, parts[2], who, await body());
   if (req.method === "POST" && parts[0] === "api" && parts[1] === "people" && parts[2] && parts[3] === "connected") return markConnected(env, parts[2]);
   if (req.method === "POST" && parts[0] === "api" && parts[1] === "gaps" && parts[2]) return decideGap(env, decodeURIComponent(parts[2]), who, await body());
