@@ -45,7 +45,7 @@ npx wrangler deploy
 
 Then run it once from the dashboard (Workers → bd-agents → Settings → Trigger events, or the cron's "Run now") and check `SELECT value FROM sync_state WHERE key = 'people:last_run'`. KADE must have `BD_SERVICE_CLIENT_ID` set and the Service Auth policy in place, or KADE answers 503 or Access answers with a redirect.
 
-## Review page (daily LinkedIn list + research needed)
+## Review page: Transformidable Daily (Today, Posts, Results)
 
 The page is at **https://dash.betransformidable.com**, behind Cloudflare Access (Access cannot protect workers.dev, so the Worker uses this custom domain and has no workers.dev URL). Each weekday at 5 a.m. ET the cron syncs hot people from KADE, syncs hot organizations with no leadership contact (`research_gaps`), and builds the day's list:
 
