@@ -143,6 +143,17 @@ form.stats .wide { grid-column:1 / -1; }
         <div id="contacts"></div>
       </section>
       <section class="panel">
+        <div style="display:flex;justify-content:space-between;align-items:baseline"><h2 style="font-size:16px">Your influencer list</h2><span class="muted small" id="influencercount"></span></div>
+        <p class="muted small" style="margin:0">Two of them come up for a comment each day, and up to two get a connection request until you're connected.</p>
+        <div id="influencers"></div>
+        <form id="influencerform" style="display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--soft);padding-top:12px">
+          <label class="field">Name <input name="name" required style="min-height:44px;border:1px solid var(--fieldline);border-radius:8px;padding:0 10px;background:var(--card)"></label>
+          <label class="field">LinkedIn profile address <input name="linkedinUrl" type="url" required placeholder="https://www.linkedin.com/in/…" style="min-height:44px;border:1px solid var(--fieldline);border-radius:8px;padding:0 10px;background:var(--card)"></label>
+          <label class="field">Title and organization (optional) <input name="title" style="min-height:44px;border:1px solid var(--fieldline);border-radius:8px;padding:0 10px;background:var(--card)"></label>
+          <button class="btn outline">Add to list</button>
+        </form>
+      </section>
+      <section class="panel">
         <div style="display:flex;justify-content:space-between;align-items:baseline"><h2 style="font-size:16px">Pending invites</h2><span class="muted small" id="pendingcount"></span></div>
         <p class="muted small" style="margin:0">Mark accepted when LinkedIn shows it; a thank-you is drafted the next morning.</p>
         <div id="pending"></div>
@@ -187,8 +198,9 @@ form.stats .wide { grid-column:1 / -1; }
 <div id="toast" role="status"></div>
 
 <script>
-var LIMITS = { connect: 200, follow_up: 600 };
-var GROUPS = [["follow_up", "Follow up", "Thank-you message"], ["connect", "Connect", "Invitation note (200 characters)"], ["withdraw_invite", "Withdraw invite", ""]];
+var LIMITS = { connect: 200, follow_up: 600, comment: 1250, reshare: 3000 };
+var GROUPS = [["follow_up", "Follow up", "Thank-you message"], ["comment", "Comment", "Your comment"], ["reshare", "Reshare", "Intro above the reshared post"],
+  ["connect", "Connect", "Invitation note (200 characters)"], ["withdraw_invite", "Withdraw invite", ""]];
 var OUTCOMES = [["reply", "Replied"], ["meeting_booked", "Meeting booked"], ["not_interested", "Not interested"], ["stop_request", "Asked to stop"]];
 var VISUALS = { quote_graphic: "Quote graphic", carousel: "Carousel", short_video: "Video short", text_only: "Text only" };
 var DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -258,12 +270,16 @@ function outcomeMenu(personId) {
 // ---- Today ----
 function actionCard(a, draftLabel) {
   var c = el("article", "card" + (a.status !== "todo" ? " done" : ""));
-  var head = add(el("div", "head"), el("span", "name", a.full_name), el("span", "muted", who(a)));
+  var head = a.action_type === "reshare"
+    ? add(el("div", "head"), el("span", "name", a.post_title || "Company page post"), el("span", "muted", "from the company page"))
+    : add(el("div", "head"), el("span", "name", a.full_name), el("span", "muted", who(a)));
   var tags = el("span", "tags");
+  if (a.segment === "influencer") tags.appendChild(el("span", "tag ok", "Influencer"));
   if (a.pursued) tags.appendChild(el("span", "tag accent", "Pursuit"));
   if (a.kade_tier) tags.appendChild(el("span", "tag", a.kade_tier.charAt(0).toUpperCase() + a.kade_tier.slice(1)));
   head.appendChild(tags);
   add(c, head, el("div", "muted small", a.reason));
+  if (a.action_type === "comment" && a.status === "todo" && a.text == null) return commentStart(c, a);
   if (a.status !== "todo") {
     var line = el("div", "ok-line"); line.appendChild(check());
     line.appendChild(document.createTextNode(a.status === "done" ? "Done · recorded in KADE" : "Skipped"));
@@ -280,7 +296,7 @@ function actionCard(a, draftLabel) {
   }
   var bar = el("div", "actions");
   if (ta && a.target_url) {
-    bar.appendChild(button("Copy and open profile", "outline", function () {
+    bar.appendChild(button(a.action_type === "comment" ? "Copy and open their activity" : a.action_type === "reshare" ? "Copy and open company page" : "Copy and open profile", "outline", function () {
       navigator.clipboard.writeText(ta.value).then(function () { toast("Copied. Paste it on LinkedIn."); }).catch(function () {});
       window.open(a.target_url, "_blank", "noopener");
     }));
@@ -306,6 +322,56 @@ function actionCard(a, draftLabel) {
   c.appendChild(bar);
   return c;
 }
+
+// A comment starts with the post: open their activity, paste a post worth answering, then draft.
+function commentStart(c, a) {
+  var id = "p-" + a.id;
+  var lab = el("label", "field", "Paste the post you want to comment on"); lab.setAttribute("for", id);
+  var ta = el("textarea"); ta.id = id; ta.rows = 4; ta.placeholder = "Open their recent activity, pick a post from the last few weeks, and paste its text here.";
+  add(c, lab, ta);
+  var bar = el("div", "actions");
+  if (a.target_url) bar.appendChild(link("Open their recent activity", a.target_url, "outline"));
+  var go = button("Draft comment", "primary", function () {
+    if (ta.value.trim().length < 20) { toast("Paste the post's text first."); return; }
+    go.disabled = true; go.textContent = "Drafting…";
+    post("/api/actions/" + a.id + "/comment-draft", { postText: ta.value }).then(function (r) {
+      if (r.error) toast("Claude was unavailable; a simple draft is in. Edit it or press Redraft.");
+      return load();
+    }).catch(function (e) { toast(e.message); go.disabled = false; go.textContent = "Draft comment"; });
+  });
+  bar.appendChild(go);
+  bar.appendChild(button("No recent post", "", function () { post("/api/actions/" + a.id, { status: "skipped" }).then(load).catch(function (e) { toast(e.message); }); }));
+  c.appendChild(bar);
+  return c;
+}
+
+function renderInfluencers(list) {
+  var box = document.getElementById("influencers"); box.textContent = "";
+  document.getElementById("influencercount").textContent = String(list.length);
+  if (!list.length) box.appendChild(el("p", "empty", "No one yet. Add industry voices, partners and associations whose posts you want to engage with."));
+  list.forEach(function (p) {
+    var it = el("div", "item"); it.style.flexDirection = "row"; it.style.alignItems = "center"; it.style.gap = "10px";
+    var txt = el("div"); txt.style.cssText = "flex:1;min-width:0";
+    var nm = el("a", "name", p.full_name); nm.href = p.linkedin_url; nm.target = "_blank"; nm.rel = "noopener"; nm.style.cssText = "font-size:14px;color:var(--ink)";
+    var sub = [who(p), p.last_comment ? "last comment " + nice(p.last_comment) : "no comment yet"].filter(Boolean).join(" · ");
+    add(txt, nm, el("div", "muted small", sub));
+    var rm = button("Remove", "quiet small", function () {
+      if (!confirm("Remove " + p.full_name + " from your influencer list?")) return;
+      post("/api/influencers/" + p.id + "/remove").then(loadInfluencers).catch(function (e) { toast(e.message); });
+    });
+    add(it, txt, rm); box.appendChild(it);
+  });
+}
+function loadInfluencers() {
+  return fetch("/api/influencers").then(function (r) { return r.json(); }).then(function (d) { renderInfluencers(d.influencers || []); })
+    .catch(function (e) { document.getElementById("influencers").textContent = "Could not load: " + e.message; });
+}
+document.getElementById("influencerform").onsubmit = function (e) {
+  e.preventDefault();
+  var body = {}; new FormData(e.target).forEach(function (v, k) { body[k] = v; });
+  post("/api/influencers", body).then(function () { toast("Added. They join the comment rotation from tomorrow."); e.target.reset(); return loadInfluencers(); })
+    .catch(function (err) { toast(err.message); });
+};
 
 function renderToday(d) {
   var box = document.getElementById("list"); box.textContent = "";
@@ -541,6 +607,7 @@ function load() {
 }
 showTab();
 load();
+loadInfluencers();
 </script>
 </body>
 </html>`;

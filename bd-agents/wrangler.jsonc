@@ -42,6 +42,8 @@
     "ALLOWED_EMAIL_DOMAINS": "jerribland.com,jlynne.co",
     // Model for drafts. The key is the ANTHROPIC_API_KEY secret; without it, drafts use plain templates.
     "AI_MODEL": "claude-sonnet-5-5",
+    // The company's LinkedIn page, linked from the daily reshare card (e.g. https://www.linkedin.com/company/<name>/). Empty: no link.
+    "LINKEDIN_PAGE_URL": "https://www.linkedin.com/company/be-transformidable/",
     // Public site, for podcast and course links and the CMS's public API.
     "SITE_URL": "https://betransformidable.com",
   },

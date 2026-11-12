@@ -70,7 +70,10 @@ Until step 2 is done the page answers 503 to everyone.
 
 - **No LinkedIn automation.** LinkedIn connections, DMs and comments are never sent by code. The Worker only prepares `actions` with copy-ready text and a profile link. Posts publish only through an official-API scheduler, after approval.
 - **Approval:** either approver can approve outreach. Items with `needs_jerri = 1` need Jerri.
-- **Daily LinkedIn mix (about 30 min):** about 5 follow-ups, about 7 comments (posts under 48 h old), about 9 connection requests, and about 1 reshare.
+- **Daily LinkedIn mix (about 30 min):** about 5 follow-ups, about 7 comments, about 9 connection requests, and about 1 reshare.
+- **Comments (November 12, 2026):** 5 connected prospects at hot accounts (pursuits first) and 2 people from the influencer list, each at most once a week. Code never reads LinkedIn: the card links to their recent activity, a person pastes a post, and Claude drafts the comment (no pitch, no links, no hashtags). "No recent post" skips it.
+- **Reshare:** the latest company-page post published in the last 5 days, once, with a drafted intro (`LINKEDIN_PAGE_URL` links the card).
+- **Influencer list:** people added on the page by LinkedIn profile address; kept here, not in KADE (they are not accounts KADE researches), so their touches are not sent to KADE. Up to 2 a day get a connection request until connected; removing one archives it.
 - **Connection slots:** about 4 cohort targets (at most 2 people per account per week), 2 warm signals, 2 influencers or partners, and 1 public official.
 - **Touch rules:** one touch per person per day, and never LinkedIn and email on the same day.
 - **Invites:** a request with no accept after 14 days moves to the email lane. Invites still pending after 3 weeks get a `withdraw_invite` action.

@@ -4,7 +4,7 @@
  */
 import { AuthError, signedInEmail, type AuthEnv } from "./auth";
 import { buildPosts, weekOf, type ContentEnv } from "./content";
-import { draft } from "./claude";
+import { draft, type DraftKind } from "./claude";
 import { buildToday, firstName, todayET, type DailyEnv } from "./daily";
 import { kadeOrgUrl, results as kadeResults } from "./kade";
 import { flushTouches, KIND_BY_ACTION, OUTCOMES, touchStatement } from "./contact";
@@ -18,8 +18,9 @@ async function today(env: ApiEnv, date: string) {
   const actions = await env.DB.prepare(
     `SELECT a.id, a.action_date, a.rank, a.action_type, a.status, a.reason, a.target_url, a.done_at,
        p.id AS person_id, p.full_name, p.title, p.organization, p.kade_account_id, p.kade_tier, p.kade_heat, p.pursued, p.connection_status, p.contact_state, p.paused_until,
-       q.id AS queue_id, COALESCE(q.final_text, q.draft) AS text, q.draft, json_extract(q.context_json, '$.drafted_by') AS drafted_by
-     FROM actions a JOIN people p ON p.id = a.person_id LEFT JOIN review_queue q ON q.id = a.queue_id
+       p.segment, q.id AS queue_id, COALESCE(q.final_text, q.draft) AS text, q.draft, json_extract(q.context_json, '$.drafted_by') AS drafted_by,
+       json_extract(q.context_json, '$.post_title') AS post_title, json_extract(q.context_json, '$.post_text') AS post_text
+     FROM actions a LEFT JOIN people p ON p.id = a.person_id LEFT JOIN review_queue q ON q.id = a.queue_id
      WHERE a.action_date = ?1 ORDER BY a.rank`,
   ).bind(date).all();
   const pending = await env.DB.prepare(
@@ -55,7 +56,7 @@ async function today(env: ApiEnv, date: string) {
 async function completeAction(env: ApiEnv, id: string, who: string, body: { status?: string; text?: string }) {
   if (body.status !== "done" && body.status !== "skipped") return json({ error: "status must be done or skipped" }, 422);
   const a = await env.DB.prepare("SELECT id, action_type, person_id, queue_id, status FROM actions WHERE id = ?1").bind(id)
-    .first<{ id: string; action_type: string; person_id: string; queue_id: string | null; status: string }>();
+    .first<{ id: string; action_type: string; person_id: string | null; queue_id: string | null; status: string }>();
   if (!a) return json({ error: "No such action" }, 404);
   if (a.status !== "todo") return json({ error: `Already ${a.status}` }, 409);
   const now = new Date().toISOString();
@@ -73,29 +74,99 @@ async function completeAction(env: ApiEnv, id: string, who: string, body: { stat
   const touchId = crypto.randomUUID();
   if (done) {
     // Recorded here first, then on the person in KADE (contact.ts).
-    stmts.push(touchStatement(env.DB, { id: touchId, personId: a.person_id, kind: KIND_BY_ACTION[a.action_type] ?? a.action_type, queueId: a.queue_id, at: now, by: who }));
+    // A reshare is of your own post: no person, so nothing for a contact history.
+    if (a.person_id) stmts.push(touchStatement(env.DB, { id: touchId, personId: a.person_id, kind: KIND_BY_ACTION[a.action_type] ?? a.action_type, queueId: a.queue_id, at: now, by: who }));
     if (a.action_type === "connect") stmts.push(env.DB.prepare("UPDATE people SET connection_status = 'pending', invited_at = ?2, updated_at = ?2 WHERE id = ?1").bind(a.person_id, now));
     if (a.action_type === "withdraw_invite") stmts.push(env.DB.prepare("UPDATE people SET connection_status = 'withdrawn', updated_at = ?2 WHERE id = ?1").bind(a.person_id, now));
   }
   await env.DB.batch(stmts);
-  const kade = done ? await flushTouches(env, [touchId]).catch((e) => ({ sent: 0, failed: 1, waiting: 1, error: String(e) })) : null;
+  const kade = done && a.person_id ? await flushTouches(env, [touchId]).catch((e) => ({ sent: 0, failed: 1, waiting: 1, error: String(e) })) : null;
   return json({ ok: true, kade });
 }
 
-/** Re-asks Claude for a LinkedIn note or follow-up that fell back to the template. */
+/** The draft kind for each action on the list. */
+const KIND_FOR: Record<string, DraftKind> = { connect: "connection_note", follow_up: "follow_up", comment: "comment", reshare: "reshare_intro" };
+
+/** Re-asks Claude for any draft on the list (a note, a follow-up, a comment, a reshare intro). */
 async function redraft(env: ApiEnv, actionId: string) {
   const a = await env.DB.prepare(
-    `SELECT a.action_type, a.status, q.id AS queue_id, q.context_json, p.full_name, p.title, p.organization, p.kade_summary
-     FROM actions a JOIN people p ON p.id = a.person_id JOIN review_queue q ON q.id = a.queue_id WHERE a.id = ?1`,
-  ).bind(actionId).first<{ action_type: string; status: string; queue_id: string; context_json: string | null; full_name: string; title: string | null; organization: string | null; kade_summary: string | null }>();
+    `SELECT a.action_type, a.status, q.id AS queue_id, q.context_json, p.full_name, p.title, p.organization, p.kade_summary, p.segment
+     FROM actions a LEFT JOIN people p ON p.id = a.person_id JOIN review_queue q ON q.id = a.queue_id WHERE a.id = ?1`,
+  ).bind(actionId).first<{ action_type: string; status: string; queue_id: string; context_json: string | null; full_name: string | null; title: string | null; organization: string | null; kade_summary: string | null; segment: string | null }>();
   if (!a) return json({ error: "No such action with a draft" }, 404);
   if (a.status !== "todo") return json({ error: `Already ${a.status}` }, 409);
-  const d = await draft(env, a.action_type === "connect" ? "connection_note" : "follow_up", { firstName: firstName(a.full_name), title: a.title, organization: a.organization, context: a.kade_summary });
+  const kind = KIND_FOR[a.action_type];
+  if (!kind) return json({ error: "Nothing to draft for this action" }, 422);
+  const prior = a.context_json ? JSON.parse(a.context_json) as Record<string, unknown> : {};
+  const d = await draft(env, kind, { firstName: a.full_name ? firstName(a.full_name) : "Jerri", title: a.title, organization: a.organization,
+    context: a.segment === "influencer" ? null : a.kade_summary, post: typeof prior.post_text === "string" ? prior.post_text : null });
   if (d.by === "template") return json({ error: `Claude did not draft it: ${d.error ?? "unknown"}` }, 502);
-  const ctx = { ...(a.context_json ? JSON.parse(a.context_json) : {}), drafted_by: d.by, draft_error: null };
-  await env.DB.prepare("UPDATE review_queue SET draft = ?2, context_json = ?3, created_by_agent = ?4, updated_at = CURRENT_TIMESTAMP WHERE id = ?1")
+  const ctx = { ...prior, drafted_by: d.by, draft_error: null };
+  await env.DB.prepare("UPDATE review_queue SET draft = ?2, final_text = NULL, context_json = ?3, created_by_agent = ?4, updated_at = CURRENT_TIMESTAMP WHERE id = ?1")
     .bind(a.queue_id, d.text, JSON.stringify(ctx), `engagement-engine:${d.by}`).run();
   return json({ ok: true, text: d.text });
+}
+
+/** A comment: the person pasted the post; Claude drafts the comment, kept on the action for review. */
+async function draftComment(env: ApiEnv, actionId: string, body: { postText?: string }) {
+  const post = typeof body.postText === "string" ? body.postText.trim() : "";
+  if (post.length < 20) return json({ error: "Paste the post's text first" }, 422);
+  const a = await env.DB.prepare(
+    `SELECT a.id, a.status, a.queue_id, a.action_date, p.id AS person_id, p.full_name, p.title, p.organization, p.kade_summary, p.segment
+     FROM actions a JOIN people p ON p.id = a.person_id WHERE a.id = ?1 AND a.action_type = 'comment'`,
+  ).bind(actionId).first<{ id: string; status: string; queue_id: string | null; action_date: string; person_id: string; full_name: string; title: string | null; organization: string | null; kade_summary: string | null; segment: string }>();
+  if (!a) return json({ error: "No such comment" }, 404);
+  if (a.status !== "todo") return json({ error: `Already ${a.status}` }, 409);
+  const d = await draft(env, "comment", { firstName: firstName(a.full_name), title: a.title, organization: a.organization,
+    context: a.segment === "influencer" ? null : a.kade_summary, post });
+  const ctx = JSON.stringify({ post_text: post.slice(0, 6000), drafted_by: d.by, draft_error: d.error ?? null });
+  if (a.queue_id) {
+    await env.DB.prepare("UPDATE review_queue SET draft = ?2, final_text = NULL, context_json = ?3, created_by_agent = ?4, updated_at = CURRENT_TIMESTAMP WHERE id = ?1")
+      .bind(a.queue_id, d.text, ctx, `engagement-engine:${d.by}`).run();
+  } else {
+    const queueId = crypto.randomUUID();
+    await env.DB.batch([
+      env.DB.prepare(
+        `INSERT INTO review_queue (id, system, item_type, channel, person_id, title, draft, context_json, created_by_agent, due_date)
+         VALUES (?1, ?2, 'comment', 'linkedin', ?3, ?4, ?5, ?6, ?7, ?8)`,
+      ).bind(queueId, a.segment === "influencer" ? "media" : "advisory", a.person_id, `${a.full_name}, ${a.organization ?? ""}`, d.text, ctx, `engagement-engine:${d.by}`, a.action_date),
+      env.DB.prepare("UPDATE actions SET queue_id = ?2 WHERE id = ?1").bind(a.id, queueId),
+    ]);
+  }
+  return json({ ok: true, text: d.text, drafted_by: d.by, error: d.error ?? null });
+}
+
+/** The influencer list (owner, November 12, 2026): people added by LinkedIn URL who join the comment rotation. */
+async function influencers(env: ApiEnv) {
+  const rows = await env.DB.prepare(
+    `SELECT id, full_name, title, organization, linkedin_url, connection_status, note,
+       (SELECT MAX(a.action_date) FROM actions a WHERE a.person_id = people.id AND a.action_type = 'comment' AND a.status = 'done') AS last_comment
+     FROM people WHERE segment = 'influencer' AND archived_at IS NULL ORDER BY full_name`,
+  ).all();
+  return json({ influencers: rows.results });
+}
+const LINKEDIN_PROFILE = /^https:\/\/(www\.)?linkedin\.com\/in\/[A-Za-z0-9\-_%]+\/?$/;
+async function addInfluencer(env: ApiEnv, who: string, body: Record<string, string>) {
+  const name = (body.name ?? "").trim();
+  const url = (body.linkedinUrl ?? "").trim().replace(/[?#].*$/, "").replace(/^http:/, "https:");
+  if (!name) return json({ error: "Enter a name" }, 422);
+  if (!LINKEDIN_PROFILE.test(url)) return json({ error: "Enter a LinkedIn profile address, like https://www.linkedin.com/in/name" }, 422);
+  const existing = await env.DB.prepare("SELECT id, archived_at FROM people WHERE linkedin_url = ?1 OR linkedin_url = ?2").bind(url, url.replace(/\/$/, "")).first<{ id: string; archived_at: string | null }>();
+  if (existing && !existing.archived_at) return json({ error: "Already on your list or in KADE's people" }, 409);
+  const now = new Date().toISOString();
+  if (existing) {
+    await env.DB.prepare("UPDATE people SET archived_at = NULL, segment = 'influencer', full_name = ?2, updated_at = ?3 WHERE id = ?1").bind(existing.id, name, now).run();
+    return json({ ok: true, id: existing.id });
+  }
+  const id = crypto.randomUUID();
+  await env.DB.prepare(
+    `INSERT INTO people (id, full_name, title, organization, segment, linkedin_url, note, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, 'influencer', ?5, ?6, ?7, ?7)`,
+  ).bind(id, name, (body.title ?? "").trim() || null, (body.organization ?? "").trim() || null, url, `added by ${who}`, now).run();
+  return json({ ok: true, id });
+}
+async function removeInfluencer(env: ApiEnv, id: string) {
+  const r = await env.DB.prepare("UPDATE people SET archived_at = ?2, updated_at = ?2 WHERE id = ?1 AND segment = 'influencer' AND archived_at IS NULL").bind(id, new Date().toISOString()).run();
+  return (r.meta.changes ?? 0) ? json({ ok: true }) : json({ error: "Not on your list" }, 404);
 }
 
 async function completePost(env: ApiEnv, id: string, who: string, body: { status?: string; text?: string }) {
@@ -205,6 +276,10 @@ export async function handle(req: Request, env: ApiEnv): Promise<Response> {
   }
   if (req.method === "POST" && parts[0] === "api" && parts[1] === "posts" && parts[2]) return completePost(env, parts[2], who, await body());
   if (req.method === "POST" && parts[0] === "api" && parts[1] === "actions" && parts[2] && parts[3] === "redraft") return redraft(env, parts[2]);
+  if (req.method === "POST" && parts[0] === "api" && parts[1] === "actions" && parts[2] && parts[3] === "comment-draft") return draftComment(env, parts[2], await body());
+  if (req.method === "GET" && url.pathname === "/api/influencers") return influencers(env);
+  if (req.method === "POST" && url.pathname === "/api/influencers") return addInfluencer(env, who, await body());
+  if (req.method === "POST" && parts[0] === "api" && parts[1] === "influencers" && parts[2] && parts[3] === "remove") return removeInfluencer(env, parts[2]);
   if (req.method === "POST" && parts[0] === "api" && parts[1] === "actions" && parts[2]) return completeAction(env, parts[2], who, await body());
   if (req.method === "POST" && parts[0] === "api" && parts[1] === "people" && parts[2] && parts[3] === "connected") return markConnected(env, parts[2], who);
   if (req.method === "POST" && parts[0] === "api" && parts[1] === "people" && parts[2] && parts[3] === "outcome") return recordOutcome(env, parts[2], who, await body());
