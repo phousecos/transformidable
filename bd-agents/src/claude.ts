@@ -52,22 +52,42 @@ export function template(kind: DraftKind, s: DraftSubject): string {
   return `Thanks for connecting, ${s.firstName}. I write about how leadership teams keep technology programs governable as they grow. Glad to be connected and happy to share anything useful along the way.`;
 }
 
-export async function draft(env: ClaudeEnv, kind: DraftKind, s: DraftSubject): Promise<{ text: string; by: string }> {
-  if (!env.ANTHROPIC_API_KEY) return { text: template(kind, s), by: "template" };
-  try {
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/** One Claude call, retried on rate limits, overload and server errors (honours retry-after). */
+async function call(env: ClaudeEnv, kind: DraftKind, s: DraftSubject): Promise<string> {
+  let last = "";
+  for (let attempt = 0; attempt < 4; attempt++) {
     const res = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
-      headers: { "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-      body: JSON.stringify({ model: env.AI_MODEL || "claude-sonnet-5-5", max_tokens: 400, system: SYSTEM, messages: [{ role: "user", content: prompt(kind, s) }] }),
+      headers: { "x-api-key": env.ANTHROPIC_API_KEY!, "anthropic-version": "2023-06-01", "content-type": "application/json" },
+      body: JSON.stringify({ model: env.AI_MODEL || "claude-sonnet-5-5", max_tokens: 600, system: SYSTEM, messages: [{ role: "user", content: prompt(kind, s) }] }),
     });
-    if (!res.ok) throw new Error(`HTTP ${res.status} ${(await res.text()).slice(0, 200)}`);
-    const body = await res.json<{ content: { type: string; text?: string }[] }>();
-    let text = body.content.filter((c) => c.type === "text").map((c) => c.text ?? "").join("").trim().replace(/^"|"$/g, "");
-    if (!text) throw new Error("empty draft");
+    if (res.ok) {
+      const body = await res.json<{ content: { type: string; text?: string }[]; stop_reason?: string }>();
+      const text = body.content.filter((c) => c.type === "text").map((c) => c.text ?? "").join("").trim().replace(/^"|"$/g, "");
+      if (text) return text;
+      last = `empty draft (stop: ${body.stop_reason ?? "unknown"})`;
+    } else {
+      last = `HTTP ${res.status} ${(await res.text()).slice(0, 200)}`;
+      if (![408, 409, 429, 500, 502, 503, 504, 529].includes(res.status)) break;
+      const wait = Number(res.headers.get("retry-after"));
+      await sleep(Number.isFinite(wait) && wait > 0 ? Math.min(wait, 30) * 1000 : 2000 * 2 ** attempt);
+      continue;
+    }
+    await sleep(1000);
+  }
+  throw new Error(last);
+}
+
+export async function draft(env: ClaudeEnv, kind: DraftKind, s: DraftSubject): Promise<{ text: string; by: string; error?: string }> {
+  if (!env.ANTHROPIC_API_KEY) return { text: template(kind, s), by: "template", error: "ANTHROPIC_API_KEY is not set" };
+  try {
+    let text = await call(env, kind, s);
     if (text.length > LIMITS[kind]) text = text.slice(0, LIMITS[kind]).replace(/\s+\S*$/, "").replace(/[,;:]$/, "") + ".";
     return { text, by: env.AI_MODEL || "claude-sonnet-5-5" };
   } catch (e) {
     console.log(JSON.stringify({ level: "warn", job: "draft", kind, error: String(e) }));
-    return { text: template(kind, s), by: "template" };
+    return { text: template(kind, s), by: "template", error: String(e).slice(0, 300) };
   }
 }

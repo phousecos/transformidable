@@ -101,6 +101,15 @@ function actionCard(a) {
   var bar = el("div", "actions");
   if (a.status === "todo") {
     if (ta) { var cp = el("button", "", "Copy text"); cp.onclick = function () { navigator.clipboard.writeText(ta.value).then(function () { toast("Copied"); }); }; bar.appendChild(cp); }
+    if (ta && a.drafted_by === "template") {
+      var rd = el("button", "", "Redraft with Claude");
+      rd.onclick = function () {
+        rd.disabled = true; rd.textContent = "Drafting…";
+        post("/api/actions/" + a.id + "/redraft").then(function (r) { ta.value = r.text; ta.dispatchEvent(new Event("input")); rd.remove(); toast("Redrafted"); })
+          .catch(function (e) { toast(e.message); rd.disabled = false; rd.textContent = "Redraft with Claude"; });
+      };
+      bar.appendChild(rd);
+    }
     if (a.target_url) { var lk = el("a", "btn", "Open profile"); lk.href = a.target_url; lk.target = "_blank"; lk.rel = "noopener"; bar.appendChild(lk); }
     if (a.kade_url) { var kd = el("a", "btn", "KADE"); kd.href = a.kade_url; kd.target = "_blank"; kd.rel = "noopener"; bar.appendChild(kd); }
     var done = el("button", "primary", "Done");
