@@ -3,7 +3,7 @@
  * action done or decides a research request is recorded as its approver.
  */
 import { AuthError, signedInEmail, type AuthEnv } from "./auth";
-import { buildWeekPosts, weekOf, type ContentEnv } from "./content";
+import { buildPosts, weekOf, type ContentEnv } from "./content";
 import { buildToday, todayET, type DailyEnv } from "./daily";
 import { kadeOrgUrl } from "./kade";
 import { PAGE } from "./page";
@@ -32,7 +32,7 @@ async function today(env: ApiEnv, date: string) {
   const monday = weekOf(date);
   const posts = await env.DB.prepare(
     `SELECT id, item_type, channel, title, COALESCE(final_text, draft) AS text, context_json, status, due_date, approved_by, sent_at
-     FROM review_queue WHERE system = 'media' AND item_type IN ('post_page', 'post_profile') AND due_date BETWEEN ?1 AND date(?1, '+6 days')
+     FROM review_queue WHERE system = 'media' AND item_type IN ('post_page', 'post_profile') AND due_date BETWEEN ?1 AND date(?1, '+20 days')
      ORDER BY due_date`,
   ).bind(monday).all<{ context_json: string | null }>();
   return {
@@ -123,7 +123,7 @@ export async function handle(req: Request, env: ApiEnv): Promise<Response> {
   }
   if (req.method === "POST" && url.pathname === "/api/today/build") return json(await buildToday(env));
   if (req.method === "POST" && url.pathname === "/api/posts/build") {
-    try { return json(await buildWeekPosts(env, todayET())); } catch (e) { return json({ error: String(e) }, 502); }
+    try { return json(await buildPosts(env, todayET(), "next")); } catch (e) { return json({ error: String(e) }, 502); }
   }
   if (req.method === "POST" && parts[0] === "api" && parts[1] === "posts" && parts[2]) return completePost(env, parts[2], who, await body());
   if (req.method === "POST" && parts[0] === "api" && parts[1] === "actions" && parts[2]) return completeAction(env, parts[2], who, await body());

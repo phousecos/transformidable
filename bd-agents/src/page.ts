@@ -9,13 +9,16 @@ export const PAGE = `<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>BD Daily List</title>
+<title>BD Daily</title>
 <style>
 :root { --bg:#f7f6f3; --card:#fff; --ink:#1d1d1b; --muted:#6b6a66; --line:#e4e2dc; --accent:#8a3b12; --ok:#2f6b3a; --chip:#f0ede6; }
 @media (prefers-color-scheme: dark) { :root { --bg:#161614; --card:#1f1f1c; --ink:#ecebe7; --muted:#a19f98; --line:#33322e; --accent:#e58a5a; --ok:#7cc48a; --chip:#2a2926; } }
 * { box-sizing: border-box; }
 body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.45 -apple-system, "Segoe UI", system-ui, sans-serif; }
-main { max-width: 860px; margin: 0 auto; padding: 24px 16px 64px; }
+main { max-width: 1440px; margin: 0 auto; padding: 24px 24px 64px; }
+.cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 40px; align-items: start; }
+.cols > section > h2:first-child { margin-top: 8px; }
+@media (max-width: 1000px) { .cols { grid-template-columns: minmax(0, 1fr); gap: 0; } main { padding: 24px 16px 64px; } }
 h1 { font-size: 22px; margin: 0 0 4px; }
 h2 { font-size: 16px; margin: 32px 0 10px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
 .sub { color: var(--muted); margin: 0 0 16px; }
@@ -40,18 +43,25 @@ button:disabled { opacity:.5; cursor:default; }
 </head>
 <body>
 <main>
-  <h1>Today's LinkedIn list</h1>
+  <h1>BD Daily</h1>
   <p class="sub" id="sub">Loading…</p>
-  <div id="list"></div>
-  <h2>This week's posts</h2>
-  <p class="sub" id="postsub">Drafted Monday mornings: company page Mon/Wed/Fri, your profile Tue/Thu. Edit, copy, post on LinkedIn, then press Posted.</p>
-  <div id="posts"></div>
-  <h2>Pending invites</h2>
-  <p class="sub">Mark someone accepted when LinkedIn shows the connection. A thank-you follow-up is drafted the next morning.</p>
-  <div id="pending"></div>
-  <h2>Research needed</h2>
-  <p class="sub" id="gapsub">Hot organizations with no leadership contact in KADE. Approve to queue research, then run it in KADE.</p>
-  <div id="gaps"></div>
+  <div class="cols">
+    <section>
+      <h2>Today's LinkedIn list</h2>
+      <div id="list"></div>
+      <h2>Pending invites</h2>
+      <p class="sub">Mark someone accepted when LinkedIn shows the connection. A thank-you follow-up is drafted the next morning.</p>
+      <div id="pending"></div>
+    </section>
+    <section>
+      <h2>Upcoming posts</h2>
+      <p class="sub" id="postsub">Company page Mon/Wed/Fri, your profile Tue/Thu. Edit, copy, post on LinkedIn, then press Posted.</p>
+      <div id="posts"></div>
+      <h2>Research needed</h2>
+      <p class="sub" id="gapsub">Hot organizations with no leadership contact in KADE. Approve to queue research, then run it in KADE.</p>
+      <div id="gaps"></div>
+    </section>
+  </div>
 </main>
 <div id="status"></div>
 <script>
@@ -198,16 +208,16 @@ function load() {
     var pbox = document.getElementById("posts");
     if (!d.posts.length) {
       pbox.textContent = "";
-      pbox.appendChild(el("p", "empty", "No posts drafted for the week of " + d.week + " yet."));
-      var pb = el("button", "primary", "Draft this week's posts now");
+      pbox.appendChild(el("p", "empty", "No upcoming posts. Monday mornings fill the week; this button drafts the next five weekdays from tomorrow."));
+      var pb = el("button", "primary", "Draft upcoming posts now");
       pb.onclick = function () {
         pb.disabled = true; pb.textContent = "Drafting… (up to a minute)";
         post("/api/posts/build").then(function (r) {
-          if (r.skipped) toast("Not drafted: " + (r.reason || ("this week already has " + r.existing + " posts")));
+          if (r.skipped) toast("Not drafted: " + r.reason);
           else if (!r.posts) toast("Claude returned no posts. Try again.");
           else toast(r.posts + " posts drafted.");
           return load();
-        }).catch(function (e) { toast(e.message); }).then(function () { pb.disabled = false; pb.textContent = "Draft this week's posts now"; });
+        }).catch(function (e) { toast(e.message); }).then(function () { pb.disabled = false; pb.textContent = "Draft upcoming posts now"; });
       };
       pbox.appendChild(pb);
     } else fill("posts", d.posts, postCard, "");
