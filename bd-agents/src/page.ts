@@ -52,6 +52,9 @@ button:disabled { opacity:.5; cursor:default; }
       <h2>Pending invites</h2>
       <p class="sub">Mark someone accepted when LinkedIn shows the connection. A thank-you follow-up is drafted the next morning.</p>
       <div id="pending"></div>
+      <h2>Replies and meetings</h2>
+      <p class="sub">When someone replies, books a meeting or says no, record it here. It goes on their record in KADE: a reply pauses suggestions until you close the conversation, not interested pauses them for 12 months, asked to stop is permanent.</p>
+      <div id="contacts"></div>
     </section>
     <section>
       <h2>Upcoming posts</h2>
@@ -112,6 +115,7 @@ function actionCard(a) {
     var skip = el("button", "", "Skip");
     skip.onclick = function () { post("/api/actions/" + a.id, { status: "skipped" }).then(load).catch(function (e) { toast(e.message); }); };
     bar.appendChild(done); bar.appendChild(skip);
+    if (a.action_type === "follow_up") bar.appendChild(outcomeMenu(a.person_id));
   } else {
     bar.appendChild(el("span", "meta", a.status === "done" ? "Done" : "Skipped"));
   }
@@ -144,9 +148,49 @@ function postCard(p) {
     var skip = el("button", "", "Skip");
     skip.onclick = function () { post("/api/posts/" + p.id, { status: "skipped" }).then(load).catch(function (e) { toast(e.message); }); };
     bar.appendChild(done); bar.appendChild(skip);
+    if (a.action_type === "follow_up") bar.appendChild(outcomeMenu(a.person_id));
   } else {
     bar.appendChild(el("span", "meta", p.status === "sent" ? "Posted" + (p.approved_by ? " by " + p.approved_by : "") : "Skipped"));
   }
+  c.appendChild(bar);
+  return c;
+}
+
+var OUTCOMES = [["reply", "Replied"], ["meeting_booked", "Meeting booked"], ["not_interested", "Not interested"], ["stop_request", "Asked to stop"]];
+var STATE_TEXT = { in_conversation: "in conversation", paused: "paused", stopped: "do not contact" };
+function outcomeMenu(personId, extra) {
+  var sel = el("select");
+  sel.setAttribute("aria-label", "Record an outcome");
+  var first = el("option", "", "Record outcome…"); first.value = ""; sel.appendChild(first);
+  OUTCOMES.concat(extra || []).forEach(function (o) { var op = el("option", "", o[1]); op.value = o[0]; sel.appendChild(op); });
+  sel.onchange = function () {
+    var kind = sel.value; if (!kind) return;
+    if (kind === "stop_request" && !confirm("Asked to stop is permanent: they will never be suggested again, on any channel. Record it?")) { sel.value = ""; return; }
+    var note = kind === "reply" || kind === "meeting_booked" ? (prompt("A short note (optional), e.g. what they said or the meeting date:") || "") : "";
+    sel.disabled = true;
+    post("/api/people/" + personId + "/outcome", { kind: kind, note: note }).then(function (r) {
+      toast(r.kade && r.kade.sent ? "Recorded in KADE." : "Saved; it will reach KADE on the next retry.");
+      return load();
+    }).catch(function (e) { toast(e.message); sel.disabled = false; sel.value = ""; });
+  };
+  return sel;
+}
+function contactCard(p) {
+  var c = el("div", "card");
+  var r = el("div", "row");
+  r.appendChild(el("span", "name", p.full_name));
+  r.appendChild(el("span", "meta", who(p)));
+  r.appendChild(el("span", "chip", p.contact_state === "in_conversation" ? "in conversation" : "connected " + (p.connected_at || "").slice(0, 10)));
+  c.appendChild(r);
+  var bar = el("div", "actions");
+  if (p.linkedin_url) { var lk = el("a", "btn", "Open profile"); lk.href = p.linkedin_url; lk.target = "_blank"; lk.rel = "noopener"; bar.appendChild(lk); }
+  if (p.kade_url) { var kd = el("a", "btn", "KADE"); kd.href = p.kade_url; kd.target = "_blank"; kd.rel = "noopener"; bar.appendChild(kd); }
+  if (p.contact_state === "in_conversation") {
+    var close = el("button", "", "Close conversation");
+    close.onclick = function () { close.disabled = true; post("/api/people/" + p.person_id + "/outcome", { kind: "conversation_closed" }).then(load).catch(function (e) { toast(e.message); close.disabled = false; }); };
+    bar.appendChild(close);
+  }
+  bar.appendChild(outcomeMenu(p.person_id));
   c.appendChild(bar);
   return c;
 }
@@ -163,6 +207,7 @@ function pendingCard(p) {
   var b = el("button", "primary", "Accepted");
   b.onclick = function () { b.disabled = true; post("/api/people/" + p.person_id + "/connected").then(load).catch(function (e) { toast(e.message); b.disabled = false; }); };
   bar.appendChild(b);
+  bar.appendChild(outcomeMenu(p.person_id));
   c.appendChild(bar);
   return c;
 }
@@ -222,6 +267,8 @@ function load() {
       pbox.appendChild(pb);
     } else fill("posts", d.posts, postCard, "");
     fill("pending", d.pending, pendingCard, "No pending invites.");
+    fill("contacts", d.contacts || [], contactCard, "No conversations, and no one connected in the last 60 days.");
+    if (d.unsentToKade) toast(d.unsentToKade + " recorded item(s) have not reached KADE yet; they are retried each morning.");
     document.getElementById("gapsub").textContent = d.openGaps + " hot organizations with no leadership contact in KADE (hottest first). Approve to queue research, then run it in KADE.";
     fill("gaps", d.gaps, gapCard, "Nothing needs research.");
   }).catch(function (e) { document.getElementById("sub").textContent = "Could not load: " + e.message; });

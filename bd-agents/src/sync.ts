@@ -28,8 +28,8 @@ function upsert(db: D1Database, p: KadePerson, syncedAt: string) {
   return db
     .prepare(
       `INSERT INTO people (id, kade_contact_id, kade_account_id, full_name, title, organization, segment, linkedin_url,
-         kade_tier, kade_heat, pursued, in_kade_scope, synced_at, updated_at, kade_summary, role_category)
-       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, 1, ?12, ?12, ?13, ?14)
+         kade_tier, kade_heat, pursued, in_kade_scope, synced_at, updated_at, kade_summary, role_category, contact_state, paused_until)
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, 1, ?12, ?12, ?13, ?14, ?15, ?16)
        ON CONFLICT(kade_contact_id) DO UPDATE SET
          kade_account_id = excluded.kade_account_id,
          full_name = excluded.full_name,
@@ -41,12 +41,16 @@ function upsert(db: D1Database, p: KadePerson, syncedAt: string) {
          pursued = excluded.pursued,
          kade_summary = excluded.kade_summary,
          role_category = excluded.role_category,
+         -- KADE's contact history decides; an outcome recorded here but not yet sent keeps the local state.
+         contact_state = CASE WHEN EXISTS (SELECT 1 FROM touches t WHERE t.person_id = people.id AND t.kade_sent_at IS NULL) THEN people.contact_state ELSE excluded.contact_state END,
+         paused_until = CASE WHEN EXISTS (SELECT 1 FROM touches t WHERE t.person_id = people.id AND t.kade_sent_at IS NULL) THEN people.paused_until ELSE excluded.paused_until END,
+         do_not_contact = CASE WHEN excluded.contact_state = 'stopped' THEN 1 ELSE people.do_not_contact END,
          in_kade_scope = 1,
          synced_at = excluded.synced_at,
          updated_at = excluded.updated_at`,
     )
     .bind(crypto.randomUUID(), p.person_id, p.organization_id, p.full_name, p.title, p.organization_name, segmentFor(p),
-      p.linkedin_url, p.tier, p.heat, p.pursued ? 1 : 0, syncedAt, p.summary ?? null, p.role_category);
+      p.linkedin_url, p.tier, p.heat, p.pursued ? 1 : 0, syncedAt, p.summary ?? null, p.role_category, p.contact_state ?? "open", p.paused_until ?? null);
 }
 
 export interface SyncResult {

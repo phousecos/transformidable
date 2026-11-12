@@ -75,6 +75,7 @@ Until step 2 is done the page answers 503 to everyone.
 - **Touch rules:** one touch per person per day, and never LinkedIn and email on the same day.
 - **Invites:** a request with no accept after 14 days moves to the email lane. Invites still pending after 3 weeks get a `withdraw_invite` action.
 - **Content:** connection notes and comments never pitch. Officials get Academy and education framing only.
+- **One contact history, in KADE (November 12, 2026; KADE `docs/contact-history.md`).** Every action marked done, every accepted invite, and every outcome (replied, meeting booked, not interested, asked to stop, conversation closed) is written to `touches` first and then sent to KADE (`src/contact.ts`); anything KADE did not take is retried each morning. KADE decides what it means: a reply pauses suggestions until the conversation is closed, not interested pauses the person for 12 months, asked to stop is permanent. The sync brings KADE's `contact_state` back, and the daily list suggests only people whose state is open.
 
 ## Build order (for Claude Code)
 
