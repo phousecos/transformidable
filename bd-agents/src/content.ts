@@ -145,8 +145,12 @@ ${JSON.stringify(input, null, 2)}
 
 Mix the sources: mostly the themes, plus a podcast episode if there is one and an upcoming session or course if there is one. Do not repeat a topic.
 
+For each post, suggest one visual Jerri can make herself in Canva or record as a short: a quote graphic (one line from the post), a short carousel (3 to 5 slides of a distinction or questions), a 30 to 45 second vertical video in the Transformidable Thinking style (hook, the distinction, the closing question), or text only when a visual would not add anything. Vary the formats across the week; at least one quote graphic and at most one video. Visuals follow the same discretion rules as the text.
+
 Return the posts in schedule order. Use an empty string for link when there is none.`;
 }
+
+interface Draft { day: string; channel: "page" | "profile"; theme: string; source: string; link: string | null; text: string; visual?: { format: string; headline: string; notes: string } }
 
 /** Structured output (output_config.format): the reply text is JSON matching this schema. */
 const POSTS_SCHEMA = {
@@ -163,8 +167,18 @@ const POSTS_SCHEMA = {
           source: { type: "string", enum: ["themes", "podcast", "event", "course"] },
           link: { type: "string", description: "Episode, course or registration URL, or empty" },
           text: { type: "string" },
+          visual: {
+            type: "object",
+            properties: {
+              format: { type: "string", enum: ["text_only", "quote_graphic", "carousel", "short_video"] },
+              headline: { type: "string", description: "Words for the graphic, first slide or video hook (under 15 words), or empty" },
+              notes: { type: "string", description: "For Canva: layout and slide text, or the video short's beats (30-45 seconds), or empty" },
+            },
+            required: ["format", "headline", "notes"],
+            additionalProperties: false,
+          },
         },
-        required: ["day", "channel", "theme", "source", "link", "text"],
+        required: ["day", "channel", "theme", "source", "link", "text", "visual"],
         additionalProperties: false,
       },
     },
@@ -223,7 +237,7 @@ export async function buildPosts(env: ContentEnv, today: string, mode: "week" | 
       `INSERT INTO review_queue (id, system, item_type, channel, title, draft, context_json, created_by_agent, due_date)
        VALUES (?1, 'media', ?2, ?3, ?4, ?5, ?6, ?7, ?8)`,
     ).bind(crypto.randomUUID(), slot.channel === "page" ? "post_page" : "post_profile", slot.channel, (d.theme || "Post").slice(0, 120), String(d.text ?? "").trim(),
-      JSON.stringify({ source: d.source, link: d.link || null }), `content-agent:${model}`, slot.date);
+      JSON.stringify({ source: d.source, link: d.link || null, visual: d.visual ?? null }), `content-agent:${model}`, slot.date);
   });
   if (stmts.length) await env.DB.batch(stmts);
   return { skipped: false, from, to, posts: stmts.length, sources: { themes: !!input.themes, episodes: input.episodes.length, sessions: input.sessions.length, courses: input.courses.length } };
