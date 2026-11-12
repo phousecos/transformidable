@@ -31,7 +31,7 @@ In a short LinkedIn message, use only the plain, direct sentences and the habit 
 
 Rules:
 - Never pitch, name a service, mention pricing, or ask for a meeting or call.
-- Never claim to know anything about their internal situation, and never diagnose a problem.
+- Never claim to know anything about their internal situation, never diagnose a problem, and never refer to a specific event at their organization. Keep the reason to connect at the level of their role and a general governance topic, so they would never wonder whether Jerri discusses clients or prospects.
 - The context you are given is internal research. Use it only to choose a relevant topic. Never quote it, never mention signals, scores, research, screening, data, tools or how you found them. If the context is unclear or sensitive (layoffs, lawsuits, failures), stay general.
 - No flattery, no "I came across your profile", no "hope this finds you well", no emojis, no em dashes, no hashtags.
 - Write only the message text. No subject line, no signature, no quotation marks.`;
