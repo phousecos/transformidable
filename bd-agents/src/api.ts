@@ -149,13 +149,6 @@ async function recordOutcome(env: ApiEnv, personId: string, who: string, body: {
   return json({ ok: true, kade: await flushTouches(env, [touchId]).catch((e) => ({ error: String(e) })) });
 }
 
-async function decideGap(env: ApiEnv, id: string, who: string, body: { status?: string }) {
-  if (body.status !== "approved" && body.status !== "dismissed") return json({ error: "status must be approved or dismissed" }, 422);
-  const r = await env.DB.prepare("UPDATE research_gaps SET status = ?2, decided_by = ?3, decided_at = ?4 WHERE kade_account_id = ?1 AND status = 'open'")
-    .bind(id, body.status, who, new Date().toISOString()).run();
-  return (r.meta.changes ?? 0) ? json({ ok: true }) : json({ error: "Not an open request" }, 409);
-}
-
 export async function handle(req: Request, env: ApiEnv): Promise<Response> {
   const url = new URL(req.url);
   let who: string;
@@ -183,6 +176,5 @@ export async function handle(req: Request, env: ApiEnv): Promise<Response> {
   if (req.method === "POST" && parts[0] === "api" && parts[1] === "people" && parts[2] && parts[3] === "connected") return markConnected(env, parts[2], who);
   if (req.method === "POST" && parts[0] === "api" && parts[1] === "people" && parts[2] && parts[3] === "outcome") return recordOutcome(env, parts[2], who, await body());
   if (req.method === "POST" && url.pathname === "/api/kade/flush") return json(await flushTouches(env));
-  if (req.method === "POST" && parts[0] === "api" && parts[1] === "gaps" && parts[2]) return decideGap(env, decodeURIComponent(parts[2]), who, await body());
   return json({ error: "Not found" }, 404);
 }

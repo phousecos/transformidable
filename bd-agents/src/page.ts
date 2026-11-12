@@ -64,8 +64,8 @@ button:disabled { opacity:.5; cursor:default; }
       <h2>Upcoming posts</h2>
       <p class="sub" id="postsub">Company page Mon/Wed/Fri, your profile Tue/Thu. Edit, copy, post on LinkedIn, then press Posted.</p>
       <div id="posts"></div>
-      <h2>Research needed</h2>
-      <p class="sub" id="gapsub">Hot organizations with no leadership contact in KADE. Approve to queue research, then run it in KADE.</p>
+      <h2>Waiting for research</h2>
+      <p class="sub" id="gapsub">Hot organizations with no leadership contact in KADE yet. KADE researches them automatically.</p>
       <div id="gaps"></div>
     </section>
   </div>
@@ -246,11 +246,6 @@ function gapCard(g) {
   if (g.kade_summary) c.appendChild(el("div", "summary", g.kade_summary));
   var bar = el("div", "actions");
   var kd = el("a", "btn", "Open in KADE"); kd.href = g.kade_url; kd.target = "_blank"; kd.rel = "noopener"; bar.appendChild(kd);
-  var ok = el("button", "primary", "Approve research");
-  ok.onclick = function () { post("/api/gaps/" + encodeURIComponent(g.kade_account_id), { status: "approved" }).then(function () { toast("Approved. Run the people research in KADE."); load(); }).catch(function (e) { toast(e.message); }); };
-  var no = el("button", "", "Dismiss");
-  no.onclick = function () { post("/api/gaps/" + encodeURIComponent(g.kade_account_id), { status: "dismissed" }).then(load).catch(function (e) { toast(e.message); }); };
-  bar.appendChild(ok); bar.appendChild(no);
   c.appendChild(bar);
   return c;
 }
@@ -293,7 +288,7 @@ function load() {
     fill("pending", d.pending, pendingCard, "No pending invites.");
     fill("contacts", d.contacts || [], contactCard, "No conversations, and no one connected in the last 60 days.");
     if (d.unsentToKade) toast(d.unsentToKade + " recorded item(s) have not reached KADE yet; they are retried each morning.");
-    document.getElementById("gapsub").textContent = d.openGaps + " hot organizations with no leadership contact in KADE (hottest first). Approve to queue research, then run it in KADE.";
+    document.getElementById("gapsub").textContent = d.openGaps + " hot organizations with no leadership contact in KADE yet (hottest first). KADE researches hot accounts automatically each day, finding leaders on their pages and through AI Ark; the people it finds join this list on the next morning's sync. To research one now, open it in KADE and run research.";
     fill("gaps", d.gaps, gapCard, "Nothing needs research.");
   }).catch(function (e) { document.getElementById("sub").textContent = "Could not load: " + e.message; });
 }

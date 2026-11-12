@@ -87,7 +87,7 @@ Until step 2 is done the page answers 503 to everyone.
 
 ### Backlog
 
-- **Hot organizations with no people (owner, November 11, 2026).** Some hot organizations have no one in KADE, so they never reach `people`. KADE owns the research: add a KADE endpoint listing hot organizations with no current buyer-role person, show them in the review queue as "research needed", and on approval ask KADE to run its people research (leadership page, AI Ark, or Apollo for open pursuits) rather than researching from the BD side.
+- ~~Hot organizations with no people~~ **Done (November 12, 2026):** KADE researches hot accounts automatically (deep research plus an AI Ark lookup for missing leaders); the page lists the ones still waiting, read-only. The approve/dismiss step and `/api/gaps/:id` are retired.
 - **Academy feed.** No hot prospect is a government body (first hot-only sync: 0 officials of 1,495), so Academy enrollment needs its own feed from KADE's civic signals (board agendas, AI policy votes, new members).
 
 Scheduled work runs from the weekday cron in `wrangler.jsonc`.
