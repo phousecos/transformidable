@@ -4,7 +4,8 @@
  */
 import { AuthError, signedInEmail, type AuthEnv } from "./auth";
 import { buildPosts, weekOf, type ContentEnv } from "./content";
-import { buildToday, todayET, type DailyEnv } from "./daily";
+import { draft } from "./claude";
+import { buildToday, firstName, todayET, type DailyEnv } from "./daily";
 import { kadeOrgUrl } from "./kade";
 import { flushTouches, KIND_BY_ACTION, OUTCOMES, touchStatement } from "./contact";
 import { PAGE } from "./page";
@@ -17,7 +18,7 @@ async function today(env: ApiEnv, date: string) {
   const actions = await env.DB.prepare(
     `SELECT a.id, a.action_date, a.rank, a.action_type, a.status, a.reason, a.target_url, a.done_at,
        p.id AS person_id, p.full_name, p.title, p.organization, p.kade_account_id, p.kade_tier, p.kade_heat, p.pursued, p.connection_status, p.contact_state, p.paused_until,
-       q.id AS queue_id, COALESCE(q.final_text, q.draft) AS text, q.draft
+       q.id AS queue_id, COALESCE(q.final_text, q.draft) AS text, q.draft, json_extract(q.context_json, '$.drafted_by') AS drafted_by
      FROM actions a JOIN people p ON p.id = a.person_id LEFT JOIN review_queue q ON q.id = a.queue_id
      WHERE a.action_date = ?1 ORDER BY a.rank`,
   ).bind(date).all();
@@ -84,6 +85,22 @@ async function completeAction(env: ApiEnv, id: string, who: string, body: { stat
   await env.DB.batch(stmts);
   const kade = done ? await flushTouches(env, [touchId]).catch((e) => ({ sent: 0, failed: 1, waiting: 1, error: String(e) })) : null;
   return json({ ok: true, kade });
+}
+
+/** Re-asks Claude for a LinkedIn note or follow-up that fell back to the template. */
+async function redraft(env: ApiEnv, actionId: string) {
+  const a = await env.DB.prepare(
+    `SELECT a.action_type, a.status, q.id AS queue_id, q.context_json, p.full_name, p.title, p.organization, p.kade_summary
+     FROM actions a JOIN people p ON p.id = a.person_id JOIN review_queue q ON q.id = a.queue_id WHERE a.id = ?1`,
+  ).bind(actionId).first<{ action_type: string; status: string; queue_id: string; context_json: string | null; full_name: string; title: string | null; organization: string | null; kade_summary: string | null }>();
+  if (!a) return json({ error: "No such action with a draft" }, 404);
+  if (a.status !== "todo") return json({ error: `Already ${a.status}` }, 409);
+  const d = await draft(env, a.action_type === "connect" ? "connection_note" : "follow_up", { firstName: firstName(a.full_name), title: a.title, organization: a.organization, context: a.kade_summary });
+  if (d.by === "template") return json({ error: `Claude did not draft it: ${d.error ?? "unknown"}` }, 502);
+  const ctx = { ...(a.context_json ? JSON.parse(a.context_json) : {}), drafted_by: d.by, draft_error: null };
+  await env.DB.prepare("UPDATE review_queue SET draft = ?2, context_json = ?3, created_by_agent = ?4, updated_at = CURRENT_TIMESTAMP WHERE id = ?1")
+    .bind(a.queue_id, d.text, JSON.stringify(ctx), `engagement-engine:${d.by}`).run();
+  return json({ ok: true, text: d.text });
 }
 
 async function completePost(env: ApiEnv, id: string, who: string, body: { status?: string; text?: string }) {
@@ -161,6 +178,7 @@ export async function handle(req: Request, env: ApiEnv): Promise<Response> {
     try { return json(await buildPosts(env, todayET(), "next")); } catch (e) { return json({ error: String(e) }, 502); }
   }
   if (req.method === "POST" && parts[0] === "api" && parts[1] === "posts" && parts[2]) return completePost(env, parts[2], who, await body());
+  if (req.method === "POST" && parts[0] === "api" && parts[1] === "actions" && parts[2] && parts[3] === "redraft") return redraft(env, parts[2]);
   if (req.method === "POST" && parts[0] === "api" && parts[1] === "actions" && parts[2]) return completeAction(env, parts[2], who, await body());
   if (req.method === "POST" && parts[0] === "api" && parts[1] === "people" && parts[2] && parts[3] === "connected") return markConnected(env, parts[2], who);
   if (req.method === "POST" && parts[0] === "api" && parts[1] === "people" && parts[2] && parts[3] === "outcome") return recordOutcome(env, parts[2], who, await body());

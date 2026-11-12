@@ -6,6 +6,7 @@
  * Comments and reshares need post data (Sales Navigator alerts), which is not wired yet.
  */
 import { draft, type ClaudeEnv, type DraftKind } from "./claude";
+
 import type { SyncEnv } from "./sync";
 
 export interface DailyEnv extends SyncEnv, ClaudeEnv {}
@@ -37,7 +38,7 @@ interface Candidate {
 }
 
 const COLS = "p.id, p.full_name, p.title, p.organization, p.kade_account_id, p.kade_summary, p.kade_tier, p.kade_heat, p.pursued, p.linkedin_url";
-const firstName = (full: string) => full.trim().split(/\s+/)[0] ?? full;
+export const firstName = (full: string) => full.trim().split(/\s+/)[0] ?? full;
 
 function why(c: Candidate, kind: string): string {
   const parts = [c.pursued ? "open pursuit" : null, c.kade_tier ? `${c.kade_tier}${c.kade_heat != null ? ` (heat ${c.kade_heat.toFixed(2)})` : ""}` : null];
@@ -55,7 +56,7 @@ async function addAction(env: DailyEnv, date: string, rank: number, type: "conne
       `INSERT INTO review_queue (id, system, item_type, channel, person_id, title, draft, context_json, created_by_agent, due_date)
        VALUES (?1, 'advisory', ?2, 'linkedin', ?3, ?4, ?5, ?6, ?7, ?8)`,
     ).bind(queueId, type === "connect" ? "connection_note" : "dm", c.id, `${c.full_name}, ${c.organization ?? ""}`, d.text,
-      JSON.stringify({ tier: c.kade_tier, heat: c.kade_heat, pursued: !!c.pursued, drafted_by: d.by }), `engagement-engine:${d.by}`, date).run();
+      JSON.stringify({ tier: c.kade_tier, heat: c.kade_heat, pursued: !!c.pursued, drafted_by: d.by, draft_error: d.error ?? null }), `engagement-engine:${d.by}`, date).run();
   }
   await env.DB.prepare(
     `INSERT INTO actions (id, action_date, rank, action_type, person_id, queue_id, reason, target_url) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)`,
