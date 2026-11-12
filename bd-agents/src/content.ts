@@ -156,7 +156,8 @@ export async function buildWeekPosts(env: ContentEnv, today: string) {
   const start = raw.indexOf("[");
   const end = raw.lastIndexOf("]");
   if (start < 0 || end < start) throw new Error("Claude did not return a JSON array");
-  const drafts = (JSON.parse(raw.slice(start, end + 1)) as Draft[]).slice(0, PLAN.length);
+  const drafts = (JSON.parse(raw.slice(start, end + 1)) as Draft[]).filter((d) => d && typeof d.text === "string" && d.text.trim()).slice(0, PLAN.length);
+  if (!drafts.length) throw new Error(`Claude returned no usable posts: ${raw.slice(0, 200)}`);
 
   const stmts = drafts.map((d, i) => {
     const plan = PLAN[i];
