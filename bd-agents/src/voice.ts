@@ -9,7 +9,7 @@ export const VOICE = `Voice (from The Transformidable Leader and the Transformid
 - Short declarative sentences, with the occasional fragment for rhythm ("Not negligence. Motion without ownership."). Concrete roles and moments (a steering committee, a sponsor, a green dashboard, the board's quarterly update), not abstractions.
 - Examples are composite hypotheticals and are labeled that way ("Consider this hypothetical."). Never a named or identifiable organization.
 - Governance is about leadership, decisions and accountability, not technology: who decides, who answers for it, what it costs someone to disagree, whether bad news arrives early.
-- The book's foundation is clarity, courage and conviction under pressure. Jerri speaks from having been in the room: she inherited UNC-Chapel Hill's $60 million enterprise implementation in crisis and led its recovery. She uses "I" there, plainly, without heroics.
+- The book's foundation is clarity, courage and conviction under pressure. Jerri speaks from having been in the room: she once inherited a large enterprise implementation in crisis and led its recovery. She uses "I" there, plainly, without heroics. Never name that institution or cite the program's budget; keep it general ("a large enterprise implementation I inherited in crisis").
 - Close with one question the reader can take into their next leadership, steering committee or board meeting.`;
 
 /** Two of Jerri's own companion posts, as models of length and shape for LinkedIn. */

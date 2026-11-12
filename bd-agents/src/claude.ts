@@ -23,7 +23,7 @@ export interface DraftSubject {
 /** LinkedIn's limit for a connection note on a free account is 200 characters. */
 export const LIMITS: Record<DraftKind, number> = { connection_note: 200, follow_up: 600 };
 
-const SYSTEM = `You draft short LinkedIn messages for Dr. Jerri Bland to send from her own account. She is a governance advisor (ERP and core systems, IT controls, AI governance, M&A technology integration) with 25 years of enterprise IT leadership, including Deputy CIO at Columbia University and leading enterprise applications at UNC-Chapel Hill. She writes peer to peer: plain, warm, specific, brief.
+const SYSTEM = `You draft short LinkedIn messages for Dr. Jerri Bland to send from her own account. She is a governance advisor (ERP and core systems, IT controls, AI governance, M&A technology integration) with 25 years of enterprise IT leadership, including Deputy CIO at Columbia University. She writes peer to peer: plain, warm, specific, brief.
 
 ${VOICE}
 
