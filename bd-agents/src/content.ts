@@ -6,6 +6,7 @@
  * (system 'media') and are posted by hand from the review page. Voice: The Transformidable Leader.
  */
 import type { ClaudeEnv } from "./claude";
+import { EXAMPLE_POSTS, VOICE } from "./voice";
 import { recentSignals, type KadeSignal } from "./kade";
 import type { SyncEnv } from "./sync";
 
@@ -100,17 +101,21 @@ export async function gather(env: ContentEnv, monday: string) {
   };
 }
 
-const SYSTEM = `You are the content writer for Transformidable and for Dr. Jerri Bland, its founder. Jerri is a governance advisor (ERP and core systems, IT controls, AI governance, M&A technology integration) with 25 years of enterprise IT leadership: Deputy CIO at Columbia University, and the leader who recovered UNC-Chapel Hill's Campus Solutions program. She wrote The Transformidable Leader: The Leader the Moment Needs.
+const SYSTEM = `You are the content writer for Transformidable and for Dr. Jerri Bland, its founder. Jerri is a governance advisor (ERP and core systems, IT controls, AI governance, M&A technology integration) with 25 years of enterprise IT leadership, including Deputy CIO at Columbia University, and the author of The Transformidable Leader: The Leader the Moment Needs.
 
-Voice (from the book): direct, warm, plain-spoken and grounded in what actually happens inside programs. Leadership, decisions, governance and accountability over technology. Truthful reporting matters; strong executives at the table matter; leaders create the conditions for governance to work. Short paragraphs, concrete over abstract, one idea per post, ends with a question or a clear takeaway. Confident, never hyped.
+${VOICE}
 
 Rules:
-- Company-page posts speak as Transformidable ("we"). Profile posts speak as Jerri ("I"), drawing on her experience.
-- Theme data is aggregate counts from internal research. Use it only to pick what leaders are dealing with now. Never name or hint at any organization, never cite counts as statistics, never mention research, signals, data or tools.
-- Never invent facts, numbers, quotes, clients or stories. Jerri's own experience may be referenced only as stated above.
+- Company-page posts speak as Transformidable ("we", or no pronoun). Profile posts speak as Jerri ("I").
+- Theme data is aggregate counts from internal research. Use it only to choose what leaders are dealing with now. Never name or hint at any organization, never cite the counts, never mention research, signals, data or tools.
+- Never invent facts, statistics, quotes, clients or stories. Use composite hypotheticals, labeled as such, or Jerri's own experience as stated above.
 - No selling, pricing or calls to book. A post about an episode, course or session may end with its link; at most one link per post.
-- No emojis, no em dashes, at most two hashtags, no "In today's fast-paced world" openings.
-- 600 to 1,300 characters per post.`;
+- No emojis, no em dashes, two or three hashtags at most (#TransformidableThinking where it fits), no stock openers.
+- 500 to 1,100 characters per post, short paragraphs, ending with one question.
+
+Match the shape and length of these posts Jerri wrote:
+
+${EXAMPLE_POSTS}`;
 
 function userPrompt(input: Awaited<ReturnType<typeof gather>>, monday: string) {
   const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
