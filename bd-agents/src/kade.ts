@@ -25,6 +25,9 @@ export interface KadePerson {
   /** Why the organization scored as it did (KADE screening summary). */
   summary: string | null;
   pursued: number;
+  /** Where contact stands in KADE: open, in_conversation, paused (until paused_until) or stopped. */
+  contact_state?: string;
+  paused_until?: string | null;
   updated_at: string;
 }
 
@@ -64,6 +67,35 @@ async function get<T>(env: KadeEnv, path: string, params: Record<string, string 
     throw new KadeError(res.status, `KADE ${path}: HTTP ${res.status} ${body.slice(0, 300)}`);
   }
   return res.json<T>();
+}
+
+export interface ContactWrite {
+  personId: string;
+  kind: string;
+  channel: string;
+  occurredAt: string;
+  externalId: string;
+  recordedBy: string | null;
+  note: string | null;
+}
+export interface ContactWriteResult { id: string; duplicate: boolean; state: { state: string; paused_until: string | null } }
+
+/** Records a touch or outcome on the person in KADE (the BD integration's only write). */
+export async function recordContact(env: KadeEnv, body: ContactWrite): Promise<ContactWriteResult> {
+  if (!env.KADE_ACCESS_CLIENT_SECRET) throw new KadeError(0, "KADE_ACCESS_CLIENT_SECRET is not set");
+  const res = await fetch(new URL("/api/integrations/bd/contact-activity", env.KADE_API_URL), {
+    method: "POST",
+    headers: {
+      "CF-Access-Client-Id": env.KADE_ACCESS_CLIENT_ID,
+      "CF-Access-Client-Secret": env.KADE_ACCESS_CLIENT_SECRET,
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify(body),
+    redirect: "manual",
+  });
+  if (res.status !== 201) throw new KadeError(res.status, `KADE contact-activity: HTTP ${res.status} ${(await res.text()).slice(0, 300)}`);
+  return res.json<ContactWriteResult>();
 }
 
 export const PAGE_SIZE = 500;

@@ -70,17 +70,19 @@ export async function buildToday(env: DailyEnv, date = todayET()) {
   if (existing.results.length) return { date, skipped: true, have };
 
   const touchedToday = `NOT EXISTS (SELECT 1 FROM touches t WHERE t.person_id = p.id AND date(t.occurred_at) = ?1)`;
+  // KADE's contact history (contact_state): no suggestions while in a conversation, paused (not interested) or stopped.
+  const CONTACT_OPEN = `(p.contact_state = 'open' OR (p.contact_state = 'paused' AND p.paused_until <= ?1))`;
 
   const followUps = (await env.DB.prepare(
     `SELECT ${COLS} FROM people p
-     WHERE p.connection_status = 'connected' AND p.do_not_contact = 0 AND p.connected_at >= date(?1, '-14 days') AND ${touchedToday}
+     WHERE p.connection_status = 'connected' AND p.do_not_contact = 0 AND ${CONTACT_OPEN} AND p.connected_at >= date(?1, '-14 days') AND ${touchedToday}
        AND NOT EXISTS (SELECT 1 FROM actions a WHERE a.person_id = p.id AND a.action_type = 'follow_up')
      ORDER BY p.connected_at LIMIT ?2`,
   ).bind(date, FOLLOW_UPS_PER_DAY).all<Candidate>()).results;
 
   const pool = (await env.DB.prepare(
     `SELECT ${COLS} FROM people p
-     WHERE p.in_kade_scope = 1 AND p.linkedin_url IS NOT NULL AND p.connection_status = 'none' AND p.do_not_contact = 0 AND ${touchedToday}
+     WHERE p.in_kade_scope = 1 AND p.linkedin_url IS NOT NULL AND p.connection_status = 'none' AND p.do_not_contact = 0 AND ${CONTACT_OPEN} AND ${touchedToday}
        AND NOT EXISTS (SELECT 1 FROM actions a WHERE a.person_id = p.id AND a.action_type = 'connect'
                        AND (a.status <> 'skipped' OR a.action_date >= date(?1, '-30 days')))
        AND (SELECT COUNT(*) FROM actions a JOIN people q ON q.id = a.person_id

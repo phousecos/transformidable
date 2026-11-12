@@ -7,6 +7,7 @@ import { buildPosts, weekOf, type ContentEnv } from "./content";
 import { draft } from "./claude";
 import { buildToday, firstName, todayET, type DailyEnv } from "./daily";
 import { kadeOrgUrl } from "./kade";
+import { flushTouches, KIND_BY_ACTION, OUTCOMES, touchStatement } from "./contact";
 import { PAGE } from "./page";
 
 export interface ApiEnv extends DailyEnv, ContentEnv, AuthEnv {}
@@ -16,7 +17,7 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
 async function today(env: ApiEnv, date: string) {
   const actions = await env.DB.prepare(
     `SELECT a.id, a.action_date, a.rank, a.action_type, a.status, a.reason, a.target_url, a.done_at,
-       p.id AS person_id, p.full_name, p.title, p.organization, p.kade_account_id, p.kade_tier, p.kade_heat, p.pursued, p.connection_status,
+       p.id AS person_id, p.full_name, p.title, p.organization, p.kade_account_id, p.kade_tier, p.kade_heat, p.pursued, p.connection_status, p.contact_state, p.paused_until,
        q.id AS queue_id, COALESCE(q.final_text, q.draft) AS text, q.draft, json_extract(q.context_json, '$.drafted_by') AS drafted_by
      FROM actions a JOIN people p ON p.id = a.person_id LEFT JOIN review_queue q ON q.id = a.queue_id
      WHERE a.action_date = ?1 ORDER BY a.rank`,
@@ -25,6 +26,13 @@ async function today(env: ApiEnv, date: string) {
     `SELECT id AS person_id, full_name, title, organization, linkedin_url, invited_at FROM people
      WHERE connection_status = 'pending' ORDER BY invited_at DESC LIMIT 100`,
   ).all();
+  // People to record a reply or meeting for: in a conversation, or connected in the last 60 days.
+  const contacts = await env.DB.prepare(
+    `SELECT id AS person_id, full_name, title, organization, linkedin_url, connection_status, connected_at, contact_state, paused_until, kade_account_id FROM people
+     WHERE contact_state = 'in_conversation' OR (connection_status = 'connected' AND connected_at >= date('now', '-60 days') AND contact_state = 'open')
+     ORDER BY contact_state = 'in_conversation' DESC, connected_at DESC LIMIT 100`,
+  ).all<{ kade_account_id: string | null }>();
+  const unsent = await env.DB.prepare("SELECT COUNT(*) AS n FROM touches WHERE kade_sent_at IS NULL AND kade_kind IS NOT NULL").first<{ n: number }>();
   const gaps = await env.DB.prepare(
     `SELECT kade_account_id, organization, entity_type, state_province, kade_tier, kade_heat, kade_summary, pursued, status
      FROM research_gaps WHERE status = 'open' ORDER BY pursued DESC, kade_heat DESC LIMIT 50`,
@@ -40,6 +48,8 @@ async function today(env: ApiEnv, date: string) {
     date,
     actions: actions.results.map((a) => ({ ...a, kade_url: a.kade_account_id ? kadeOrgUrl(env, String(a.kade_account_id)) : null })),
     pending: pending.results,
+    contacts: contacts.results.map((p) => ({ ...p, kade_url: p.kade_account_id ? kadeOrgUrl(env, p.kade_account_id) : null })),
+    unsentToKade: unsent?.n ?? 0,
     gaps: gaps.results.map((g) => ({ ...g, kade_url: kadeOrgUrl(env, g.kade_account_id) })),
     openGaps: openGaps?.n ?? 0,
     week: monday,
@@ -65,17 +75,16 @@ async function completeAction(env: ApiEnv, id: string, who: string, body: { stat
       `UPDATE review_queue SET final_text = ?2, status = ?3, approved_by = ?4, approved_at = ?5, sent_at = ?6, updated_at = ?5 WHERE id = ?1`,
     ).bind(a.queue_id, text, done ? "sent" : "rejected", who, now, done ? now : null));
   }
+  const touchId = crypto.randomUUID();
   if (done) {
-    const touch = { connect: "connection_request", follow_up: "dm", withdraw_invite: "invite_withdrawn" }[a.action_type] ?? a.action_type;
-    if (a.action_type !== "withdraw_invite") {
-      stmts.push(env.DB.prepare("INSERT INTO touches (id, person_id, channel, touch_type, queue_id, occurred_at, by_user) VALUES (?1, ?2, 'linkedin', ?3, ?4, ?5, ?6)")
-        .bind(crypto.randomUUID(), a.person_id, touch, a.queue_id, now, who));
-    }
+    // Recorded here first, then on the person in KADE (contact.ts).
+    stmts.push(touchStatement(env.DB, { id: touchId, personId: a.person_id, kind: KIND_BY_ACTION[a.action_type] ?? a.action_type, queueId: a.queue_id, at: now, by: who }));
     if (a.action_type === "connect") stmts.push(env.DB.prepare("UPDATE people SET connection_status = 'pending', invited_at = ?2, updated_at = ?2 WHERE id = ?1").bind(a.person_id, now));
     if (a.action_type === "withdraw_invite") stmts.push(env.DB.prepare("UPDATE people SET connection_status = 'withdrawn', updated_at = ?2 WHERE id = ?1").bind(a.person_id, now));
   }
   await env.DB.batch(stmts);
-  return json({ ok: true });
+  const kade = done ? await flushTouches(env, [touchId]).catch((e) => ({ sent: 0, failed: 1, waiting: 1, error: String(e) })) : null;
+  return json({ ok: true, kade });
 }
 
 /** Re-asks Claude for a LinkedIn note or follow-up that fell back to the template. */
@@ -107,11 +116,37 @@ async function completePost(env: ApiEnv, id: string, who: string, body: { status
   return json({ ok: true });
 }
 
-async function markConnected(env: ApiEnv, personId: string) {
+async function markConnected(env: ApiEnv, personId: string, who: string) {
   const now = new Date().toISOString();
   const r = await env.DB.prepare("UPDATE people SET connection_status = 'connected', connected_at = ?2, updated_at = ?2 WHERE id = ?1 AND connection_status = 'pending'")
     .bind(personId, now).run();
-  return (r.meta.changes ?? 0) ? json({ ok: true }) : json({ error: "Not a pending invite" }, 409);
+  if (!(r.meta.changes ?? 0)) return json({ error: "Not a pending invite" }, 409);
+  const touchId = crypto.randomUUID();
+  await touchStatement(env.DB, { id: touchId, personId, kind: "connect_accepted", at: now, by: who }).run();
+  return json({ ok: true, kade: await flushTouches(env, [touchId]).catch((e) => ({ error: String(e) })) });
+}
+
+/**
+ * A reply, a meeting, not interested, asked to stop, or a closed conversation. Recorded on the person
+ * in KADE, which decides what it means everywhere; here, the person's open suggestions are skipped.
+ */
+async function recordOutcome(env: ApiEnv, personId: string, who: string, body: { kind?: string; note?: string }) {
+  const outcome = body.kind ? OUTCOMES[body.kind] : undefined;
+  if (!outcome || !body.kind) return json({ error: `kind must be one of ${Object.keys(OUTCOMES).join(", ")}` }, 422);
+  const person = await env.DB.prepare("SELECT id FROM people WHERE id = ?1").bind(personId).first();
+  if (!person) return json({ error: "No such person" }, 404);
+  const now = new Date().toISOString();
+  const touchId = crypto.randomUUID();
+  const note = typeof body.note === "string" && body.note.trim() ? body.note.trim().slice(0, 2000) : null;
+  await env.DB.batch([
+    touchStatement(env.DB, { id: touchId, personId, kind: body.kind, at: now, by: who, note }),
+    env.DB.prepare(`UPDATE people SET contact_state = ?2, paused_until = CASE WHEN ?2 = 'paused' THEN date('now', '+365 days') ELSE NULL END,
+       do_not_contact = CASE WHEN ?2 = 'stopped' THEN 1 ELSE do_not_contact END, updated_at = ?3 WHERE id = ?1`).bind(personId, outcome.state, now),
+    // Today's open suggestions for them no longer apply (a closed conversation leaves them as they are).
+    ...(body.kind === "conversation_closed" ? [] : [env.DB.prepare("UPDATE actions SET status = 'skipped', done_at = ?2, outcome = ?3 WHERE person_id = ?1 AND status = 'todo'")
+      .bind(personId, now, `${outcome.label} (recorded by ${who})`)]),
+  ]);
+  return json({ ok: true, kade: await flushTouches(env, [touchId]).catch((e) => ({ error: String(e) })) });
 }
 
 async function decideGap(env: ApiEnv, id: string, who: string, body: { status?: string }) {
@@ -145,7 +180,9 @@ export async function handle(req: Request, env: ApiEnv): Promise<Response> {
   if (req.method === "POST" && parts[0] === "api" && parts[1] === "posts" && parts[2]) return completePost(env, parts[2], who, await body());
   if (req.method === "POST" && parts[0] === "api" && parts[1] === "actions" && parts[2] && parts[3] === "redraft") return redraft(env, parts[2]);
   if (req.method === "POST" && parts[0] === "api" && parts[1] === "actions" && parts[2]) return completeAction(env, parts[2], who, await body());
-  if (req.method === "POST" && parts[0] === "api" && parts[1] === "people" && parts[2] && parts[3] === "connected") return markConnected(env, parts[2]);
+  if (req.method === "POST" && parts[0] === "api" && parts[1] === "people" && parts[2] && parts[3] === "connected") return markConnected(env, parts[2], who);
+  if (req.method === "POST" && parts[0] === "api" && parts[1] === "people" && parts[2] && parts[3] === "outcome") return recordOutcome(env, parts[2], who, await body());
+  if (req.method === "POST" && url.pathname === "/api/kade/flush") return json(await flushTouches(env));
   if (req.method === "POST" && parts[0] === "api" && parts[1] === "gaps" && parts[2]) return decideGap(env, decodeURIComponent(parts[2]), who, await body());
   return json({ error: "Not found" }, 404);
 }

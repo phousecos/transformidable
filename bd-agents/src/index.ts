@@ -10,6 +10,7 @@ import { buildPosts } from "./content";
 import { buildToday, todayET } from "./daily";
 import { syncGaps } from "./gaps";
 import { syncPeople } from "./sync";
+import { flushTouches } from "./contact";
 
 export interface Env extends ApiEnv {}
 
@@ -36,6 +37,8 @@ export default {
         // Each step runs even if an earlier one failed: yesterday's people still make a usable list.
         await step("kade-people-sync", () => syncPeople(env));
         await step("kade-gaps-sync", () => syncGaps(env));
+        // Touches KADE did not take yet (offline earlier) are retried first, so today's states are current.
+        await step("kade-contact-flush", () => flushTouches(env));
         await step("daily-list", () => buildToday(env));
         // Mondays (New York): draft posts for this week's empty days (days drafted earlier are kept).
         const today = todayET();
