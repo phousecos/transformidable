@@ -130,38 +130,34 @@ ${JSON.stringify(input, null, 2)}
 
 Mix the sources across the week: at least two posts from the themes, one from a podcast episode if there is one, and one about an upcoming session or course if there is one. Do not repeat a topic.
 
-Call save_posts once with all five posts, in schedule order.`;
+Return all five posts in schedule order. Use an empty string for link when there is none.`;
 }
 
 interface Draft { day: string; channel: "page" | "profile"; theme: string; source: string; link: string | null; text: string }
 
-/** Structured output: Claude must call this tool, so the posts always arrive as data. */
-const SAVE_POSTS = {
-  name: "save_posts",
-  description: "Save the week's five LinkedIn post drafts, in schedule order.",
-  input_schema: {
-    type: "object",
-    properties: {
-      posts: {
-        type: "array",
-        minItems: 5,
-        maxItems: 5,
-        items: {
-          type: "object",
-          properties: {
-            day: { type: "string", description: "Monday to Friday" },
-            channel: { type: "string", enum: ["page", "profile"] },
-            theme: { type: "string", description: "A few words naming the topic" },
-            source: { type: "string", enum: ["themes", "podcast", "event", "course"] },
-            link: { type: ["string", "null"], description: "Episode, course or registration URL, or null" },
-            text: { type: "string", description: "The full post text" },
-          },
-          required: ["day", "channel", "theme", "source", "text"],
+/** Structured output (output_config.format): the reply text is JSON matching this schema. */
+const POSTS_SCHEMA = {
+  type: "object",
+  properties: {
+    posts: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          day: { type: "string" },
+          channel: { type: "string", enum: ["page", "profile"] },
+          theme: { type: "string" },
+          source: { type: "string", enum: ["themes", "podcast", "event", "course"] },
+          link: { type: "string", description: "Episode, course or registration URL, or empty" },
+          text: { type: "string" },
         },
+        required: ["day", "channel", "theme", "source", "link", "text"],
+        additionalProperties: false,
       },
     },
-    required: ["posts"],
   },
+  required: ["posts"],
+  additionalProperties: false,
 };
 
 export async function buildWeekPosts(env: ContentEnv, today: string) {
@@ -181,19 +177,21 @@ export async function buildWeekPosts(env: ContentEnv, today: string) {
       model,
       max_tokens: 8000,
       system: SYSTEM,
-      tools: [SAVE_POSTS],
-      tool_choice: { type: "tool", name: "save_posts" },
+      output_config: { format: { type: "json_schema", schema: POSTS_SCHEMA } },
       messages: [{ role: "user", content: userPrompt(input, monday) }],
     }),
   });
   if (!res.ok) throw new Error(`Claude: HTTP ${res.status} ${(await res.text()).slice(0, 200)}`);
-  const body = await res.json<{ stop_reason?: string; content: { type: string; name?: string; input?: { posts?: Draft[] }; text?: string }[] }>();
-  const call = body.content.find((c) => c.type === "tool_use" && c.name === "save_posts");
-  const drafts = (call?.input?.posts ?? []).filter((d) => d && typeof d.text === "string" && d.text.trim()).slice(0, PLAN.length);
-  if (!drafts.length) {
-    const said = body.content.filter((c) => c.type === "text").map((c) => c.text ?? "").join(" ").slice(0, 200);
-    throw new Error(`Claude returned no posts (stop: ${body.stop_reason ?? "unknown"})${said ? `: ${said}` : ""}`);
+  const body = await res.json<{ stop_reason?: string; content: { type: string; text?: string }[] }>();
+  const text = body.content.filter((c) => c.type === "text").map((c) => c.text ?? "").join("");
+  let parsed: { posts?: Draft[] } = {};
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    throw new Error(`Claude's reply was not valid JSON (stop: ${body.stop_reason ?? "unknown"}): ${text.slice(0, 200)}`);
   }
+  const drafts = (parsed.posts ?? []).filter((d) => d && typeof d.text === "string" && d.text.trim()).slice(0, PLAN.length);
+  if (!drafts.length) throw new Error(`Claude returned no posts (stop: ${body.stop_reason ?? "unknown"})`);
 
   const stmts = drafts.map((d, i) => {
     const plan = PLAN[i];
