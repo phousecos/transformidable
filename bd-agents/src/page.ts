@@ -58,7 +58,7 @@ button:disabled { opacity:.5; cursor:default; }
 var LIMITS = { connect: 200, follow_up: 600 };
 var LABELS = { connect: "Connect", follow_up: "Follow up", withdraw_invite: "Withdraw invite" };
 function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
-function toast(msg) { var s = document.getElementById("status"); s.textContent = msg; s.style.display = "block"; clearTimeout(toast.t); toast.t = setTimeout(function () { s.style.display = "none"; }, 2500); }
+function toast(msg) { var s = document.getElementById("status"); s.textContent = msg; s.style.display = "block"; clearTimeout(toast.t); toast.t = setTimeout(function () { s.style.display = "none"; }, 8000); }
 function post(path, body) {
   return fetch(path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body || {}) })
     .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || r.status); return j; }); });
@@ -200,7 +200,15 @@ function load() {
       pbox.textContent = "";
       pbox.appendChild(el("p", "empty", "No posts drafted for the week of " + d.week + " yet."));
       var pb = el("button", "primary", "Draft this week's posts now");
-      pb.onclick = function () { pb.disabled = true; pb.textContent = "Drafting…"; post("/api/posts/build").then(load).catch(function (e) { toast(e.message); pb.disabled = false; pb.textContent = "Draft this week's posts now"; }); };
+      pb.onclick = function () {
+        pb.disabled = true; pb.textContent = "Drafting… (up to a minute)";
+        post("/api/posts/build").then(function (r) {
+          if (r.skipped) toast("Not drafted: " + (r.reason || ("this week already has " + r.existing + " posts")));
+          else if (!r.posts) toast("Claude returned no posts. Try again.");
+          else toast(r.posts + " posts drafted.");
+          return load();
+        }).catch(function (e) { toast(e.message); }).then(function () { pb.disabled = false; pb.textContent = "Draft this week's posts now"; });
+      };
       pbox.appendChild(pb);
     } else fill("posts", d.posts, postCard, "");
     fill("pending", d.pending, pendingCard, "No pending invites.");
