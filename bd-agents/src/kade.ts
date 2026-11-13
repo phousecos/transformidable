@@ -139,3 +139,18 @@ export interface KadeResults {
 export function results(env: KadeEnv, weeks: number) {
   return get<KadeResults>(env, "results", { weeks });
 }
+
+/** The weekly plan KADE writes each Monday (KADE docs/weekly-plan.md); null until the first one. */
+export interface KadeWeekPlan {
+  weekOf: string; generatedAt: string; emailedAt: string | null;
+  decide: { pursuits: { organizationId: string; name: string; stage: string; nextStep: string | null; nextStepDate: string | null; quietDays: number; ask: string }[] };
+  conversations: { personId: string; name: string; organization: string | null; lastReplyAt: string; waitingOnYou: boolean }[];
+  inMotion: { invitesPending: number; firstEmailFollowUp: string | null; emailsSentLastWeek: number; draftsWaiting: number; draftsPerDay: number };
+  market: { hotAccounts: number; touchedAccounts: number; researchedLastWeek: number; newSignals: number; mix: { label: string; n: number }[] };
+  results: { lastWeek: Record<string, string | number> | null; weekBefore: Record<string, string | number> | null };
+  suggestions: { title: string; why: string; hours: number }[];
+  suggestionsError?: string;
+}
+export function weekPlan(env: KadeEnv) {
+  return get<{ plan: KadeWeekPlan | null }>(env, "week", {});
+}

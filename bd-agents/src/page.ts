@@ -116,6 +116,7 @@ form.stats .wide { grid-column:1 / -1; }
       <span class="muted small" id="me"></span>
     </div>
     <nav aria-label="Sections">
+      <a href="#week" data-tab="week">This week</a>
       <a href="#today" data-tab="today">Today</a>
       <a href="#posts" data-tab="posts">Posts <span class="badge" id="postbadge" hidden></span></a>
       <a href="#results" data-tab="results">Results</a>
@@ -176,6 +177,24 @@ form.stats .wide { grid-column:1 / -1; }
     <section class="main panel" id="postdetail"></section>
   </section>
 
+  <section id="tab-week" hidden style="display:flex;flex-direction:column;gap:20px">
+    <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:8px">
+      <h2 id="weektitle">This week</h2><span class="muted small" id="weeknote">Written by KADE each Monday at 6:00 from its records.</span>
+    </div>
+    <div class="split">
+      <section class="main" style="display:flex;flex-direction:column;gap:20px">
+        <section class="panel"><h2 style="font-size:16px">Decide</h2><p class="muted small" style="margin:0">Only you can make these calls.</p><div id="wkdecide"></div></section>
+        <section class="panel"><h2 style="font-size:16px">Suggested this week</h2><div id="wksuggest"></div></section>
+        <section class="panel"><h2 style="font-size:16px">Where the market moved</h2><div id="wkmarket"></div></section>
+      </section>
+      <div class="side">
+        <section class="panel"><h2 style="font-size:16px">In motion</h2><div id="wkmotion"></div></section>
+        <section class="panel"><h2 style="font-size:16px">Posts this week</h2><div id="wkposts"></div></section>
+        <section class="panel"><h2 style="font-size:16px">Last week</h2><div id="wkresults"></div></section>
+      </div>
+    </div>
+  </section>
+
   <section id="tab-results" hidden style="display:flex;flex-direction:column;gap:20px">
     <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:8px">
       <h2>This week so far</h2><span class="muted small">Counted in KADE from the contact history. Weeks start Monday.</span>
@@ -214,7 +233,7 @@ var MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oc
 var STATS = [["followers_profile", "Followers, you"], ["followers_page", "Followers, page"], ["impressions_profile", "Impressions, you"], ["impressions_page", "Impressions, page"], ["profile_views", "Profile views"]];
 var ROWS = [["connect_sent", "Invites sent"], ["connect_accepted", "Accepted"], ["rate", "Accept rate"], ["message_sent", "Messages"], ["comment", "Comments"],
   ["reply", "Replies"], ["meeting_booked", "Meetings booked"], ["pursuits_opened", "Pursuits opened"], ["posts", "Posts published"]];
-var state = { today: null, posts: [], picked: null, showAllPending: false, results: null };
+var state = { today: null, posts: [], picked: null, showAllPending: false, results: null, week: null };
 
 function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
 function add(parent) { for (var i = 1; i < arguments.length; i++) if (arguments[i]) parent.appendChild(arguments[i]); return parent; }
@@ -254,13 +273,14 @@ function counter(ta, limit) {
 // ---- Tabs ----
 function showTab() {
   var tab = (location.hash || "#today").slice(1);
-  if (["today", "posts", "results"].indexOf(tab) < 0) tab = "today";
-  ["today", "posts", "results"].forEach(function (t) {
+  if (["week", "today", "posts", "results"].indexOf(tab) < 0) tab = "today";
+  ["week", "today", "posts", "results"].forEach(function (t) {
     document.getElementById("tab-" + t).hidden = t !== tab;
     var a = document.querySelector('nav a[data-tab="' + t + '"]');
     if (t === tab) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
   });
   if (tab === "results" && !state.results) loadResults();
+  if (tab === "week" && !state.week) loadWeek();
 }
 window.addEventListener("hashchange", showTab);
 
@@ -562,6 +582,61 @@ function mondays(n) {
   return out;
 }
 function pct(a, b) { return b ? Math.round(100 * a / b) + "%" : "–"; }
+// ---- This week (KADE's weekly plan, plus this week's posts and the LinkedIn numbers) ----
+function loadWeek() {
+  return fetch("/api/week").then(function (r) { return r.json(); }).then(function (d) { state.week = d; renderWeek(); })
+    .catch(function (e) { document.getElementById("wkdecide").textContent = "Could not load the plan: " + e.message; });
+}
+function line(parent, text, cls) { return add(parent, el("p", cls || "", text)); }
+function renderWeek() {
+  var d = state.week, p = d.plan;
+  ["wkdecide", "wksuggest", "wkmarket", "wkmotion", "wkposts", "wkresults"].forEach(function (id) { document.getElementById(id).textContent = ""; });
+  var posts = document.getElementById("wkposts");
+  if (!d.posts.length) line(posts, "No posts scheduled this week.", "empty");
+  d.posts.forEach(function (x) {
+    add(posts, add(el("p", "small"), el("b", "", nice(x.due_date) + " "), document.createTextNode((x.item_type === "post_page" ? "Company page" : "Your profile") + ": " + (x.title || "Post") + " "), el("span", "muted", "(" + x.status + ")")));
+  });
+  if (!p || p.error) {
+    line(document.getElementById("wkdecide"), p && p.error ? "KADE's plan is not available: " + p.error : "No plan yet. KADE writes it Monday at 6:00 (or from KADE, Admin, Gmail: Write this week's plan now).", "empty");
+    return;
+  }
+  document.getElementById("weektitle").textContent = "Week of " + nice(p.weekOf);
+  document.getElementById("weeknote").textContent = "Written by KADE " + new Date(p.generatedAt).toLocaleString() + " from its records.";
+  var decide = document.getElementById("wkdecide");
+  var waiting = p.conversations.filter(function (c) { return c.waitingOnYou; });
+  if (!p.decide.pursuits.length && !waiting.length) line(decide, "Nothing waiting on you.", "empty");
+  p.decide.pursuits.forEach(function (x) {
+    var a = el("a", "", x.name); a.href = x.kade_url; a.target = "_blank"; a.rel = "noopener";
+    add(decide, add(el("div", "item"), add(el("p", ""), el("b", "", "Pursuit: "), a, el("span", "muted small", " · " + x.stage)), el("p", "small", x.ask)));
+  });
+  waiting.forEach(function (c) {
+    var a = el("a", "", c.name); a.href = c.kade_url; a.target = "_blank"; a.rel = "noopener";
+    add(decide, add(el("div", "item"), add(el("p", ""), el("b", "", "Reply to "), a, el("span", "muted small", c.organization ? " · " + c.organization : "")),
+      el("p", "small muted", "They wrote " + new Date(c.lastReplyAt).toLocaleDateString() + "; nothing sent since.")));
+  });
+  var sug = document.getElementById("wksuggest");
+  if (!p.suggestions.length) line(sug, p.suggestionsError ? "No suggestions this week (" + p.suggestionsError + ")." : "No suggestions this week.", "empty");
+  p.suggestions.forEach(function (x) {
+    add(sug, add(el("div", "item"), add(el("p", ""), el("b", "", x.title), el("span", "muted small", " · about " + x.hours + " h")), el("p", "small", x.why)));
+  });
+  var m = p.market, mk = document.getElementById("wkmarket");
+  line(mk, m.newSignals.toLocaleString() + " new signals last week across " + m.hotAccounts.toLocaleString() + " hot accounts. " + m.touchedAccounts + " have had any contact; " + m.researchedLastWeek + " were researched last week.", "small");
+  var ul = el("ul", "small");
+  m.mix.forEach(function (x) { add(ul, el("li", "", x.label + ": " + x.n.toLocaleString())); });
+  mk.appendChild(ul);
+  var mo = p.inMotion, motion = document.getElementById("wkmotion");
+  line(motion, mo.invitesPending + " LinkedIn invitations pending" + (mo.firstEmailFollowUp ? "; unanswered ones become email drafts from " + nice(mo.firstEmailFollowUp) : "") + ".", "small");
+  line(motion, mo.draftsPerDay + " email drafts each weekday morning; " + mo.draftsWaiting + " waiting in your Drafts.", "small");
+  line(motion, mo.emailsSentLastWeek + " emails sent last week.", "small");
+  line(motion, p.conversations.length + " open conversation" + (p.conversations.length === 1 ? "" : "s") + ".", "small");
+  var res = document.getElementById("wkresults"), lw = p.results.lastWeek || {}, wb = p.results.weekBefore || {};
+  [["connect_sent", "Invites sent"], ["connect_accepted", "Accepted"], ["message_sent", "Messages and emails"], ["reply", "Replies"], ["meeting_booked", "Meetings"]].forEach(function (k) {
+    line(res, k[1] + ": " + (lw[k[0]] || 0) + " (week before: " + (wb[k[0]] || 0) + ")", "small");
+  });
+  var mon = mondays(2)[1];
+  line(res, d.linkedinLastEntered && d.linkedinLastEntered >= mon ? "LinkedIn numbers entered for the week of " + nice(d.linkedinLastEntered) + "." : "LinkedIn numbers for last week aren't entered yet (Results tab).", "small muted");
+}
+
 function loadResults() {
   return fetch("/api/results").then(function (r) { return r.json(); }).then(function (d) { state.results = d; renderResults(); })
     .catch(function (e) { document.getElementById("weektable").textContent = "Could not load results: " + e.message; });
