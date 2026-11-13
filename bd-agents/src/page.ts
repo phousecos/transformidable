@@ -213,9 +213,20 @@ var state = { today: null, posts: [], picked: null, showAllPending: false, resul
 function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
 function add(parent) { for (var i = 1; i < arguments.length; i++) if (arguments[i]) parent.appendChild(arguments[i]); return parent; }
 function toast(msg) { var s = document.getElementById("toast"); s.textContent = msg; s.style.display = "block"; clearTimeout(toast.t); toast.t = setTimeout(function () { s.style.display = "none"; }, 6000); }
+// Cloudflare Access answers an expired sign-in with a redirect to its login page, which a fetch cannot
+// follow ("Failed to fetch"). Not followed here, so the page can say what happened.
+var EXPIRED = "Your sign-in to this page has expired. Reload the page to sign in again; nothing was saved.";
 function post(path, body) {
-  return fetch(path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body || {}) })
-    .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || r.status); return j; }); });
+  return fetch(path, { method: "POST", redirect: "manual", headers: { "content-type": "application/json" }, body: JSON.stringify(body || {}) })
+    .catch(function () { throw new Error("Could not reach the server. Check your connection and try again; nothing was saved."); })
+    .then(function (r) {
+      if (r.type === "opaqueredirect" || r.status === 401 || r.status === 403) throw new Error(EXPIRED);
+      return r.text().then(function (t) {
+        var j; try { j = JSON.parse(t); } catch (e) { throw new Error(r.ok ? "Unexpected reply from the server" : "Server error " + r.status + "; nothing was saved."); }
+        if (!r.ok) throw new Error(j.error || r.status);
+        return j;
+      });
+    });
 }
 function who(p) { return [p.title, p.organization].filter(Boolean).join(", "); }
 function button(text, cls, onclick) { var b = el("button", "btn" + (cls ? " " + cls : ""), text); b.type = "button"; if (onclick) b.onclick = onclick; return b; }
