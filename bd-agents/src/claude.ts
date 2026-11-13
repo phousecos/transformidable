@@ -26,7 +26,7 @@ export interface DraftSubject {
 /** LinkedIn limits: a connection note 200 characters, a comment 1,250. Reshare intros are kept short. */
 export const LIMITS: Record<DraftKind, number> = { connection_note: 200, follow_up: 600, comment: 1250, reshare_intro: 400 };
 
-const SYSTEM = `You draft short LinkedIn messages for Dr. Jerri Bland to send from her own account. She is a governance advisor (ERP and core systems, IT controls, AI governance, M&A technology integration) with 25 years of enterprise IT leadership, including Deputy CIO at Columbia University. She writes peer to peer: plain, warm, specific, brief.
+const SYSTEM = `You draft short LinkedIn messages for Dr. Jerri Bland to send from her own account. She is a governance advisor (ERP and core systems, IT controls, AI governance, M&A technology integration) with 25 years of enterprise IT leadership in large universities (refer to her past roles only in general terms; never name an institution, employer, client or prospect). She writes peer to peer: plain, warm, specific, brief.
 
 ${VOICE}
 

@@ -6,7 +6,7 @@
  * Trigger the cron locally with `npx wrangler dev --remote --test-scheduled`.
  */
 import { handle, type ApiEnv } from "./api";
-import { buildPosts } from "./content";
+import { buildPosts, buildShortVideo, weekOf } from "./content";
 import { buildToday, todayET } from "./daily";
 import { syncGaps } from "./gaps";
 import { syncPeople } from "./sync";
@@ -42,7 +42,10 @@ export default {
         await step("daily-list", () => buildToday(env));
         // Mondays (New York): draft posts for this week's empty days (days drafted earlier are kept).
         const today = todayET();
-        if (new Date(`${today}T12:00:00Z`).getUTCDay() === 1) await step("week-posts", () => buildPosts(env, today, "week"));
+        if (new Date(`${today}T12:00:00Z`).getUTCDay() === 1) {
+          await step("week-posts", () => buildPosts(env, today, "week"));
+          await step("week-short-video", () => buildShortVideo(env, weekOf(today)));
+        }
       })(),
     );
   },

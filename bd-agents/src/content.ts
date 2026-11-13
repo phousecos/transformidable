@@ -9,7 +9,7 @@
  */
 import type { ClaudeEnv } from "./claude";
 import { EXAMPLE_POSTS, VOICE } from "./voice";
-import { recentSignals, type KadeSignal } from "./kade";
+import { events as kadeEvents, recentSignals, type KadeSignal } from "./kade";
 import type { SyncEnv } from "./sync";
 
 export interface ContentEnv extends SyncEnv, ClaudeEnv {
@@ -95,12 +95,13 @@ async function json<T>(url: string, init?: RequestInit, via?: Fetcher): Promise<
 export async function gather(env: ContentEnv, monday: string) {
   const site = (env.SITE_URL || "https://betransformidable.com").replace(/\/$/, "");
   const since = addDays(monday, -14);
-  const [signals, eps, courses, feed] = await Promise.all([
+  const [signals, eps, courses, feed, kev] = await Promise.all([
     recentSignals(env, since).catch(() => null),
     json<{ docs: Episode[] }>(`${site}/api/podcast-episodes?where[status][equals]=published&sort=-publishDate&limit=3&depth=0`),
     json<{ docs: Course[] }>(`${site}/api/courses?limit=20&depth=0`),
     json<{ series: { slug: string; name: string; tagline: string; registerUrl: string; sessions: { startsAt: string }[] }[] }>(
       "https://briefings.betransformidable.com/api/public/briefings.json", undefined, env.BRIEFINGS),
+    kadeEvents(env).catch(() => null),
   ]);
   const horizon = addDays(monday, 35);
   const sessions: Session[] = (feed?.series ?? [])
@@ -113,10 +114,15 @@ export async function gather(env: ContentEnv, monday: string) {
     episodes: (eps?.docs ?? []).map((e) => ({ title: e.title, number: e.episodeNumber ?? null, date: e.publishDate?.slice(0, 10) ?? null, summary: (e.description ?? "").slice(0, 600), url: `${site}/podcast/${e.slug}` })),
     courses: (courses?.docs ?? []).map((c) => ({ title: c.title, format: c.format ?? null, url: `${site}/academy/courses/${c.slug}` })),
     sessions,
+    // KADE's events (docs/events-agent.md): webinars ahead with a date and registration link, and approved episode ideas.
+    webinars: (kev?.upcoming ?? []).filter((w) => w.starts_at && w.join_url && w.starts_at.slice(0, 10) >= monday)
+      .map((w) => ({ title: w.title, startsAt: w.starts_at, registerUrl: w.join_url, audience: w.audience === "academy" ? "governing bodies (Academy briefing)" : "executives (advisory webinar)" })),
+    episodeIdeas: (kev?.proposals ?? []).filter((p) => p.kind === "podcast_episode" && p.status === "approved").map((p) => ({ title: p.title, angle: p.angle })),
+    shortVideoTopics: (kev?.proposals ?? []).filter((p) => p.kind === "short_video" && p.status === "approved").map((p) => ({ weekOf: p.week_of, title: p.title, angle: p.angle })),
   };
 }
 
-const SYSTEM = `You are the content writer for Transformidable and for Dr. Jerri Bland, its founder. Jerri is a governance advisor (ERP and core systems, IT controls, AI governance, M&A technology integration) with 25 years of enterprise IT leadership, including Deputy CIO at Columbia University, and the author of The Transformidable Leader: The Leader the Moment Needs.
+const SYSTEM = `You are the content writer for Transformidable and for Dr. Jerri Bland, its founder. Jerri is a governance advisor (ERP and core systems, IT controls, AI governance, M&A technology integration) with 25 years of enterprise IT leadership in large universities (refer to her past roles only in general terms; never name an institution, employer, client or prospect), and the author of The Transformidable Leader: The Leader the Moment Needs.
 
 ${VOICE}
 
@@ -143,9 +149,9 @@ ${avoid}
 Material:
 ${JSON.stringify(input, null, 2)}
 
-Mix the sources: mostly the themes, plus a podcast episode if there is one and an upcoming session or course if there is one. Do not repeat a topic.
+Mix the sources: mostly the themes, plus a podcast episode if there is one and an upcoming session, webinar or course if there is one (a webinar or briefing in "webinars" gets one post in the three weeks before it, with its registration link). Do not repeat a topic.
 
-For each post, suggest one visual Jerri can make herself in Canva or record as a short: a quote graphic (one line from the post), a short carousel (3 to 5 slides of a distinction or questions), a 30 to 45 second vertical video in the Transformidable Thinking style (hook, the distinction, the closing question), or text only when a visual would not add anything. Vary the formats across the week; at least one quote graphic and at most one video. Visuals follow the same discretion rules as the text.
+For each post, suggest one visual Jerri can make herself in Canva or record as a short: a quote graphic (one line from the post), a short carousel (3 to 5 slides of a distinction or questions), a 30 to 45 second vertical video in the Transformidable Thinking style (hook, the distinction, the closing question), or text only when a visual would not add anything. Vary the formats across the week; at least one quote graphic and no video (the weekly Transformidable Thinking short video is written separately). Visuals follow the same discretion rules as the text.
 
 Return the posts in schedule order. Use an empty string for link when there is none.`;
 }
@@ -170,7 +176,7 @@ const POSTS_SCHEMA = {
           visual: {
             type: "object",
             properties: {
-              format: { type: "string", enum: ["text_only", "quote_graphic", "carousel", "short_video"] },
+              format: { type: "string", enum: ["text_only", "quote_graphic", "carousel"] },
               headline: { type: "string", description: "Words for the graphic, first slide or video hook (under 15 words), or empty" },
               notes: { type: "string", description: "For Canva: layout and slide text, or the video short's beats (30-45 seconds), or empty" },
             },
@@ -241,4 +247,53 @@ export async function buildPosts(env: ContentEnv, today: string, mode: "week" | 
   });
   if (stmts.length) await env.DB.batch(stmts);
   return { skipped: false, from, to, posts: stmts.length, sources: { themes: !!input.themes, episodes: input.episodes.length, sessions: input.sessions.length, courses: input.courses.length } };
+}
+
+// ---------------------------------------------------------------------------------------
+// The weekly Transformidable Thinking short video (owner, November 13, 2026): one a week, a 30 to 45 second
+// vertical video Jerri records herself. The topic is the one she approved in KADE for that week (events agent),
+// or one Claude chooses from the themes. It lands on the Posts tab, due Wednesday.
+
+const VIDEO_SCHEMA = {
+  type: "object",
+  properties: {
+    title: { type: "string", description: "Working title, under 8 words" },
+    hook: { type: "string", description: "The opening line on camera: a pointed question or uncomfortable observation, under 15 words" },
+    script: { type: "string", description: "The full script, 80 to 120 words, short lines for reading to camera, ending with the closing question and then the sign-off" },
+    caption: { type: "string", description: "The LinkedIn caption to post with it, 200 to 400 characters, two hashtags at most" },
+  },
+  required: ["title", "hook", "script", "caption"],
+  additionalProperties: false,
+};
+
+export async function buildShortVideo(env: ContentEnv, monday: string) {
+  const due = addDays(monday, 2);
+  const have = await env.DB.prepare("SELECT 1 FROM review_queue WHERE system = 'media' AND item_type = 'short_video' AND due_date BETWEEN ?1 AND ?2")
+    .bind(monday, addDays(monday, 6)).first();
+  if (have) return { skipped: true, reason: "this week's short video is already drafted" };
+  if (!env.ANTHROPIC_API_KEY) return { skipped: true, reason: "ANTHROPIC_API_KEY is not set" };
+  const input = await gather(env, monday);
+  const topic = input.shortVideoTopics.find((t) => t.weekOf === monday) ?? null;
+  const recent = await env.DB.prepare("SELECT title FROM review_queue WHERE system = 'media' AND item_type = 'short_video' ORDER BY due_date DESC LIMIT 8").all<{ title: string }>();
+  const model = env.AI_MODEL || "claude-sonnet-5-5";
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
+    body: JSON.stringify({
+      model, max_tokens: 2000,
+      system: `${SYSTEM}\n\nNow you write one episode of Transformidable Thinking, a weekly series of short vertical videos Jerri records to camera. It provokes conversation and insight; it does not state her opinion. Shape: the hook, be fair to the common assumption, the distinction that matters, one closing question. End the script with exactly this sign-off on its own line: "That's Transformidable Thinking."`,
+      output_config: { format: { type: "json_schema", schema: VIDEO_SCHEMA } },
+      messages: [{ role: "user", content: `Week of ${monday}.\n${topic ? `Topic Jerri approved for this week: ${topic.title}. ${topic.angle}` : `Choose the topic from these themes (counts only; never cite them): ${JSON.stringify(input.themes)}`}\nRecent episodes (do not repeat): ${recent.results.map((r) => r.title).join("; ") || "none"}` }],
+    }),
+  });
+  if (!res.ok) throw new Error(`Claude: HTTP ${res.status} ${(await res.text()).slice(0, 200)}`);
+  const body = await res.json<{ content: { type: string; text?: string }[] }>();
+  const v = JSON.parse(body.content.filter((c) => c.type === "text").map((c) => c.text ?? "").join("")) as { title: string; hook: string; script: string; caption: string };
+  const script = /That's Transformidable Thinking\.\s*$/.test(v.script.trim()) ? v.script.trim() : `${v.script.trim()}\n\nThat's Transformidable Thinking.`;
+  await env.DB.prepare(
+    `INSERT INTO review_queue (id, system, item_type, channel, title, draft, context_json, created_by_agent, due_date)
+     VALUES (?1, 'media', 'short_video', 'profile', ?2, ?3, ?4, ?5, ?6)`,
+  ).bind(crypto.randomUUID(), v.title.slice(0, 120), v.caption.trim(),
+    JSON.stringify({ source: topic ? "approved topic" : "themes", link: null, visual: { format: "short_video", headline: v.hook, notes: script } }), `content-agent:${model}`, due).run();
+  return { skipped: false, due, title: v.title, fromApprovedTopic: !!topic };
 }
