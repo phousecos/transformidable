@@ -154,6 +154,12 @@ form.stats .wide { grid-column:1 / -1; }
         </form>
       </section>
       <section class="panel">
+        <div><h2 style="font-size:16px">Your LinkedIn connections</h2>
+          <p class="muted small" style="margin:0">Upload Connections.csv from LinkedIn (Settings, Data privacy, Get a copy of your data, Connections) so the list stops suggesting people you already know. Repeat every few months.</p></div>
+        <label class="btn outline" style="cursor:pointer;position:relative">Upload Connections.csv<input type="file" id="connfile" accept=".csv,text/csv" style="position:absolute;width:1px;height:1px;opacity:0"></label>
+        <div class="muted small" id="connmsg" role="status"></div>
+      </section>
+      <section class="panel">
         <div style="display:flex;justify-content:space-between;align-items:baseline"><h2 style="font-size:16px">Pending invites</h2><span class="muted small" id="pendingcount"></span></div>
         <p class="muted small" style="margin:0">Mark accepted when LinkedIn shows it; a thank-you is drafted the next morning.</p>
         <div id="pending"></div>
@@ -320,6 +326,14 @@ function actionCard(a, draftLabel) {
   });
   bar.appendChild(done);
   bar.appendChild(button("Skip", "", function () { post("/api/actions/" + a.id, { status: "skipped" }).then(load).catch(function (e) { toast(e.message); }); }));
+  if (a.action_type === "connect" && a.person_id) {
+    var ac = button("Already connected", "quiet", function () {
+      ac.disabled = true;
+      post("/api/people/" + a.person_id + "/already-connected").then(function () { toast("Marked connected. They move to follow-ups and comments."); return load(); })
+        .catch(function (e) { toast(e.message); ac.disabled = false; });
+    });
+    bar.appendChild(ac);
+  }
   if (ta) {
     var rd = button(a.drafted_by === "template" ? "Redraft with Claude" : "Redraft", "quiet", function () {
       rd.disabled = true; rd.textContent = "Drafting…";
@@ -377,6 +391,29 @@ function loadInfluencers() {
   return fetch("/api/influencers").then(function (r) { return r.json(); }).then(function (d) { renderInfluencers(d.influencers || []); })
     .catch(function (e) { document.getElementById("influencers").textContent = "Could not load: " + e.message; });
 }
+// The connections export: matched here, then sent to KADE a batch at a time.
+document.getElementById("connfile").onchange = function (e) {
+  var f = e.target.files && e.target.files[0]; if (!f) return;
+  var msg = document.getElementById("connmsg");
+  msg.textContent = "Reading " + f.name + "…";
+  f.text().then(function (csv) { msg.textContent = "Matching your connections…"; return post("/api/connections/import", { csv: csv }); })
+    .then(function (r) {
+      msg.textContent = r.inFile + " connections in the file; " + r.matched + " matched people on the list (" + r.byProfile + " by profile address, " + r.byName + " by name and organization), " +
+        r.acceptedInvites + " of them accepted invitations. Recording them in KADE…";
+      var sent = 0;
+      function next() {
+        return post("/api/kade/flush?limit=40").then(function (x) {
+          sent += x.sent || 0;
+          if ((x.sent || 0) > 0) { msg.textContent = msg.textContent.replace(/ Recording them in KADE.*$/, "") + " Recording them in KADE… " + sent + " so far."; return next(); }
+          msg.textContent = msg.textContent.replace(/ Recording them in KADE.*$/, "") + " Recorded in KADE: " + sent + (x.failed ? "; the rest retry each morning." : ".");
+        });
+      }
+      return next().then(load);
+    })
+    .catch(function (err) { msg.textContent = err.message; })
+    .then(function () { e.target.value = ""; });
+};
+
 document.getElementById("influencerform").onsubmit = function (e) {
   e.preventDefault();
   var body = {}; new FormData(e.target).forEach(function (v, k) { body[k] = v; });
