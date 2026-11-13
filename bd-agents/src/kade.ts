@@ -154,3 +154,13 @@ export interface KadeWeekPlan {
 export function weekPlan(env: KadeEnv) {
   return get<{ plan: KadeWeekPlan | null }>(env, "week", {});
 }
+
+/** KADE's events (KADE docs/events-agent.md): this month's proposals and the webinars ahead. */
+export interface KadeEvents {
+  month: string | null;
+  proposals: { id: string; kind: string; title: string; angle: string; audience: string | null; why: string; suggested_date: string | null; week_of: string | null; status: string; webinar_id: string | null }[];
+  upcoming: { id: string; title: string; starts_at: string | null; join_url: string | null; audience: string; status: string; in_drafts: number; sent: number; attended: number }[];
+}
+export function events(env: KadeEnv) {
+  return get<KadeEvents>(env, "events", {});
+}

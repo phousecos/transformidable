@@ -3,10 +3,10 @@
  * action done or decides a research request is recorded as its approver.
  */
 import { AuthError, signedInEmail, type AuthEnv } from "./auth";
-import { buildPosts, weekOf, type ContentEnv } from "./content";
+import { buildPosts, buildShortVideo, weekOf, type ContentEnv } from "./content";
 import { draft, type DraftKind } from "./claude";
 import { buildToday, firstName, todayET, type DailyEnv } from "./daily";
-import { kadeOrgUrl, results as kadeResults, weekPlan, type KadeWeekPlan } from "./kade";
+import { events as kadeEvents, kadeOrgUrl, results as kadeResults, weekPlan, type KadeWeekPlan } from "./kade";
 import { flushTouches, KIND_BY_ACTION, OUTCOMES, touchStatement } from "./contact";
 import { PAGE } from "./page";
 import { alreadyConnected, importConnections } from "./connections";
@@ -39,7 +39,7 @@ async function today(env: ApiEnv, date: string) {
   const monday = weekOf(date);
   const posts = await env.DB.prepare(
     `SELECT id, item_type, channel, title, COALESCE(final_text, draft) AS text, context_json, status, due_date, approved_by, sent_at
-     FROM review_queue WHERE system = 'media' AND item_type IN ('post_page', 'post_profile') AND due_date BETWEEN ?1 AND date(?1, '+20 days')
+     FROM review_queue WHERE system = 'media' AND item_type IN ('post_page', 'post_profile', 'short_video') AND due_date BETWEEN ?1 AND date(?1, '+20 days')
      ORDER BY due_date`,
   ).bind(monday).all<{ context_json: string | null }>();
   return {
@@ -223,21 +223,22 @@ const WEEKS = 8;
 /** Results: outreach from KADE (counted there), posts from the review queue, LinkedIn numbers from `results`. */
 /** This week: KADE's weekly plan, plus what only this list holds (this week's posts, the LinkedIn numbers entered). */
 async function weekView(env: ApiEnv) {
-  const [kade, posts, linkedin] = await Promise.all([
+  const [kade, posts, linkedin, kev] = await Promise.all([
     weekPlan(env).then((r) => r.plan).catch((e) => ({ error: String(e).slice(0, 300) })),
     env.DB.prepare(
       `SELECT id, title, channel, item_type, status, due_date FROM review_queue
-       WHERE system = 'media' AND item_type IN ('post_page', 'post_profile') AND due_date >= date('now', '-6 days', 'weekday 1') AND due_date < date('now', '-6 days', 'weekday 1', '+7 days')
+       WHERE system = 'media' AND item_type IN ('post_page', 'post_profile', 'short_video') AND due_date >= date('now', '-6 days', 'weekday 1') AND due_date < date('now', '-6 days', 'weekday 1', '+7 days')
        ORDER BY due_date`,
     ).all<{ id: string; title: string | null; channel: string | null; item_type: string; status: string; due_date: string | null }>(),
     env.DB.prepare("SELECT MAX(metric_date) AS week FROM results WHERE source = 'linkedin' AND system = 'media'").first<{ week: string | null }>(),
+    kadeEvents(env).catch((e) => ({ error: String(e).slice(0, 300) })),
   ]);
   const plan = kade && !("error" in kade) ? {
     ...(kade as KadeWeekPlan),
     decide: { pursuits: (kade as KadeWeekPlan).decide.pursuits.map((p) => ({ ...p, kade_url: kadeOrgUrl(env, p.organizationId) })) },
     conversations: (kade as KadeWeekPlan).conversations.map((c) => ({ ...c, kade_url: new URL(`/#person/${encodeURIComponent(c.personId)}`, env.KADE_API_URL).toString() })),
   } : kade;
-  return { plan, posts: posts.results, linkedinLastEntered: linkedin?.week ?? null };
+  return { plan, posts: posts.results, linkedinLastEntered: linkedin?.week ?? null, events: kev, kadeEventsUrl: new URL("/#events", env.KADE_API_URL).toString() };
 }
 
 async function resultsView(env: ApiEnv) {
@@ -292,7 +293,12 @@ export async function handle(req: Request, env: ApiEnv): Promise<Response> {
   }
   if (req.method === "POST" && url.pathname === "/api/today/build") return json(await buildToday(env));
   if (req.method === "POST" && url.pathname === "/api/posts/build") {
-    try { return json(await buildPosts(env, todayET(), "next")); } catch (e) { return json({ error: String(e) }, 502); }
+    try {
+      const posts = await buildPosts(env, todayET(), "next");
+      // The week's Transformidable Thinking short video too, when it is not drafted yet.
+      const video = await buildShortVideo(env, weekOf(todayET())).catch((e) => ({ skipped: true, reason: String(e).slice(0, 200) }));
+      return json({ ...posts, video });
+    } catch (e) { return json({ error: String(e) }, 502); }
   }
   if (req.method === "POST" && parts[0] === "api" && parts[1] === "posts" && parts[2]) return completePost(env, parts[2], who, await body());
   if (req.method === "POST" && parts[0] === "api" && parts[1] === "actions" && parts[2] && parts[3] === "redraft") return redraft(env, parts[2]);

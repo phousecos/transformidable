@@ -170,7 +170,7 @@ form.stats .wide { grid-column:1 / -1; }
 
   <section id="tab-posts" class="split" hidden>
     <div class="days">
-      <div><h2>Upcoming posts</h2><p class="muted small" style="margin:4px 0 0">Company page Mon, Wed, Fri. Your profile Tue, Thu.</p></div>
+      <div><h2>Upcoming posts</h2><p class="muted small" style="margin:4px 0 0">Company page Mon, Wed, Fri. Your profile Tue, Thu. A Transformidable Thinking short video each week.</p></div>
       <div id="days" style="display:flex;flex-direction:column;gap:10px"></div>
       <button type="button" class="btn" id="buildposts" style="border-style:dashed">Draft upcoming posts now</button>
     </div>
@@ -189,6 +189,7 @@ form.stats .wide { grid-column:1 / -1; }
       </section>
       <div class="side">
         <section class="panel"><h2 style="font-size:16px">In motion</h2><div id="wkmotion"></div></section>
+        <section class="panel"><h2 style="font-size:16px">Events</h2><div id="wkevents"></div></section>
         <section class="panel"><h2 style="font-size:16px">Posts this week</h2><div id="wkposts"></div></section>
         <section class="panel"><h2 style="font-size:16px">Last week</h2><div id="wkresults"></div></section>
       </div>
@@ -228,6 +229,8 @@ var GROUPS = [["follow_up", "Follow up", "Thank-you message"], ["comment", "Comm
   ["connect", "Connect", "Invitation note (200 characters)"], ["withdraw_invite", "Withdraw invite", ""]];
 var OUTCOMES = [["reply", "Replied"], ["meeting_booked", "Meeting booked"], ["not_interested", "Not interested"], ["stop_request", "Asked to stop"]];
 var VISUALS = { quote_graphic: "Quote graphic", carousel: "Carousel", short_video: "Video short", text_only: "Text only" };
+// The weekly Transformidable Thinking short video sits with the posts; its text is the caption and its visual the script.
+function postKind(p) { return p.item_type === "short_video" ? "Short video" : p.channel === "page" ? "Company page" : "Your profile"; }
 var DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 var MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 var STATS = [["followers_profile", "Followers, you"], ["followers_page", "Followers, page"], ["impressions_profile", "Impressions, you"], ["impressions_page", "Impressions, page"], ["profile_views", "Profile views"]];
@@ -530,28 +533,28 @@ function renderPosts() {
     var line = el("span", "line");
     var s = el("span", "small", st); s.style.fontWeight = "600"; s.style.color = st === "Posted" ? "var(--ok)" : st === "Today" ? "var(--accent)" : "var(--muted)";
     add(line, el("span", "name", DAYS[d.getUTCDay()] + " " + nice(p.due_date)), s);
-    add(b, line, el("span", "muted small", (p.channel === "page" ? "Company page" : "Your profile") + " · " + (p.title || "")));
+    add(b, line, el("span", "muted small", postKind(p) + " · " + (p.title || "")));
     b.onclick = function () { state.picked = p.id; renderPosts(); };
     days.appendChild(b);
   });
   var p = state.posts.filter(function (x) { return x.id === state.picked; })[0];
   var head = el("div", "head");
   var t = el("h2", "", p.title || "Post"); t.style.fontSize = "18px";
-  add(head, t, el("span", "tag", p.channel === "page" ? "Company page" : "Your profile"));
+  add(head, t, el("span", "tag", postKind(p)));
   if (p.context && p.context.source) head.appendChild(el("span", "muted small", "From: " + p.context.source));
   detail.appendChild(head);
-  var lab = el("label", "field", "Post text"); lab.setAttribute("for", "posttext");
+  var lab = el("label", "field", p.item_type === "short_video" ? "Caption to post with the video" : "Post text"); lab.setAttribute("for", "posttext");
   var ta = el("textarea"); ta.id = "posttext"; ta.rows = 11; ta.value = p.text || ""; ta.disabled = p.status !== "proposed";
   add(detail, lab, ta, counter(ta, 3000));
   var v = p.context && p.context.visual;
   if (v && v.format && v.format !== "text_only") {
     var vb = el("div", "visual");
     var top = el("div", "head"); top.style.justifyContent = "space-between";
-    top.appendChild(el("span", "label", "Suggested visual: " + (VISUALS[v.format] || v.format)));
+    top.appendChild(el("span", "label", p.item_type === "short_video" ? "Script to camera (30 to 45 seconds)" : "Suggested visual: " + (VISUALS[v.format] || v.format)));
     top.appendChild(button("Copy for Canva", "small", function () { navigator.clipboard.writeText([v.headline, v.notes].filter(Boolean).join("\\n\\n")).then(function () { toast("Copied"); }); }));
     vb.appendChild(top);
     if (v.headline) vb.appendChild(el("div", "name", v.headline));
-    if (v.notes) vb.appendChild(el("div", "muted small", v.notes));
+    if (v.notes) { var nt = el("div", p.item_type === "short_video" ? "small" : "muted small", v.notes); nt.style.whiteSpace = "pre-wrap"; vb.appendChild(nt); }
     detail.appendChild(vb);
   }
   var bar = el("div", "actions");
@@ -590,12 +593,24 @@ function loadWeek() {
 function line(parent, text, cls) { return add(parent, el("p", cls || "", text)); }
 function renderWeek() {
   var d = state.week, p = d.plan;
-  ["wkdecide", "wksuggest", "wkmarket", "wkmotion", "wkposts", "wkresults"].forEach(function (id) { document.getElementById(id).textContent = ""; });
+  ["wkdecide", "wksuggest", "wkmarket", "wkmotion", "wkposts", "wkresults", "wkevents"].forEach(function (id) { document.getElementById(id).textContent = ""; });
   var posts = document.getElementById("wkposts");
   if (!d.posts.length) line(posts, "No posts scheduled this week.", "empty");
   d.posts.forEach(function (x) {
-    add(posts, add(el("p", "small"), el("b", "", nice(x.due_date) + " "), document.createTextNode((x.item_type === "post_page" ? "Company page" : "Your profile") + ": " + (x.title || "Post") + " "), el("span", "muted", "(" + x.status + ")")));
+    add(posts, add(el("p", "small"), el("b", "", nice(x.due_date) + " "), document.createTextNode(postKind(x) + ": " + (x.title || "Post") + " "), el("span", "muted", "(" + x.status + ")")));
   });
+  var ev = document.getElementById("wkevents"), e = d.events;
+  if (!e || e.error) line(ev, e && e.error ? "KADE's events are not available." : "No events yet.", "empty");
+  else {
+    var waiting = e.proposals.filter(function (x) { return x.status === "proposed"; }).length;
+    if (waiting) { var wl = el("a", "", waiting + " proposals for this month to approve or decline in KADE"); wl.href = d.kadeEventsUrl; wl.target = "_blank"; wl.rel = "noopener"; add(ev, add(el("p", "small"), wl)); }
+    e.upcoming.forEach(function (u) {
+      line(ev, u.title + ": " + (u.starts_at && u.join_url ? new Date(u.starts_at).toLocaleDateString() + "; " + u.in_drafts + " invitations in Drafts, " + u.sent + " sent" : "set the date and registration link in KADE"), "small");
+    });
+    var sv = e.proposals.filter(function (x) { return x.kind === "short_video" && x.status === "approved"; });
+    if (sv.length) line(ev, "Short videos approved: " + sv.map(function (x) { return x.title; }).join("; "), "small muted");
+    if (!waiting && !e.upcoming.length && !sv.length) line(ev, "Nothing scheduled. Proposals come on the first Monday of the month.", "empty");
+  }
   if (!p || p.error) {
     line(document.getElementById("wkdecide"), p && p.error ? "KADE's plan is not available: " + p.error : "No plan yet. KADE writes it Monday at 6:00 (or from KADE, Admin, Gmail: Write this week's plan now).", "empty");
     return;
