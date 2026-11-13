@@ -9,6 +9,7 @@ import { buildToday, firstName, todayET, type DailyEnv } from "./daily";
 import { kadeOrgUrl, results as kadeResults } from "./kade";
 import { flushTouches, KIND_BY_ACTION, OUTCOMES, touchStatement } from "./contact";
 import { PAGE } from "./page";
+import { alreadyConnected, importConnections } from "./connections";
 
 export interface ApiEnv extends DailyEnv, ContentEnv, AuthEnv {}
 
@@ -283,7 +284,17 @@ export async function handle(req: Request, env: ApiEnv): Promise<Response> {
   if (req.method === "POST" && parts[0] === "api" && parts[1] === "actions" && parts[2]) return completeAction(env, parts[2], who, await body());
   if (req.method === "POST" && parts[0] === "api" && parts[1] === "people" && parts[2] && parts[3] === "connected") return markConnected(env, parts[2], who);
   if (req.method === "POST" && parts[0] === "api" && parts[1] === "people" && parts[2] && parts[3] === "outcome") return recordOutcome(env, parts[2], who, await body());
-  if (req.method === "POST" && url.pathname === "/api/kade/flush") return json(await flushTouches(env));
+  if (req.method === "POST" && url.pathname === "/api/kade/flush") return json(await flushTouches(env, undefined, Math.min(200, Number(url.searchParams.get("limit")) || 200)));
+  if (req.method === "POST" && parts[0] === "api" && parts[1] === "people" && parts[2] && parts[3] === "already-connected") {
+    const r = await alreadyConnected(env, parts[2], who);
+    return "error" in r ? json({ error: r.error }, r.status) : json(r);
+  }
+  if (req.method === "POST" && url.pathname === "/api/connections/import") {
+    const b = await body() as { csv?: unknown };
+    if (typeof b.csv !== "string" || !b.csv.trim()) return json({ error: "csv: the text of Connections.csv" }, 422);
+    try { return json(await importConnections(env, b.csv, who)); }
+    catch (e) { return json({ error: (e as Error).message }, 422); }
+  }
   if (req.method === "GET" && url.pathname === "/api/results") return json(await resultsView(env));
   if (req.method === "POST" && url.pathname === "/api/results/linkedin") return saveLinkedinStats(env, who, await body());
   return json({ error: "Not found" }, 404);
