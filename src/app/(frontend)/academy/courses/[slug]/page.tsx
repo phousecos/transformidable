@@ -25,6 +25,7 @@ import {
   INTEREST_HREF,
   buildCatalog,
   courseHref,
+  formatText,
   fullName,
   getAcademyFeed,
   getAcademyPage,
@@ -36,6 +37,7 @@ import {
   registerHref,
   seatsText,
   sessionTimes,
+  showsFormats,
 } from "../../../../../lib/academy.ts";
 import { SITE_URL, pageMetadata } from "../../../../../lib/seo.ts";
 
@@ -61,6 +63,12 @@ export async function generateMetadata({ params }) {
 }
 
 const hasItems = (list) => Array.isArray(list) && list.length > 0;
+
+/** Agenda parts with their numbers; breaks aren't numbered. */
+function numberParts(agenda) {
+  let no = 0;
+  return agenda.map((part) => ({ part, no: part.isBreak ? null : ++no }));
+}
 
 function priceFact(course, s, foundingLabel) {
   if (!s) return course.priceLabel || null;
@@ -97,8 +105,9 @@ function CohortList({ course }) {
     months.at(-1).sessions.push(s);
   }
   const cur = course.series.currency;
+  const formats = showsFormats(sessions);
   return (
-    <div className="aa-dates">
+    <div className={formats ? "aa-dates aa-dates--formats" : "aa-dates"}>
       {months.map(({ month, sessions: list }) => (
         <section className="aa-month" key={month} aria-label={month}>
           <h3 className="aa-month-h">{month}</h3>
@@ -115,6 +124,7 @@ function CohortList({ course }) {
                     {!next && isReduced(s) && !s.full && <span className="aa-date-tag aa-date-tag--quiet">Founding</span>}
                   </p>
                   <p className="aa-date-time">{t.time}</p>
+                  {formats && <p className="aa-date-format">{formatText(s)}</p>}
                   <p className={s.seatsLeft != null && s.seatsLeft <= 5 && !s.full ? "aa-date-seats aa-low" : "aa-date-seats"}>{seats || "Seats available"}</p>
                   <p className="aa-date-price">
                     {money(s.priceCents, cur)}
@@ -158,6 +168,21 @@ export default async function CoursePage({ params }) {
   const priceLine = open ? priceFact(course, next, page.foundingLabel) : priv ? course.privateTerms : null;
   const facts = [...(course.facts || []).map((f) => f.text), priceLine].filter(Boolean);
   const nextCourse = course.nextCourse && typeof course.nextCourse === "object" ? course.nextCourse : null;
+  // "You leave with" sits under the outcomes beside the take-away card; without a card it takes the card's column.
+  const hasCard = Boolean(course.takeawayName || course.takeawayImage?.url);
+  const takeHome = hasItems(course.leaveWith) || course.leaveWithNote ? (
+    <>
+      {hasItems(course.leaveWith) && (
+        <>
+          <h2 className="aa-eyebrow aa-eyebrow--h">{course.leaveWithHeadline || "You leave with"}</h2>
+          <ul className="aa-bullets aa-leave" role="list">
+            {course.leaveWith.map((l, i) => <li key={l.id || i}><Em>{l.text}</Em></li>)}
+          </ul>
+        </>
+      )}
+      {course.leaveWithNote && <p className="aa-leave-note"><Em>{course.leaveWithNote}</Em></p>}
+    </>
+  ) : null;
 
   return (
     <AcademyShell>
@@ -173,9 +198,10 @@ export default async function CoursePage({ params }) {
           ...(course.sessions.length > 0 && {
             hasCourseInstance: course.sessions.map((s) => ({
               "@type": "CourseInstance",
-              courseMode: "Online",
+              courseMode: s.format === "in_person" ? "Onsite" : "Online",
+              ...(s.format === "in_person" && s.location && { location: { "@type": "Place", name: s.location } }),
               startDate: s.startsAt,
-              endDate: s.endsAt,
+              endDate: s.parts?.length ? s.parts.at(-1).endsAt : s.endsAt,
               offers: {
                 "@type": "Offer",
                 price: (s.priceCents / 100).toFixed(2),
@@ -212,8 +238,17 @@ export default async function CoursePage({ params }) {
       {open && (
         <section className="aa-band" id="cohorts" aria-labelledby="aa-cohorts-h">
           <div className="wrap">
-            <h2 className="aa-h2" id="aa-cohorts-h">Choose a cohort</h2>
-            {course.sessions.length > 0 && page.sessionsIntro && <p className="aa-intro aa-intro--tight">{page.sessionsIntro}</p>}
+            {course.cohortsHeadline ? (
+              <>
+                <p className="aa-eyebrow">Choose a cohort</p>
+                <h2 className="aa-h2" id="aa-cohorts-h"><Em>{course.cohortsHeadline}</Em></h2>
+              </>
+            ) : (
+              <h2 className="aa-h2" id="aa-cohorts-h">Choose a cohort</h2>
+            )}
+            {course.sessions.length > 0 && (course.cohortsIntro || page.sessionsIntro) && (
+              <p className="aa-intro aa-intro--tight"><Em>{course.cohortsIntro || page.sessionsIntro}</Em></p>
+            )}
             <CohortList course={course} />
             {course.sessions.length > 0 && <WaitlistLine page={page} course={course} />}
           </div>
@@ -238,17 +273,29 @@ export default async function CoursePage({ params }) {
           <div className="wrap">
             {course.agendaEyebrow && <p className="aa-eyebrow">{course.agendaEyebrow}</p>}
             <Headline id="aa-agenda-h" text={course.agendaHeadline} />
-            <ol className="aa-agenda" role="list">
-              {course.agenda.map((part, i) => (
-                <li key={part.id || i} className={i === course.agenda.length - 1 ? "aa-part aa-part--last" : "aa-part"}>
-                  <div className="aa-part-block" aria-hidden="true">
-                    <span className="aa-part-no">{String(i + 1).padStart(2, "0")}</span>
-                    {part.minutes ? <span className="aa-part-min">{part.minutes} min</span> : null}
-                  </div>
-                  <h3>{part.title}{part.minutes ? <span className="sr-only">, {part.minutes} minutes</span> : null}</h3>
-                  {part.description && <p><Em>{part.description}</Em></p>}
-                </li>
-              ))}
+            {course.agendaNote && <p className="aa-intro aa-intro--tight"><Em>{course.agendaNote}</Em></p>}
+            <ol className={course.agenda.length > 5 ? "aa-agenda aa-agenda--wide" : "aa-agenda"} role="list">
+              {numberParts(course.agenda).map(({ part, no }, i) => {
+                const min = part.minutes ? <span className="sr-only">, {part.minutes} minutes</span> : null;
+                if (part.isBreak) {
+                  return (
+                    <li key={part.id || i} className="aa-part aa-part--break">
+                      <h3>{part.title}{min}</h3>
+                      {part.minutes ? <span className="aa-part-min" aria-hidden="true">{part.minutes} min</span> : null}
+                    </li>
+                  );
+                }
+                return (
+                  <li key={part.id || i} className={i === course.agenda.length - 1 ? "aa-part aa-part--last" : "aa-part"}>
+                    <div className="aa-part-block" aria-hidden="true">
+                      <span className="aa-part-no">{String(no).padStart(2, "0")}</span>
+                      {part.minutes ? <span className="aa-part-min">{part.minutes} min</span> : null}
+                    </div>
+                    <h3>{part.title}{min}</h3>
+                    {part.description && <p><Em>{part.description}</Em></p>}
+                  </li>
+                );
+              })}
             </ol>
           </div>
         </section>
@@ -256,7 +303,7 @@ export default async function CoursePage({ params }) {
 
       {(hasItems(course.outcomes) || hasItems(course.leaveWith) || course.takeawayName) && (
         <section className="aa-band aa-band--sand" aria-label="What you leave with">
-          <div className="wrap aa-outcomes-grid">
+          <div className={hasCard ? "wrap aa-outcomes-grid" : "wrap aa-outcomes-grid aa-outcomes-grid--text"}>
             <div>
               {hasItems(course.outcomes) && (
                 <>
@@ -266,18 +313,9 @@ export default async function CoursePage({ params }) {
                   </ul>
                 </>
               )}
-              {hasItems(course.leaveWith) && (
-                <>
-                  <h2 className="aa-eyebrow aa-eyebrow--h">{course.leaveWithHeadline || "You leave with"}</h2>
-                  <p className="aa-leave">
-                    {course.leaveWith.map((l, i) => (
-                      <span key={l.id || i}>{i > 0 && <span aria-hidden="true"> · </span>}<Em>{l.text}</Em></span>
-                    ))}
-                  </p>
-                </>
-              )}
+              {hasCard && takeHome}
             </div>
-            <TakeawayVisual course={course} />
+            {hasCard ? <TakeawayVisual course={course} /> : takeHome && <div>{takeHome}</div>}
           </div>
         </section>
       )}
@@ -314,7 +352,9 @@ export default async function CoursePage({ params }) {
           {nextCourse && (
             <>
               {secondary?.label && <span aria-hidden="true"> · </span>}
-              <a href={courseHref(nextCourse.slug)}>Next course: {nextCourse.title} <span aria-hidden="true">→</span></a>
+              <a href={courseHref(nextCourse.slug)}>
+                {course.nextCourseLabel ? `${course.nextCourseLabel} ${nextCourse.code || nextCourse.title}` : `Next course: ${nextCourse.title}`} <span aria-hidden="true">→</span>
+              </a>
             </>
           )}
         </p>

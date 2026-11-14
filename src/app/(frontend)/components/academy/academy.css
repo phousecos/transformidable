@@ -233,6 +233,16 @@
   .tr .aa-date { grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, .8fr) 128px; }
   .tr .aa-date-go { grid-column: auto; grid-row: auto; justify-self: end; }
 }
+.tr .aa-table-format { display: block; font-size: .85em; color: var(--ink-mute); }
+.tr .aa-date-format { color: var(--ink); font-weight: 600; }
+/* With a format line, dates stay stacked until there's room for six columns. */
+@media (max-width: 899px) {
+  .tr .aa-dates--formats .aa-date { grid-template-columns: 1fr auto; }
+  .tr .aa-dates--formats .aa-date-go { grid-column: 2; grid-row: 1 / span 5; justify-self: auto; }
+}
+@media (min-width: 900px) {
+  .tr .aa-dates--formats .aa-date { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1.1fr) minmax(0, .9fr) minmax(0, .7fr) 128px; }
+}
 .tr .aa-cohort-empty { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; }
 .tr .aa-cohort-empty .aa-body { margin: 0; }
 
@@ -246,6 +256,10 @@
 .tr .aa-agenda { list-style: none; padding: 0; margin: 10px 0 0; display: grid; gap: 20px 14px; grid-template-columns: 1fr; }
 @media (min-width: 640px) { .tr .aa-agenda { grid-template-columns: repeat(2, 1fr); } }
 @media (min-width: 1040px) { .tr .aa-agenda { grid-template-columns: repeat(5, 1fr); } }
+@media (min-width: 1040px) { .tr .aa-agenda--wide { grid-template-columns: repeat(3, 1fr); } }
+.tr .aa-part--break { grid-column: 1 / -1; display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 10px 16px; border: 1px dashed var(--aa-line); border-radius: 6px; }
+.tr .aa-part--break h3 { margin: 0; font-size: .98rem; color: var(--ink-mute); }
+.tr .aa-part--break .aa-part-min { color: var(--ink-mute); }
 .tr .aa-part-block { background: var(--aa-oxblood); border-radius: 6px; padding: 16px; min-height: 92px; display: flex; flex-direction: column; justify-content: space-between; margin-bottom: 14px; }
 .tr .aa-part--last .aa-part-block { background: #1c1214; }
 .tr .aa-part-no { font-family: var(--serif); font-size: 1.4rem; color: var(--aa-gold-on-ox); }
@@ -255,9 +269,11 @@
 
 .tr .aa-outcomes-grid { display: grid; gap: 40px; grid-template-columns: 1fr; align-items: center; }
 @media (min-width: 900px) { .tr .aa-outcomes-grid { grid-template-columns: 1fr 1fr; gap: 64px; } }
+.tr .aa-outcomes-grid--text { align-items: start; }
 .tr .aa-checks { list-style: none; padding: 0; margin: 0; font-family: var(--sans); font-size: .98rem; color: var(--ink); }
 .tr .aa-checks li { position: relative; padding: 6px 0 6px 28px; }
 .tr .aa-checks li::before { content: ""; position: absolute; left: 3px; top: 12px; width: 11px; height: 6px; border-left: 2px solid var(--aa-wine-text); border-bottom: 2px solid var(--aa-wine-text); transform: rotate(-45deg); }
+.tr .aa-leave-note { font-family: var(--sans); font-size: .92rem; line-height: 1.55; color: var(--ink-body); margin: 14px 0 0; max-width: 56ch; }
 .tr .aa-leave { font-family: var(--sans); font-size: .98rem; line-height: 1.65; color: var(--ink); margin: 0; max-width: 56ch; }
 
 .tr .aa-two { display: grid; gap: 36px 64px; grid-template-columns: 1fr; }

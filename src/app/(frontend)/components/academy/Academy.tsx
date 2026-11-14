@@ -11,6 +11,7 @@ import {
   DEDICATED_HREF,
   INTEREST_HREF,
   cardLabel,
+  formatText,
   fullName,
   isReduced,
   money,
@@ -22,6 +23,7 @@ import {
   registerHref,
   seatsText,
   sessionTimes,
+  showsFormats,
 } from "../../../../lib/academy.ts";
 import "./academy.css";
 
@@ -235,7 +237,7 @@ export function SessionsTable({ catalog, topic = "", basePath = "/academy" }) {
               return (
                 <tr key={`${c.id}-${s.id}`}>
                   <th scope="row"><b>{c.code || c.title}</b>{c.code && <span>{c.title}</span>}</th>
-                  <td><time dateTime={t.iso}>{t.date}</time> · {t.timeBare}</td>
+                  <td><time dateTime={t.iso}>{t.date}</time> · {t.timeBare}{showsFormats([s]) && <span className="aa-table-format">{formatText(s)}</span>}</td>
                   <td className={s.seatsLeft != null && s.seatsLeft <= 5 && !s.full ? "aa-low" : undefined}>{seats}{s.capacity && !s.full ? <span className="aa-narrow-only"> seats left</span> : null}</td>
                   <td><PriceCell s={s} currency={c.series.currency} /></td>
                   <td>
