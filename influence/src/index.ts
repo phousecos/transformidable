@@ -2,10 +2,16 @@
  * Influence Worker (KADE docs/influence.md).
  * - Monday cron: the week's posts and the Transformidable Thinking short-video script (moved from Network),
  *   then a self-check of what the page loads. Steps are logged; a failure in one does not stop the rest.
+ * - Hourly cron (KADE docs/influence-research.md): new discovery candidates, and screening and scoring for anyone whose
+ *   research changed; at 11:15 UTC each day, the footprint research that is due and the week's discovery.
  * - HTTP: the page and its API, behind Cloudflare Access.
  */
 import { handle, selfCheck, todayET, type ApiEnv } from "./api";
 import { buildPosts, buildShortVideo, weekOf } from "./content";
+import { requestDue, scoreChanged, takeDiscoveries } from "./research";
+
+/** Matches the hourly entry in wrangler.jsonc. */
+const HOURLY = "15 * * * *";
 
 async function step<T>(name: string, run: () => Promise<T>) {
   const started = Date.now();
@@ -21,7 +27,15 @@ export default {
   fetch(req: Request, env: ApiEnv): Promise<Response> {
     return handle(req, env);
   },
-  async scheduled(_c: ScheduledController, env: ApiEnv, ctx: ExecutionContext): Promise<void> {
+  async scheduled(c: ScheduledController, env: ApiEnv, ctx: ExecutionContext): Promise<void> {
+    if (c.cron === HOURLY) {
+      ctx.waitUntil((async () => {
+        if (new Date(c.scheduledTime).getUTCHours() === 11) await step("research-request", () => requestDue(env));
+        await step("research-discoveries", () => takeDiscoveries(env));
+        await step("research-score", () => scoreChanged(env));
+      })());
+      return;
+    }
     ctx.waitUntil((async () => {
       const today = todayET();
       await step("week-posts", () => buildPosts(env, today, "week"));

@@ -4,7 +4,8 @@
  */
 import { AuthError, signedInEmail, type AuthEnv } from "./auth";
 import { buildPosts, buildShortVideo, weekOf, type ContentEnv } from "./content";
-import { addToNetwork, InputError, networkView, removeMember, settings, STAGE_LABELS, updateMember, type NetworkEnv } from "./network";
+import { addToNetwork, followCandidate, InputError, networkView, passCandidate, removeMember, settings, STAGE_LABELS, updateMember, type NetworkEnv } from "./network";
+import { requestDue, researchFor, researchNow, researchSettings, scoreChanged, takeDiscoveries } from "./research";
 import { PAGE } from "./page";
 
 export interface ApiEnv extends AuthEnv, ContentEnv, NetworkEnv {}
@@ -70,7 +71,23 @@ async function route(req: Request, env: ApiEnv): Promise<Response> {
 
   if (req.method === "GET" && url.pathname === "/") return new Response(PAGE, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } });
   if (req.method === "GET" && url.pathname === "/api/me") return json({ me: who, today: todayET() });
-  if (req.method === "GET" && url.pathname === "/api/network") return json({ ...(await networkView(env)), settings: await settings(env), stages: STAGE_LABELS });
+  if (req.method === "GET" && url.pathname === "/api/network") {
+    const r = await researchSettings(env);
+    return json({ ...(await networkView(env)), settings: await settings(env), screening: r.screening, stages: STAGE_LABELS });
+  }
+  // Research (KADE docs/influence-research.md): one person's findings, research now, follow or pass a candidate.
+  if (parts[0] === "api" && parts[1] === "network" && parts[2] && parts[3] === "research") {
+    return req.method === "POST" ? json(await researchNow(env, parts[2])) : json(await researchFor(env, parts[2]));
+  }
+  if (req.method === "POST" && parts[0] === "api" && parts[1] === "network" && parts[2] && parts[3] === "follow") return input(async () => followCandidate(env, parts[2], ((await body()).linkedinUrl as string | undefined), who));
+  if (req.method === "POST" && parts[0] === "api" && parts[1] === "network" && parts[2] && parts[3] === "pass") return input(async () => passCandidate(env, parts[2], who));
+  // The hourly and daily research steps, run now (the same steps the cron runs).
+  if (req.method === "POST" && url.pathname === "/api/research/run") {
+    const requested = await requestDue(env);
+    const taken = await takeDiscoveries(env);
+    const scored = await scoreChanged(env);
+    return json({ requested, taken, scored });
+  }
   if (req.method === "POST" && url.pathname === "/api/network") return input(async () => addToNetwork(env, (await body()) as Record<string, string>, who));
   if (req.method === "POST" && parts[0] === "api" && parts[1] === "network" && parts[2] && !parts[3]) return input(async () => updateMember(env, parts[2], await body(), who));
   if (req.method === "POST" && parts[0] === "api" && parts[1] === "network" && parts[2] && parts[3] === "remove") { await removeMember(env, parts[2]); return json({ ok: true }); }
