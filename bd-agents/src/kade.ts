@@ -4,9 +4,27 @@
  * the CF-Access-Client-* headers, and Access hands KADE the signed token it verifies.
  */
 export interface KadeEnv {
+  /** Signals over a service binding in the KADE account (KADE docs/platform-apps.md): no token, no public internet. */
+  SIGNALS?: Fetcher;
   KADE_API_URL: string;
-  KADE_ACCESS_CLIENT_ID: string;
-  KADE_ACCESS_CLIENT_SECRET: string;
+  /** The Access service token, used only without the binding (before the move). */
+  KADE_ACCESS_CLIENT_ID?: string;
+  KADE_ACCESS_CLIENT_SECRET?: string;
+}
+
+/**
+ * One way to call Signals' BD routes: the service binding when there is one, otherwise the public address with
+ * the Access service token. Access answers a bad token with a redirect to its login page, treated as a failure.
+ */
+async function signals(env: KadeEnv, path: string, init: { method?: string; body?: string; query?: URLSearchParams } = {}): Promise<Response> {
+  const url = new URL(`/api/integrations/bd/${path}`, env.KADE_API_URL || "https://signals.internal");
+  if (init.query) url.search = init.query.toString();
+  const headers: Record<string, string> = { Accept: "application/json", ...(init.body ? { "Content-Type": "application/json" } : {}) };
+  if (env.SIGNALS) return env.SIGNALS.fetch(new Request(url, { method: init.method ?? "GET", headers, body: init.body }));
+  if (!env.KADE_ACCESS_CLIENT_SECRET || !env.KADE_ACCESS_CLIENT_ID) throw new KadeError(0, "Signals is not connected: no service binding and no Access service token");
+  headers["CF-Access-Client-Id"] = env.KADE_ACCESS_CLIENT_ID;
+  headers["CF-Access-Client-Secret"] = env.KADE_ACCESS_CLIENT_SECRET;
+  return fetch(url, { method: init.method ?? "GET", headers, body: init.body, redirect: "manual" });
 }
 
 export interface KadePerson {
@@ -51,17 +69,9 @@ export class KadeError extends Error {
 }
 
 async function get<T>(env: KadeEnv, path: string, params: Record<string, string | number | undefined>): Promise<T> {
-  if (!env.KADE_ACCESS_CLIENT_SECRET) throw new KadeError(0, "KADE_ACCESS_CLIENT_SECRET is not set");
-  const url = new URL(`/api/integrations/bd/${path}`, env.KADE_API_URL);
-  for (const [k, v] of Object.entries(params)) if (v !== undefined && v !== "") url.searchParams.set(k, String(v));
-  const res = await fetch(url, {
-    headers: {
-      "CF-Access-Client-Id": env.KADE_ACCESS_CLIENT_ID,
-      "CF-Access-Client-Secret": env.KADE_ACCESS_CLIENT_SECRET,
-      Accept: "application/json",
-    },
-    redirect: "manual", // Access answers a bad token with a redirect to its login page; treat that as a failure.
-  });
+  const query = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) if (v !== undefined && v !== "") query.set(k, String(v));
+  const res = await signals(env, path, { query });
   if (res.status !== 200) {
     const body = await res.text();
     throw new KadeError(res.status, `KADE ${path}: HTTP ${res.status} ${body.slice(0, 300)}`);
@@ -82,18 +92,7 @@ export interface ContactWriteResult { id: string; duplicate: boolean; state: { s
 
 /** Records a touch or outcome on the person in KADE (the BD integration's only write). */
 export async function recordContact(env: KadeEnv, body: ContactWrite): Promise<ContactWriteResult> {
-  if (!env.KADE_ACCESS_CLIENT_SECRET) throw new KadeError(0, "KADE_ACCESS_CLIENT_SECRET is not set");
-  const res = await fetch(new URL("/api/integrations/bd/contact-activity", env.KADE_API_URL), {
-    method: "POST",
-    headers: {
-      "CF-Access-Client-Id": env.KADE_ACCESS_CLIENT_ID,
-      "CF-Access-Client-Secret": env.KADE_ACCESS_CLIENT_SECRET,
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
-    body: JSON.stringify(body),
-    redirect: "manual",
-  });
+  const res = await signals(env, "contact-activity", { method: "POST", body: JSON.stringify(body) });
   if (res.status !== 201) throw new KadeError(res.status, `KADE contact-activity: HTTP ${res.status} ${(await res.text()).slice(0, 300)}`);
   return res.json<ContactWriteResult>();
 }
@@ -195,18 +194,7 @@ export interface PartnerAdd { linkedinUrl: string; name: string; title?: string 
 
 /** Adds a partner in KADE by LinkedIn URL; the next partner sync brings them here. */
 export async function addPartner(env: KadeEnv, body: PartnerAdd): Promise<{ personId: string; created: boolean }> {
-  if (!env.KADE_ACCESS_CLIENT_SECRET) throw new KadeError(0, "KADE_ACCESS_CLIENT_SECRET is not set");
-  const res = await fetch(new URL("/api/integrations/bd/partners", env.KADE_API_URL), {
-    method: "POST",
-    headers: {
-      "CF-Access-Client-Id": env.KADE_ACCESS_CLIENT_ID,
-      "CF-Access-Client-Secret": env.KADE_ACCESS_CLIENT_SECRET,
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
-    body: JSON.stringify(body),
-    redirect: "manual",
-  });
+  const res = await signals(env, "partners", { method: "POST", body: JSON.stringify(body) });
   if (res.status !== 201) {
     const text = await res.text();
     let msg = text.slice(0, 300);
@@ -220,35 +208,13 @@ export interface JobReport { job: string; ok: boolean; at: string; ms: number; d
 
 /** The morning's steps, reported to KADE's system check (docs/system-check.md). */
 export async function reportJobs(env: KadeEnv, jobs: JobReport[]) {
-  if (!env.KADE_ACCESS_CLIENT_SECRET) throw new KadeError(0, "KADE_ACCESS_CLIENT_SECRET is not set");
-  const res = await fetch(new URL("/api/integrations/bd/job-reports", env.KADE_API_URL), {
-    method: "POST",
-    headers: {
-      "CF-Access-Client-Id": env.KADE_ACCESS_CLIENT_ID,
-      "CF-Access-Client-Secret": env.KADE_ACCESS_CLIENT_SECRET,
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
-    body: JSON.stringify({ jobs }),
-    redirect: "manual",
-  });
+  const res = await signals(env, "job-reports", { method: "POST", body: JSON.stringify({ jobs }) });
   if (res.status !== 201) throw new KadeError(res.status, `KADE job-reports: HTTP ${res.status} ${(await res.text()).slice(0, 300)}`);
 }
 
 /** A POST to KADE's BD routes; 422 answers carry KADE's own reason. */
 async function kadePost<T>(env: KadeEnv, path: string, body: unknown): Promise<T> {
-  if (!env.KADE_ACCESS_CLIENT_SECRET) throw new KadeError(0, "KADE_ACCESS_CLIENT_SECRET is not set");
-  const res = await fetch(new URL(`/api/integrations/bd/${path}`, env.KADE_API_URL), {
-    method: "POST",
-    headers: {
-      "CF-Access-Client-Id": env.KADE_ACCESS_CLIENT_ID,
-      "CF-Access-Client-Secret": env.KADE_ACCESS_CLIENT_SECRET,
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
-    body: JSON.stringify(body),
-    redirect: "manual",
-  });
+  const res = await signals(env, `${path}`, { method: "POST", body: JSON.stringify(body) });
   if (res.status !== 201) {
     const text = await res.text();
     let msg = text.slice(0, 300);

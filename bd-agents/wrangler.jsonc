@@ -1,22 +1,23 @@
-// BD Agent Team Worker — separate from the transformidable-cms Worker.
+// Network (formerly the BD Agent Team / Transformidable Daily): one of KADE's four apps, in the KADE Analytics account
+// (KADE docs/platform-apps.md). Separate from the transformidable-cms Worker, which stays in the Transformidable account.
 // Deploy from this folder:  cd bd-agents && npx wrangler deploy
 {
   "$schema": "../node_modules/wrangler/config-schema.json",
-  "name": "bd-agents",
-  // Transformidable account. A CLOUDFLARE_ACCOUNT_ID in your shell or a .env file overrides this.
-  "account_id": "eafd097bc9914edce898c4d47bd6d875",
+  "name": "kade-network",
+  // KADE Analytics account. A CLOUDFLARE_ACCOUNT_ID in your shell or a .env file overrides this.
+  "account_id": "14b6d2012633a27148f5f9921158a7ed",
   "main": "src/index.ts",
   "compatibility_date": "2026-10-01",
   "compatibility_flags": ["nodejs_compat"],
   // The review page lives on our own domain so Cloudflare Access can protect it (Access cannot
   // protect workers.dev). src/auth.ts also fails closed until ACCESS_* below are set.
   "workers_dev": false,
-  "routes": [{ "pattern": "dash.betransformidable.com", "custom_domain": true }],
+  "routes": [{ "pattern": "network.kadeanalytics.com", "custom_domain": true }],
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "bd-agents",
-      "database_id": "8233a541-8b61-49fc-8cfd-5ac02477f4c3",
+      "database_name": "kade-network",
+      "database_id": "14e7b02c-3112-401e-be1a-3787b3138bac",
       // 0001 is already applied in production and recorded in d1_migrations.
       // New changes: add 0002_*.sql here, then
       //   npx wrangler d1 migrations apply bd-agents --remote
@@ -32,12 +33,11 @@
   "vars": {
     // KADE lives in its own Cloudflare account; reach it over its API only.
     // KADE development Worker (behind Cloudflare Access).
-    "KADE_API_URL": "https://kade-research-dev.kade-analytics.workers.dev",
+    "KADE_API_URL": "https://signals.kadeanalytics.com",
     // Client ID of the `bd-agents` Access service token in KADE's account (not a secret).
-    "KADE_ACCESS_CLIENT_ID": "b304d3df80d972d01d5fc8d35aded8d7.access",
     // Cloudflare Access app protecting this Worker (Transformidable account Zero Trust). Empty: the page refuses everyone.
-    "ACCESS_TEAM_DOMAIN": "https://frosty-star-95f3.cloudflareaccess.com",
-    "ACCESS_AUD": "0ff1aa66b2047fd768063454b10beef9bb543f0c7d21eab59e203aee58bdded6",
+    "ACCESS_TEAM_DOMAIN": "https://aged-rice-f04a.cloudflareaccess.com",
+    "ACCESS_AUD": "8814fa78a0297c39979a206941b87f4bf72e634b8d0a7a3149c38fda48cb8165",
     // Second check on top of the Access policy: who may use the review page.
     "ALLOWED_EMAIL_DOMAINS": "jerribland.com,jlynne.co",
     // Model for drafts. The key is the ANTHROPIC_API_KEY secret; without it, drafts use plain templates.
@@ -47,10 +47,9 @@
     // Public site, for podcast and course links and the CMS's public API.
     "SITE_URL": "https://betransformidable.com",
   },
-  // Upcoming briefing and Academy sessions, from the briefings Worker in this account.
-  "services": [{ "binding": "BRIEFINGS", "service": "briefings" }],
+  // Signals, privately, inside the KADE account (KADE docs/platform-apps.md). Briefings are read from their public address.
+  "services": [{ "binding": "SIGNALS", "service": "kade-research-dev", "entrypoint": "NetworkGateway" }],
   // Secrets (set with `npx wrangler secret put <NAME>`, never committed):
-  //   KADE_ACCESS_CLIENT_SECRET — the `bd-agents` service token's Client Secret
   //   ANTHROPIC_API_KEY         — Claude API for drafting connection notes and follow-ups
   "observability": {
     "enabled": true,

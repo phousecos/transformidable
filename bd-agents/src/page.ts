@@ -1,5 +1,5 @@
 /**
- * Transformidable Daily: the BD review page (design: the "Transformidable Daily redesign" canvas,
+ * Network (formerly Transformidable Daily): the BD review page (design: the "Transformidable Daily redesign" canvas,
  * November 12, 2026). Tabs (November 14): This week, Prospecting, Partners, Email, Posts and Results
  * (weekly numbers), with a status line on top. One self-contained page; all data via /api/*.
  * Text from the database is only ever set with textContent or value, never as HTML. (No template
@@ -10,7 +10,7 @@ export const PAGE = `<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Transformidable Daily</title>
+<title>Network</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -112,7 +112,7 @@ form.stats .wide { grid-column:1 / -1; }
 <header>
   <div class="wrap">
     <div class="top">
-      <div class="brand"><h1>Transformidable Daily</h1><span class="muted" id="date"></span></div>
+      <div class="brand"><h1>Network</h1><span class="muted" id="date"></span></div>
       <span class="muted small" id="me"></span>
     </div>
     <nav aria-label="Sections">
