@@ -1,6 +1,6 @@
 /**
  * Network (formerly Transformidable Daily): the BD review page (design: the "Transformidable Daily redesign" canvas,
- * November 12, 2026). Tabs (November 14): This week, Prospecting, Partners, Email, Posts and Results
+ * November 12, 2026). Tabs (November 14): This week, Prospecting, Partners, Email and Results; posts and the influencer list moved to Influence
  * (weekly numbers), with a status line on top. One self-contained page; all data via /api/*.
  * Text from the database is only ever set with textContent or value, never as HTML. (No template
  * literals inside the script below, because this whole page is itself a template literal.)
@@ -120,7 +120,6 @@ form.stats .wide { grid-column:1 / -1; }
       <a href="#prospecting" data-tab="prospecting">Prospecting</a>
       <a href="#partners" data-tab="partners">Partners</a>
       <a href="#email" data-tab="email">Email <span class="badge" id="emailbadge" hidden></span></a>
-      <a href="#posts" data-tab="posts">Posts <span class="badge" id="postbadge" hidden></span></a>
       <a href="#results" data-tab="results">Results</a>
     </nav>
   </div>
@@ -144,17 +143,6 @@ form.stats .wide { grid-column:1 / -1; }
         <div><h2 style="font-size:16px">Replies and meetings</h2>
           <p class="muted small">Record a reply, meeting or no here; it goes on their record in Signals. Suggestions pause until you close the conversation; not interested pauses them for 12 months; asked to stop is permanent.</p></div>
         <div id="contacts"></div>
-      </section>
-      <section class="panel">
-        <div style="display:flex;justify-content:space-between;align-items:baseline"><h2 style="font-size:16px">Your influencer list</h2><span class="muted small" id="influencercount"></span></div>
-        <p class="muted small" style="margin:0">Two of them come up for a comment each day, and up to two get a connection request until you're connected.</p>
-        <div id="influencers"></div>
-        <form id="influencerform" style="display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--soft);padding-top:12px">
-          <label class="field">Name <input name="name" required style="min-height:44px;border:1px solid var(--fieldline);border-radius:8px;padding:0 10px;background:var(--card)"></label>
-          <label class="field">LinkedIn profile address <input name="linkedinUrl" type="url" required placeholder="https://www.linkedin.com/in/…" style="min-height:44px;border:1px solid var(--fieldline);border-radius:8px;padding:0 10px;background:var(--card)"></label>
-          <label class="field">Title and organization (optional) <input name="title" style="min-height:44px;border:1px solid var(--fieldline);border-radius:8px;padding:0 10px;background:var(--card)"></label>
-          <button class="btn outline">Add to list</button>
-        </form>
       </section>
       <section class="panel">
         <div><h2 style="font-size:16px">Your LinkedIn connections</h2>
@@ -208,14 +196,6 @@ form.stats .wide { grid-column:1 / -1; }
       </section>
   </section>
 
-  <section id="tab-posts" class="split" hidden>
-    <div class="days">
-      <div><h2>Upcoming posts</h2><p class="muted small" style="margin:4px 0 0">Company page Mon, Wed, Fri. Your profile Tue, Thu. A Transformidable Thinking short video each week.</p></div>
-      <div id="days" style="display:flex;flex-direction:column;gap:10px"></div>
-      <button type="button" class="btn" id="buildposts" style="border-style:dashed">Draft upcoming posts now</button>
-    </div>
-    <section class="main panel" id="postdetail"></section>
-  </section>
 
   <section id="tab-week" hidden style="display:flex;flex-direction:column;gap:20px">
     <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:8px">
@@ -324,7 +304,7 @@ function counter(ta, limit) {
 }
 
 // ---- Tabs ----
-var TABS = ["week", "prospecting", "partners", "email", "posts", "results"];
+var TABS = ["week", "prospecting", "partners", "email", "results"];
 function showTab() {
   var tab = (location.hash || "#prospecting").slice(1);
   if (tab === "today") tab = "prospecting";
@@ -455,27 +435,6 @@ function commentStart(c, a) {
   return c;
 }
 
-function renderInfluencers(list) {
-  var box = document.getElementById("influencers"); box.textContent = "";
-  document.getElementById("influencercount").textContent = String(list.length);
-  if (!list.length) box.appendChild(el("p", "empty", "No one yet. Add industry voices, partners and associations whose posts you want to engage with."));
-  list.forEach(function (p) {
-    var it = el("div", "item"); it.style.flexDirection = "row"; it.style.alignItems = "center"; it.style.gap = "10px";
-    var txt = el("div"); txt.style.cssText = "flex:1;min-width:0";
-    var nm = el("a", "name", p.full_name); nm.href = p.linkedin_url; nm.target = "_blank"; nm.rel = "noopener"; nm.style.cssText = "font-size:14px;color:var(--ink)";
-    var sub = [who(p), p.last_comment ? "last comment " + nice(p.last_comment) : "no comment yet"].filter(Boolean).join(" · ");
-    add(txt, nm, el("div", "muted small", sub));
-    var rm = button("Remove", "quiet small", function () {
-      if (!confirm("Remove " + p.full_name + " from your influencer list?")) return;
-      post("/api/influencers/" + p.id + "/remove").then(loadInfluencers).catch(function (e) { toast(e.message); });
-    });
-    add(it, txt, rm); box.appendChild(it);
-  });
-}
-function loadInfluencers() {
-  return fetch("/api/influencers").then(function (r) { return r.json(); }).then(function (d) { renderInfluencers(d.influencers || []); })
-    .catch(function (e) { document.getElementById("influencers").textContent = "Could not load: " + e.message; });
-}
 // The connections export: matched here, then sent to KADE a batch at a time.
 document.getElementById("connfile").onchange = function (e) {
   var f = e.target.files && e.target.files[0]; if (!f) return;
@@ -570,12 +529,6 @@ function loadInbox() {
     .catch(function (e) { document.getElementById("inbox").textContent = "Could not load: " + e.message; });
 }
 
-document.getElementById("influencerform").onsubmit = function (e) {
-  e.preventDefault();
-  var body = {}; new FormData(e.target).forEach(function (v, k) { body[k] = v; });
-  post("/api/influencers", body).then(function () { toast("Added. They join the comment rotation from tomorrow."); e.target.reset(); return loadInfluencers(); })
-    .catch(function (err) { toast(err.message); });
-};
 
 // Actions in groups (follow-ups, comments, reshares, invitations); carried-over items come first in each group.
 function renderActions(box, actions) {
@@ -662,69 +615,6 @@ function renderStatus(d) {
   if (d.unsentToKade) s.appendChild(pill(String(d.unsentToKade), " not yet in Signals (retried each morning)", "warn"));
   else s.appendChild(el("span", "pill ok", "All recorded in Signals"));
 }
-
-// ---- Posts ----
-function renderPosts() {
-  var days = document.getElementById("days"); days.textContent = "";
-  var detail = document.getElementById("postdetail"); detail.textContent = "";
-  var open = state.posts.filter(function (p) { return p.status === "proposed"; }).length;
-  var badge = document.getElementById("postbadge"); badge.hidden = !open; badge.textContent = String(open);
-  if (!state.posts.length) { days.appendChild(el("p", "empty", "No upcoming posts. Monday mornings fill the week.")); detail.appendChild(el("p", "empty", "Nothing to show.")); return; }
-  if (!state.picked || !state.posts.some(function (p) { return p.id === state.picked; })) {
-    var next = state.posts.filter(function (p) { return p.status === "proposed"; })[0] || state.posts[0];
-    state.picked = next.id;
-  }
-  state.posts.forEach(function (p) {
-    var d = new Date(p.due_date + "T12:00:00Z");
-    var st = p.status === "sent" ? "Posted" : p.status === "rejected" ? "Skipped" : p.due_date === state.today ? "Today" : p.due_date < state.today ? "Not posted yet" : "Draft";
-    var b = el("button", "day"); b.type = "button"; b.setAttribute("aria-pressed", p.id === state.picked ? "true" : "false");
-    var line = el("span", "line");
-    var s = el("span", "small", st); s.style.fontWeight = "600"; s.style.color = st === "Posted" ? "var(--ok)" : st === "Today" ? "var(--accent)" : st === "Not posted yet" ? "var(--warn)" : "var(--muted)";
-    add(line, el("span", "name", DAYS[d.getUTCDay()] + " " + nice(p.due_date)), s);
-    add(b, line, el("span", "muted small", postKind(p) + " · " + (p.title || "")));
-    b.onclick = function () { state.picked = p.id; renderPosts(); };
-    days.appendChild(b);
-  });
-  var p = state.posts.filter(function (x) { return x.id === state.picked; })[0];
-  var head = el("div", "head");
-  var t = el("h2", "", p.title || "Post"); t.style.fontSize = "18px";
-  add(head, t, el("span", "tag", postKind(p)));
-  if (p.context && p.context.source) head.appendChild(el("span", "muted small", "From: " + p.context.source));
-  detail.appendChild(head);
-  var lab = el("label", "field", p.item_type === "short_video" ? "Caption to post with the video" : "Post text"); lab.setAttribute("for", "posttext");
-  var ta = el("textarea"); ta.id = "posttext"; ta.rows = 11; ta.value = p.text || ""; ta.disabled = p.status !== "proposed";
-  add(detail, lab, ta, counter(ta, 3000));
-  var v = p.context && p.context.visual;
-  if (v && v.format && v.format !== "text_only") {
-    var vb = el("div", "visual");
-    var top = el("div", "head"); top.style.justifyContent = "space-between";
-    top.appendChild(el("span", "label", p.item_type === "short_video" ? "Script to camera (30 to 45 seconds)" : "Suggested visual: " + (VISUALS[v.format] || v.format)));
-    top.appendChild(button("Copy for Canva", "small", function () { navigator.clipboard.writeText([v.headline, v.notes].filter(Boolean).join("\\n\\n")).then(function () { toast("Copied"); }); }));
-    vb.appendChild(top);
-    if (v.headline) vb.appendChild(el("div", "name", v.headline));
-    if (v.notes) { var nt = el("div", p.item_type === "short_video" ? "small" : "muted small", v.notes); nt.style.whiteSpace = "pre-wrap"; vb.appendChild(nt); }
-    detail.appendChild(vb);
-  }
-  var bar = el("div", "actions");
-  if (p.status === "proposed") {
-    bar.appendChild(button("Copy text", "outline", function () { navigator.clipboard.writeText(ta.value).then(function () { toast("Copied"); }); }));
-    if (p.context && p.context.link) bar.appendChild(link("Open link", p.context.link));
-    var done = button("Posted", "primary", function () { done.disabled = true; post("/api/posts/" + p.id, { status: "posted", text: ta.value }).then(load).catch(function (e) { toast(e.message); done.disabled = false; }); });
-    bar.appendChild(done);
-    bar.appendChild(button("Skip", "", function () { post("/api/posts/" + p.id, { status: "skipped" }).then(load).catch(function (e) { toast(e.message); }); }));
-  } else {
-    bar.appendChild(el("span", "muted", p.status === "sent" ? "Posted" + (p.approved_by ? " by " + p.approved_by : "") : "Skipped"));
-  }
-  detail.appendChild(bar);
-}
-document.getElementById("buildposts").onclick = function () {
-  var b = document.getElementById("buildposts");
-  b.disabled = true; b.textContent = "Drafting… (up to a minute)";
-  post("/api/posts/build").then(function (r) {
-    if (r.skipped) toast("Not drafted: " + r.reason); else if (!r.posts) toast("Claude returned no posts. Try again."); else toast(r.posts + " posts drafted.");
-    return load();
-  }).catch(function (e) { toast(e.message); }).then(function () { b.disabled = false; b.textContent = "Draft upcoming posts now"; });
-};
 
 // ---- Results ----
 function mondays(n) {
@@ -936,16 +826,13 @@ function load() {
     state.today = d.date;
     document.getElementById("date").textContent = longDate(d.date);
     document.getElementById("me").textContent = "Signed in as " + d.me;
-    state.posts = d.posts;
     renderStatus(d);
     renderToday(d);
-    renderPosts();
     if (state.results) loadResults();
   }).catch(function (e) { document.getElementById("date").textContent = "Could not load: " + e.message; });
 }
 showTab();
 load();
-loadInfluencers();
 loadPartners();
 loadInbox();
 </script>

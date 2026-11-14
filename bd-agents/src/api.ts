@@ -3,16 +3,15 @@
  * action done or decides a research request is recorded as its approver.
  */
 import { AuthError, signedInEmail, type AuthEnv } from "./auth";
-import { buildPosts, buildShortVideo, weekOf, type ContentEnv } from "./content";
 import { draft, type DraftKind } from "./claude";
-import { buildToday, firstName, todayET, type DailyEnv } from "./daily";
+import { buildToday, firstName, todayET, weekOf, type DailyEnv } from "./daily";
 import { dismissReply as kadeDismissReply, inbox as kadeInbox, requestEmail as kadeRequestEmail, addPartner as kadeAddPartner, events as kadeEvents, KadeError, kadeOrgUrl, results as kadeResults, weekPlan, type KadeWeekPlan, type PartnerAdd } from "./kade";
 import { syncPartners } from "./sync";
 import { flushTouches, KIND_BY_ACTION, OUTCOMES, touchStatement } from "./contact";
 import { PAGE } from "./page";
 import { alreadyConnected, importConnections } from "./connections";
 
-export interface ApiEnv extends DailyEnv, ContentEnv, AuthEnv {}
+export interface ApiEnv extends DailyEnv, AuthEnv {}
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });
 
@@ -40,13 +39,6 @@ async function today(env: ApiEnv, date: string) {
   const unsent = await env.DB.prepare("SELECT COUNT(*) AS n FROM touches WHERE kade_sent_at IS NULL AND kade_kind IS NOT NULL").first<{ n: number }>();
   const openGaps = await env.DB.prepare("SELECT COUNT(*) AS n FROM research_gaps WHERE status = 'open'").first<{ n: number }>();
   const monday = weekOf(date);
-  const posts = await env.DB.prepare(
-    `SELECT id, item_type, channel, title, COALESCE(final_text, draft) AS text, context_json, status, due_date, approved_by, sent_at
-     FROM review_queue WHERE system = 'media' AND item_type IN ('post_page', 'post_profile', 'short_video')
-       -- This week and the next two, and any from the two weeks before still not posted (carry-over).
-       AND (due_date BETWEEN ?1 AND date(?1, '+20 days') OR (due_date >= date(?1, '-14 days') AND due_date < ?1 AND status = 'proposed'))
-     ORDER BY due_date`,
-  ).bind(monday).all<{ context_json: string | null }>();
   return {
     date,
     actions: actions.results.map((a) => ({ ...a, kade_url: a.kade_account_id ? kadeOrgUrl(env, String(a.kade_account_id)) : null })),
@@ -55,7 +47,6 @@ async function today(env: ApiEnv, date: string) {
     unsentToKade: unsent?.n ?? 0,
     openGaps: openGaps?.n ?? 0,
     week: monday,
-    posts: posts.results.map(({ context_json, ...p }) => ({ ...p, context: context_json ? JSON.parse(context_json) : {} })),
   };
 }
 
@@ -196,51 +187,7 @@ async function addPartnerHere(env: ApiEnv, body: Partial<PartnerAdd>) {
   }
 }
 
-/** The influencer list (owner, November 12, 2026): people added by LinkedIn URL who join the comment rotation. */
-async function influencers(env: ApiEnv) {
-  const rows = await env.DB.prepare(
-    `SELECT id, full_name, title, organization, linkedin_url, connection_status, note,
-       (SELECT MAX(a.action_date) FROM actions a WHERE a.person_id = people.id AND a.action_type = 'comment' AND a.status = 'done') AS last_comment
-     FROM people WHERE segment = 'influencer' AND archived_at IS NULL ORDER BY full_name`,
-  ).all();
-  return json({ influencers: rows.results });
-}
-const LINKEDIN_PROFILE = /^https:\/\/(www\.)?linkedin\.com\/in\/[A-Za-z0-9\-_%]+\/?$/;
-async function addInfluencer(env: ApiEnv, who: string, body: Record<string, string>) {
-  const name = (body.name ?? "").trim();
-  const url = (body.linkedinUrl ?? "").trim().replace(/[?#].*$/, "").replace(/^http:/, "https:");
-  if (!name) return json({ error: "Enter a name" }, 422);
-  if (!LINKEDIN_PROFILE.test(url)) return json({ error: "Enter a LinkedIn profile address, like https://www.linkedin.com/in/name" }, 422);
-  const existing = await env.DB.prepare("SELECT id, archived_at FROM people WHERE linkedin_url = ?1 OR linkedin_url = ?2").bind(url, url.replace(/\/$/, "")).first<{ id: string; archived_at: string | null }>();
-  if (existing && !existing.archived_at) return json({ error: "Already on your list or in Signals' people" }, 409);
-  const now = new Date().toISOString();
-  if (existing) {
-    await env.DB.prepare("UPDATE people SET archived_at = NULL, segment = 'influencer', full_name = ?2, updated_at = ?3 WHERE id = ?1").bind(existing.id, name, now).run();
-    return json({ ok: true, id: existing.id });
-  }
-  const id = crypto.randomUUID();
-  await env.DB.prepare(
-    `INSERT INTO people (id, full_name, title, organization, segment, linkedin_url, note, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, 'influencer', ?5, ?6, ?7, ?7)`,
-  ).bind(id, name, (body.title ?? "").trim() || null, (body.organization ?? "").trim() || null, url, `added by ${who}`, now).run();
-  return json({ ok: true, id });
-}
-async function removeInfluencer(env: ApiEnv, id: string) {
-  const r = await env.DB.prepare("UPDATE people SET archived_at = ?2, updated_at = ?2 WHERE id = ?1 AND segment = 'influencer' AND archived_at IS NULL").bind(id, new Date().toISOString()).run();
-  return (r.meta.changes ?? 0) ? json({ ok: true }) : json({ error: "Not on your list" }, 404);
-}
 
-async function completePost(env: ApiEnv, id: string, who: string, body: { status?: string; text?: string }) {
-  if (body.status !== "posted" && body.status !== "skipped") return json({ error: "status must be posted or skipped" }, 422);
-  const q = await env.DB.prepare("SELECT draft, status FROM review_queue WHERE id = ?1 AND system = 'media'").bind(id).first<{ draft: string; status: string }>();
-  if (!q) return json({ error: "No such post" }, 404);
-  if (q.status !== "proposed") return json({ error: `Already ${q.status}` }, 409);
-  const now = new Date().toISOString();
-  const text = typeof body.text === "string" && body.text.trim() ? body.text.trim() : q.draft;
-  const posted = body.status === "posted";
-  await env.DB.prepare("UPDATE review_queue SET final_text = ?2, status = ?3, approved_by = ?4, approved_at = ?5, sent_at = ?6, updated_at = ?5 WHERE id = ?1")
-    .bind(id, text, posted ? "sent" : "rejected", who, now, posted ? now : null).run();
-  return json({ ok: true });
-}
 
 async function markConnected(env: ApiEnv, personId: string, who: string) {
   const now = new Date().toISOString();
@@ -339,7 +286,7 @@ async function saveLinkedinStats(env: ApiEnv, who: string, body: Record<string, 
  */
 export async function selfCheck(env: ApiEnv) {
   const d = await today(env, todayET());
-  for (const [name, r] of [["partners", await partnerList(env)], ["influencers", await influencers(env)]] as const) {
+  for (const [name, r] of [["partners", await partnerList(env)]] as const) {
     if (!r.ok) throw new Error(`${name} answered HTTP ${r.status}`);
   }
   await weekView(env);
@@ -376,15 +323,6 @@ async function route(req: Request, env: ApiEnv): Promise<Response> {
     return json({ ...(await today(env, date)), me: who });
   }
   if (req.method === "POST" && url.pathname === "/api/today/build") return json(await buildToday(env));
-  if (req.method === "POST" && url.pathname === "/api/posts/build") {
-    try {
-      const posts = await buildPosts(env, todayET(), "next");
-      // The week's Transformidable Thinking short video too, when it is not drafted yet.
-      const video = await buildShortVideo(env, weekOf(todayET())).catch((e) => ({ skipped: true, reason: String(e).slice(0, 200) }));
-      return json({ ...posts, video });
-    } catch (e) { return json({ error: String(e) }, 502); }
-  }
-  if (req.method === "POST" && parts[0] === "api" && parts[1] === "posts" && parts[2]) return completePost(env, parts[2], who, await body());
   if (req.method === "POST" && parts[0] === "api" && parts[1] === "actions" && parts[2] && parts[3] === "redraft") return redraft(env, parts[2]);
   if (req.method === "POST" && parts[0] === "api" && parts[1] === "actions" && parts[2] && parts[3] === "email-instead") return emailInstead(env, parts[2], who);
   if (req.method === "GET" && url.pathname === "/api/inbox") return inboxView(env);
@@ -392,9 +330,6 @@ async function route(req: Request, env: ApiEnv): Promise<Response> {
   if (req.method === "POST" && parts[0] === "api" && parts[1] === "actions" && parts[2] && parts[3] === "comment-draft") return draftComment(env, parts[2], await body());
   if (req.method === "GET" && url.pathname === "/api/partners") return partnerList(env);
   if (req.method === "POST" && url.pathname === "/api/partners") return addPartnerHere(env, await body());
-  if (req.method === "GET" && url.pathname === "/api/influencers") return influencers(env);
-  if (req.method === "POST" && url.pathname === "/api/influencers") return addInfluencer(env, who, await body());
-  if (req.method === "POST" && parts[0] === "api" && parts[1] === "influencers" && parts[2] && parts[3] === "remove") return removeInfluencer(env, parts[2]);
   if (req.method === "POST" && parts[0] === "api" && parts[1] === "actions" && parts[2]) return completeAction(env, parts[2], who, await body());
   if (req.method === "POST" && parts[0] === "api" && parts[1] === "people" && parts[2] && parts[3] === "connected") return markConnected(env, parts[2], who);
   if (req.method === "POST" && parts[0] === "api" && parts[1] === "people" && parts[2] && parts[3] === "outcome") return recordOutcome(env, parts[2], who, await body());

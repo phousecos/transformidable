@@ -7,7 +7,6 @@
  */
 import { handle, selfCheck, type ApiEnv } from "./api";
 import { reportJobs, type JobReport } from "./kade";
-import { buildPosts, buildShortVideo, weekOf } from "./content";
 import { buildToday, todayET } from "./daily";
 import { syncGaps } from "./gaps";
 import { syncPartners, syncPeople } from "./sync";
@@ -47,12 +46,6 @@ export default {
         // Touches KADE did not take yet (offline earlier) are retried first, so today's states are current.
         await step("kade-contact-flush", () => flushTouches(env));
         await step("daily-list", () => buildToday(env));
-        // Mondays (New York): draft posts for this week's empty days (days drafted earlier are kept).
-        const today = todayET();
-        if (new Date(`${today}T12:00:00Z`).getUTCDay() === 1) {
-          await step("week-posts", () => buildPosts(env, today, "week"));
-          await step("week-short-video", () => buildShortVideo(env, weekOf(today)));
-        }
         // Last: load what the page loads, then tell KADE how the morning went (docs/system-check.md).
         await step("page-check", () => selfCheck(env));
         try { await reportJobs(env, jobs.splice(0)); }

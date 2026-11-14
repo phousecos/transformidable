@@ -1,5 +1,5 @@
 /**
- * Content agent: drafts LinkedIn posts (owner choice: the Transformidable page on Mon/Wed/Fri,
+ * Content agent (moved from Network to Influence, November 14, 2026; KADE docs/influence.md): drafts LinkedIn posts (owner choice: the Transformidable page on Mon/Wed/Fri,
  * Jerri's profile on Tue/Thu). Monday's cron fills that week's empty days; the page button
  * fills the next five weekdays starting tomorrow (owner, Nov 11). Days that already have a
  * post are never redrafted. Sources:
@@ -10,7 +10,12 @@
 import type { ClaudeEnv } from "./claude";
 import { EXAMPLE_POSTS, VOICE } from "./voice";
 import { events as kadeEvents, recentSignals, type KadeSignal } from "./kade";
-import type { SyncEnv } from "./sync";
+import type { KadeEnv } from "./kade";
+
+/** Influence keeps its posts in its own database (KADE docs/influence.md). */
+export interface SyncEnv extends KadeEnv {
+  DB: D1Database;
+}
 
 export interface ContentEnv extends SyncEnv, ClaudeEnv {
   /** Public site, for links (https://betransformidable.com). */
