@@ -19,8 +19,10 @@ export interface DailyEnv extends SyncEnv, ClaudeEnv {}
 export const FOLLOW_UPS_PER_DAY = 5;
 export const CONNECTS_PER_DAY = 9;
 export const COMMENTS_PER_DAY = 5;
-export const INFLUENCER_COMMENTS_PER_DAY = 2;
-export const INFLUENCER_CONNECTS_PER_DAY = 2;
+// The influencer list moved to Influence (KADE docs/influence.md, November 14, 2026): no influencer items here.
+// Influence's own engagement list (its stage 3) replaces them; this code goes with that change.
+export const INFLUENCER_COMMENTS_PER_DAY = 0;
+export const INFLUENCER_CONNECTS_PER_DAY = 0;
 export const PARTNER_CONNECTS_PER_DAY = 5;
 export const PARTNER_CHECK_INS_PER_DAY = 3;
 /** A person is offered for a comment at most once a week. */
@@ -30,6 +32,12 @@ const WITHDRAW_AFTER_DAYS = 21;
 
 /** Today's date in New York, YYYY-MM-DD. */
 export const todayET = (d = new Date()) => d.toLocaleDateString("en-CA", { timeZone: "America/New_York" });
+/** Monday of the week a date falls in. */
+export function weekOf(date: string) {
+  const d = new Date(`${date}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
+  return d.toISOString().slice(0, 10);
+}
 
 /** Buyer roles first; board members last. */
 const ROLE_RANK_SQL = `CASE COALESCE(p.role_category, '')

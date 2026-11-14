@@ -45,7 +45,6 @@
     // The company's LinkedIn page, linked from the daily reshare card (e.g. https://www.linkedin.com/company/<name>/). Empty: no link.
     "LINKEDIN_PAGE_URL": "https://www.linkedin.com/company/be-transformidable/",
     // Public site, for podcast and course links and the CMS's public API.
-    "SITE_URL": "https://betransformidable.com",
   },
   // Signals, privately, inside the KADE account (KADE docs/platform-apps.md). Briefings are read from their public address.
   "services": [{ "binding": "SIGNALS", "service": "kade-research-dev", "entrypoint": "NetworkGateway" }],
