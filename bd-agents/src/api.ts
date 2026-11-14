@@ -159,7 +159,7 @@ async function emailInstead(env: ApiEnv, actionId: string, who: string) {
   ).bind(actionId).first<{ id: string; status: string; action_type: string; kade_contact_id: string | null; full_name: string }>();
   if (!a) return json({ error: "No such action" }, 404);
   if (a.status !== "todo") return json({ error: `Already ${a.status}` }, 409);
-  if (!a.kade_contact_id) return json({ error: `${a.full_name} is not a KADE contact, so KADE cannot email them` }, 422);
+  if (!a.kade_contact_id) return json({ error: `${a.full_name} is not in Signals, so Signals cannot email them` }, 422);
   try {
     const r = await kadeRequestEmail(env, a.kade_contact_id);
     await env.DB.prepare("UPDATE actions SET status = 'skipped', done_at = ?2, outcome = ?3 WHERE id = ?1")
@@ -167,7 +167,7 @@ async function emailInstead(env: ApiEnv, actionId: string, who: string) {
     return json({ ok: true, email: r.email });
   } catch (e) {
     if (e instanceof KadeError && e.status === 422) return json({ error: e.message }, 422);
-    return json({ error: `KADE did not take the request: ${(e as Error).message}` }, 502);
+    return json({ error: `Signals did not take the request: ${(e as Error).message}` }, 502);
   }
 }
 async function dismissReplyHere(env: ApiEnv, id: string) {
@@ -192,7 +192,7 @@ async function addPartnerHere(env: ApiEnv, body: Partial<PartnerAdd>) {
     return json({ ok: true, ...r });
   } catch (e) {
     if (e instanceof KadeError && e.status === 422) return json({ error: e.message }, 422);
-    return json({ error: `Could not add the partner in KADE: ${(e as Error).message}` }, 502);
+    return json({ error: `Could not add the partner in Signals: ${(e as Error).message}` }, 502);
   }
 }
 
@@ -212,7 +212,7 @@ async function addInfluencer(env: ApiEnv, who: string, body: Record<string, stri
   if (!name) return json({ error: "Enter a name" }, 422);
   if (!LINKEDIN_PROFILE.test(url)) return json({ error: "Enter a LinkedIn profile address, like https://www.linkedin.com/in/name" }, 422);
   const existing = await env.DB.prepare("SELECT id, archived_at FROM people WHERE linkedin_url = ?1 OR linkedin_url = ?2").bind(url, url.replace(/\/$/, "")).first<{ id: string; archived_at: string | null }>();
-  if (existing && !existing.archived_at) return json({ error: "Already on your list or in KADE's people" }, 409);
+  if (existing && !existing.archived_at) return json({ error: "Already on your list or in Signals' people" }, 409);
   const now = new Date().toISOString();
   if (existing) {
     await env.DB.prepare("UPDATE people SET archived_at = NULL, segment = 'influencer', full_name = ?2, updated_at = ?3 WHERE id = ?1").bind(existing.id, name, now).run();
