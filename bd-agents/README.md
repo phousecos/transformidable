@@ -74,6 +74,12 @@ Until step 2 is done the page answers 503 to everyone.
 - **Comments (November 12, 2026):** 5 connected prospects at hot accounts (pursuits first) and 2 people from the influencer list, each at most once a week. Code never reads LinkedIn: the card links to their recent activity, a person pastes a post, and Claude drafts the comment (no pitch, no links, no hashtags). "No recent post" skips it.
 - **Reshare:** the latest company-page post published in the last 5 days, once, with a drafted intro (`LINKEDIN_PAGE_URL` links the card).
 - **Influencer list:** people added on the page by LinkedIn profile address; kept here, not in KADE (they are not accounts KADE researches), so their touches are not sent to KADE. Up to 2 a day get a connection request until connected; removing one archives it.
+- **Partners (November 13, 2026; KADE docs/partners.md):** fractional CFOs and controllers, fractional CHROs, M&A, integration and audit advisors, and ERP consultancies and executive recruiters, North Carolina first, then the Southeast. KADE owns them: it finds some each Monday through AI Ark, and people added on the page go to KADE first. The morning sync copies them here as segment `warm`, outside KADE's hot scope, with their kind, stage and next check-in. The daily list does three things with them:
+  - up to 5 invitations a day, on top of the 9, with a peer note
+  - after an invitation is accepted, a message asking for a 15-minute call
+  - 6 weeks after the last contact with a partner she has met, a check-in (up to 3 a day)
+
+  Referrals both ways are recorded from the outcome menu, and they go to KADE as contact history.
 - **Connection slots:** about 4 cohort targets (at most 2 people per account per week), 2 warm signals, 2 influencers or partners, and 1 public official.
 - **Touch rules:** one touch per person per day, and never LinkedIn and email on the same day.
 - **Invites:** a request with no accept after 14 days moves to the email lane. Invites still pending after 3 weeks get a `withdraw_invite` action.

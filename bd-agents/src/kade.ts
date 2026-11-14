@@ -164,3 +164,47 @@ export interface KadeEvents {
 export function events(env: KadeEnv) {
   return get<KadeEvents>(env, "events", {});
 }
+
+/** A partner (KADE docs/partners.md): a person who serves the same buyers, with where the relationship stands. */
+export interface KadePartner {
+  person_id: string;
+  full_name: string;
+  title: string | null;
+  firm: string | null;
+  linkedin_url: string | null;
+  partner_type: string;
+  type_label: string;
+  stage: string;
+  check_in_on: string | null;
+  referrals_in: number;
+  referrals_out: number;
+}
+
+export function partners(env: KadeEnv) {
+  return get<{ partners: KadePartner[]; types: Record<string, string> }>(env, "partners", {});
+}
+
+export interface PartnerAdd { linkedinUrl: string; name: string; title?: string | null; firm?: string | null; type: string; note?: string | null }
+
+/** Adds a partner in KADE by LinkedIn URL; the next partner sync brings them here. */
+export async function addPartner(env: KadeEnv, body: PartnerAdd): Promise<{ personId: string; created: boolean }> {
+  if (!env.KADE_ACCESS_CLIENT_SECRET) throw new KadeError(0, "KADE_ACCESS_CLIENT_SECRET is not set");
+  const res = await fetch(new URL("/api/integrations/bd/partners", env.KADE_API_URL), {
+    method: "POST",
+    headers: {
+      "CF-Access-Client-Id": env.KADE_ACCESS_CLIENT_ID,
+      "CF-Access-Client-Secret": env.KADE_ACCESS_CLIENT_SECRET,
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify(body),
+    redirect: "manual",
+  });
+  if (res.status !== 201) {
+    const text = await res.text();
+    let msg = text.slice(0, 300);
+    try { msg = (JSON.parse(text) as { error?: string }).error ?? msg; } catch { /* not JSON */ }
+    throw new KadeError(res.status, res.status === 422 ? msg : `KADE partners: HTTP ${res.status} ${msg}`);
+  }
+  return res.json();
+}

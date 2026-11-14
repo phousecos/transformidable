@@ -6,7 +6,8 @@ import { AuthError, signedInEmail, type AuthEnv } from "./auth";
 import { buildPosts, buildShortVideo, weekOf, type ContentEnv } from "./content";
 import { draft, type DraftKind } from "./claude";
 import { buildToday, firstName, todayET, type DailyEnv } from "./daily";
-import { events as kadeEvents, kadeOrgUrl, results as kadeResults, weekPlan, type KadeWeekPlan } from "./kade";
+import { addPartner as kadeAddPartner, events as kadeEvents, KadeError, kadeOrgUrl, results as kadeResults, weekPlan, type KadeWeekPlan, type PartnerAdd } from "./kade";
+import { syncPartners } from "./sync";
 import { flushTouches, KIND_BY_ACTION, OUTCOMES, touchStatement } from "./contact";
 import { PAGE } from "./page";
 import { alreadyConnected, importConnections } from "./connections";
@@ -19,7 +20,7 @@ async function today(env: ApiEnv, date: string) {
   const actions = await env.DB.prepare(
     `SELECT a.id, a.action_date, a.rank, a.action_type, a.status, a.reason, a.target_url, a.done_at,
        p.id AS person_id, p.full_name, p.title, p.organization, p.kade_account_id, p.kade_tier, p.kade_heat, p.pursued, p.connection_status, p.contact_state, p.paused_until,
-       p.segment, q.id AS queue_id, COALESCE(q.final_text, q.draft) AS text, q.draft, json_extract(q.context_json, '$.drafted_by') AS drafted_by,
+       p.segment, p.partner_type, q.id AS queue_id, COALESCE(q.final_text, q.draft) AS text, q.draft, json_extract(q.context_json, '$.drafted_by') AS drafted_by,
        json_extract(q.context_json, '$.post_title') AS post_title, json_extract(q.context_json, '$.post_text') AS post_text
      FROM actions a LEFT JOIN people p ON p.id = a.person_id LEFT JOIN review_queue q ON q.id = a.queue_id
      WHERE a.action_date = ?1 ORDER BY a.rank`,
@@ -96,9 +97,10 @@ async function redraft(env: ApiEnv, actionId: string) {
   ).bind(actionId).first<{ action_type: string; status: string; queue_id: string; context_json: string | null; full_name: string | null; title: string | null; organization: string | null; kade_summary: string | null; segment: string | null }>();
   if (!a) return json({ error: "No such action with a draft" }, 404);
   if (a.status !== "todo") return json({ error: `Already ${a.status}` }, 409);
-  const kind = KIND_FOR[a.action_type];
-  if (!kind) return json({ error: "Nothing to draft for this action" }, 422);
   const prior = a.context_json ? JSON.parse(a.context_json) as Record<string, unknown> : {};
+  // A partner's note, call ask or check-in is redrafted as what it was (KADE docs/partners.md).
+  const kind = (typeof prior.draft_kind === "string" ? prior.draft_kind as DraftKind : null) ?? KIND_FOR[a.action_type];
+  if (!kind) return json({ error: "Nothing to draft for this action" }, 422);
   const d = await draft(env, kind, { firstName: a.full_name ? firstName(a.full_name) : "Jerri", title: a.title, organization: a.organization,
     context: a.segment === "influencer" ? null : a.kade_summary, post: typeof prior.post_text === "string" ? prior.post_text : null });
   if (d.by === "template") return json({ error: `Claude did not draft it: ${d.error ?? "unknown"}` }, 502);
@@ -135,6 +137,27 @@ async function draftComment(env: ApiEnv, actionId: string, body: { postText?: st
     ]);
   }
   return json({ ok: true, text: d.text, drafted_by: d.by, error: d.error ?? null });
+}
+
+/** Partners (KADE docs/partners.md): as the morning sync brought them, with where each stands. */
+async function partnerList(env: ApiEnv) {
+  const rows = await env.DB.prepare(
+    `SELECT id, full_name, title, organization, linkedin_url, connection_status, partner_type, partner_stage, partner_check_in_on
+     FROM people WHERE partner_type IS NOT NULL ORDER BY CASE partner_stage WHEN 'referring' THEN 0 WHEN 'met' THEN 1 WHEN 'talking' THEN 2 WHEN 'connected' THEN 3 WHEN 'invited' THEN 4 ELSE 5 END, full_name`,
+  ).all();
+  return json({ partners: rows.results });
+}
+/** Adds a partner in KADE (one record per person), then brings KADE's list here at once. */
+async function addPartnerHere(env: ApiEnv, body: Partial<PartnerAdd>) {
+  if (typeof body.linkedinUrl !== "string" || typeof body.name !== "string" || typeof body.type !== "string") return json({ error: "Name, LinkedIn profile address and kind are required" }, 422);
+  try {
+    const r = await kadeAddPartner(env, { linkedinUrl: body.linkedinUrl, name: body.name, title: body.title ?? null, firm: body.firm ?? null, type: body.type, note: body.note ?? null });
+    await syncPartners(env);
+    return json({ ok: true, ...r });
+  } catch (e) {
+    if (e instanceof KadeError && e.status === 422) return json({ error: e.message }, 422);
+    return json({ error: `Could not add the partner in KADE: ${(e as Error).message}` }, 502);
+  }
 }
 
 /** The influencer list (owner, November 12, 2026): people added by LinkedIn URL who join the comment rotation. */
@@ -207,10 +230,10 @@ async function recordOutcome(env: ApiEnv, personId: string, who: string, body: {
   const note = typeof body.note === "string" && body.note.trim() ? body.note.trim().slice(0, 2000) : null;
   await env.DB.batch([
     touchStatement(env.DB, { id: touchId, personId, kind: body.kind, at: now, by: who, note }),
-    env.DB.prepare(`UPDATE people SET contact_state = ?2, paused_until = CASE WHEN ?2 = 'paused' THEN date('now', '+365 days') ELSE NULL END,
-       do_not_contact = CASE WHEN ?2 = 'stopped' THEN 1 ELSE do_not_contact END, updated_at = ?3 WHERE id = ?1`).bind(personId, outcome.state, now),
-    // Today's open suggestions for them no longer apply (a closed conversation leaves them as they are).
-    ...(body.kind === "conversation_closed" ? [] : [env.DB.prepare("UPDATE actions SET status = 'skipped', done_at = ?2, outcome = ?3 WHERE person_id = ?1 AND status = 'todo'")
+    ...(outcome.state === null ? [] : [env.DB.prepare(`UPDATE people SET contact_state = ?2, paused_until = CASE WHEN ?2 = 'paused' THEN date('now', '+365 days') ELSE NULL END,
+       do_not_contact = CASE WHEN ?2 = 'stopped' THEN 1 ELSE do_not_contact END, updated_at = ?3 WHERE id = ?1`).bind(personId, outcome.state, now)]),
+    // Today's open suggestions for them no longer apply (a closed conversation or a referral leaves them as they are).
+    ...(body.kind === "conversation_closed" || outcome.state === null ? [] : [env.DB.prepare("UPDATE actions SET status = 'skipped', done_at = ?2, outcome = ?3 WHERE person_id = ?1 AND status = 'todo'")
       .bind(personId, now, `${outcome.label} (recorded by ${who})`)]),
   ]);
   return json({ ok: true, kade: await flushTouches(env, [touchId]).catch((e) => ({ error: String(e) })) });
@@ -303,6 +326,8 @@ export async function handle(req: Request, env: ApiEnv): Promise<Response> {
   if (req.method === "POST" && parts[0] === "api" && parts[1] === "posts" && parts[2]) return completePost(env, parts[2], who, await body());
   if (req.method === "POST" && parts[0] === "api" && parts[1] === "actions" && parts[2] && parts[3] === "redraft") return redraft(env, parts[2]);
   if (req.method === "POST" && parts[0] === "api" && parts[1] === "actions" && parts[2] && parts[3] === "comment-draft") return draftComment(env, parts[2], await body());
+  if (req.method === "GET" && url.pathname === "/api/partners") return partnerList(env);
+  if (req.method === "POST" && url.pathname === "/api/partners") return addPartnerHere(env, await body());
   if (req.method === "GET" && url.pathname === "/api/influencers") return influencers(env);
   if (req.method === "POST" && url.pathname === "/api/influencers") return addInfluencer(env, who, await body());
   if (req.method === "POST" && parts[0] === "api" && parts[1] === "influencers" && parts[2] && parts[3] === "remove") return removeInfluencer(env, parts[2]);

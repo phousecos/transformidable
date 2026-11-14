@@ -155,6 +155,23 @@ form.stats .wide { grid-column:1 / -1; }
         </form>
       </section>
       <section class="panel">
+        <div style="display:flex;justify-content:space-between;align-items:baseline"><h2 style="font-size:16px">Partners</h2><span class="muted small" id="partnercount"></span></div>
+        <p class="muted small" style="margin:0">Fractional CFOs and CHROs, deal advisors, ERP firms and recruiters who serve the same buyers. KADE finds some each Monday; add your own here. Up to five invitations a day, a call ask once they accept, and a check-in six weeks after you last talked.</p>
+        <div id="partners"></div>
+        <form id="partnerform" style="display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--soft);padding-top:12px">
+          <label class="field">Name <input name="name" required style="min-height:44px;border:1px solid var(--fieldline);border-radius:8px;padding:0 10px;background:var(--card)"></label>
+          <label class="field">LinkedIn profile address <input name="linkedinUrl" type="url" required placeholder="https://www.linkedin.com/in/…" style="min-height:44px;border:1px solid var(--fieldline);border-radius:8px;padding:0 10px;background:var(--card)"></label>
+          <label class="field">Firm (optional) <input name="firm" style="min-height:44px;border:1px solid var(--fieldline);border-radius:8px;padding:0 10px;background:var(--card)"></label>
+          <label class="field">Kind <select name="type" required style="min-height:44px;border:1px solid var(--fieldline);border-radius:8px;padding:0 10px;background:var(--card)">
+            <option value="fractional_finance">Fractional CFO or controller</option>
+            <option value="fractional_hr">Fractional CHRO</option>
+            <option value="deal_advisor">M&amp;A, integration or audit advisor</option>
+            <option value="erp_recruiter">ERP consultancy or executive recruiter</option>
+          </select></label>
+          <button class="btn outline">Add partner</button>
+        </form>
+      </section>
+      <section class="panel">
         <div><h2 style="font-size:16px">Your LinkedIn connections</h2>
           <p class="muted small" style="margin:0">Upload Connections.csv from LinkedIn (Settings, Data privacy, Get a copy of your data, Connections) so the list stops suggesting people you already know. Repeat every few months.</p></div>
         <label class="btn outline" style="cursor:pointer;position:relative">Upload Connections.csv<input type="file" id="connfile" accept=".csv,text/csv" style="position:absolute;width:1px;height:1px;opacity:0"></label>
@@ -227,7 +244,8 @@ form.stats .wide { grid-column:1 / -1; }
 var LIMITS = { connect: 200, follow_up: 600, comment: 1250, reshare: 3000 };
 var GROUPS = [["follow_up", "Follow up", "Thank-you message"], ["comment", "Comment", "Your comment"], ["reshare", "Reshare", "Intro above the reshared post"],
   ["connect", "Connect", "Invitation note (200 characters)"], ["withdraw_invite", "Withdraw invite", ""]];
-var OUTCOMES = [["reply", "Replied"], ["meeting_booked", "Meeting booked"], ["not_interested", "Not interested"], ["stop_request", "Asked to stop"]];
+var OUTCOMES = [["reply", "Replied"], ["meeting_booked", "Meeting booked"], ["not_interested", "Not interested"], ["stop_request", "Asked to stop"],
+  ["referral_received", "Referred a client to me"], ["referral_given", "I referred a client to them"]];
 var VISUALS = { quote_graphic: "Quote graphic", carousel: "Carousel", short_video: "Video short", text_only: "Text only" };
 // The weekly Transformidable Thinking short video sits with the posts; its text is the caption and its visual the script.
 function postKind(p) { return p.item_type === "short_video" ? "Short video" : p.channel === "page" ? "Company page" : "Your profile"; }
@@ -315,6 +333,7 @@ function actionCard(a, draftLabel) {
     : add(el("div", "head"), el("span", "name", a.full_name), el("span", "muted", who(a)));
   var tags = el("span", "tags");
   if (a.segment === "influencer") tags.appendChild(el("span", "tag ok", "Influencer"));
+  if (a.partner_type) tags.appendChild(el("span", "tag ok", "Partner"));
   if (a.pursued) tags.appendChild(el("span", "tag accent", "Pursuit"));
   if (a.kade_tier) tags.appendChild(el("span", "tag", a.kade_tier.charAt(0).toUpperCase() + a.kade_tier.slice(1)));
   head.appendChild(tags);
@@ -435,6 +454,34 @@ document.getElementById("connfile").onchange = function (e) {
     })
     .catch(function (err) { msg.textContent = err.message; })
     .then(function () { e.target.value = ""; });
+};
+
+// ---- Partners (KADE docs/partners.md) ----
+var PARTNER_KINDS = { fractional_finance: "Fractional CFO or controller", fractional_hr: "Fractional CHRO", deal_advisor: "Deal advisor", erp_recruiter: "ERP or recruiter" };
+var PARTNER_STAGES = { "new": "Not invited yet", invited: "Invited", connected: "Connected", talking: "Talking", met: "Met", referring: "Referring" };
+function renderPartners(list) {
+  var box = document.getElementById("partners"); box.textContent = "";
+  document.getElementById("partnercount").textContent = String(list.length);
+  if (!list.length) box.appendChild(el("p", "empty", "No partners yet. KADE's first search runs Monday morning."));
+  list.slice(0, 30).forEach(function (p) {
+    var it = el("div", "item");
+    var nm = el("a", "name", p.full_name); nm.href = p.linkedin_url || "#"; nm.target = "_blank"; nm.rel = "noopener"; nm.style.cssText = "font-size:14px;color:var(--ink)";
+    var sub = [PARTNER_KINDS[p.partner_type] || "Partner", p.organization, PARTNER_STAGES[p.partner_stage] || p.partner_stage,
+      p.partner_check_in_on ? "check in " + nice(p.partner_check_in_on) : null].filter(Boolean).join(" · ");
+    add(it, nm, el("div", "muted small", sub));
+    box.appendChild(it);
+  });
+  if (list.length > 30) box.appendChild(el("p", "muted small", "And " + (list.length - 30) + " more."));
+}
+function loadPartners() {
+  return fetch("/api/partners").then(function (r) { return r.json(); }).then(function (d) { renderPartners(d.partners || []); })
+    .catch(function (e) { document.getElementById("partners").textContent = "Could not load: " + e.message; });
+}
+document.getElementById("partnerform").onsubmit = function (e) {
+  e.preventDefault();
+  var body = {}; new FormData(e.target).forEach(function (v, k) { body[k] = v; });
+  post("/api/partners", body).then(function () { toast("Added in KADE. They come up for an invitation from tomorrow."); e.target.reset(); return loadPartners(); })
+    .catch(function (err) { toast(err.message); });
 };
 
 document.getElementById("influencerform").onsubmit = function (e) {
@@ -746,6 +793,7 @@ function load() {
 showTab();
 load();
 loadInfluencers();
+loadPartners();
 </script>
 </body>
 </html>`;
