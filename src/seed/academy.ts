@@ -12,7 +12,7 @@ import type { Payload } from 'payload'
 //
 // Left out on purpose until decided (open items in the copy doc): the
 // transfer/refund and continuing-education answers, the final TA-102 title
-// (seeded unlisted as Know What You're Siting), the instructor photo and the
+// (seeded as the working title Know What You're Siting), the instructor photo and the
 // take-away card images (uploads).
 
 const list = (items: string[]) => items.map((text) => ({ text }))
@@ -302,8 +302,8 @@ const APPLIED = {
 
 // TA-102: data centers, from "Data Centers for Public Officials — Course
 // Outline" (Nov 13, 2026). Nonpartisan by design: benefits and concerns get
-// equal parts, and the course never recommends approve or deny. Unlisted
-// until its title is final; its dates come from the class platform.
+// equal parts, and the course never recommends approve or deny. Listed as
+// coming in early 2027; its dates come from the class platform.
 const TA102_PAGE = {
   code: 'TA-102',
   title: 'Know What You’re Siting',
@@ -320,6 +320,7 @@ const TA102_PAGE = {
   webinarSeries: 'know-what-youre-siting',
   priceLabel: '$199 founding ($249)',
   creditRule: 'Fee credited toward any Academy course within six months; credit follows whoever paid.',
+  listed: true,
   sortOrder: 15,
 
   takeawayName: 'Before You Vote on a Data Center',
@@ -421,7 +422,7 @@ const TA102_PAGE = {
     'A two-hour, nonpartisan live course for councils, commissions, planning boards and legislatures: what data centers are, what they bring, what they cost, and ten questions to test any proposal.',
 }
 
-const TA102 = { ...TA102_PAGE, listed: false }
+const TA102 = TA102_PAGE
 // The placeholder entry the first seed made, before the course was written.
 const TA102_PLACEHOLDER_SLUG = 'ta-102'
 
@@ -499,7 +500,7 @@ async function fixTA101(payload: Payload): Promise<void> {
 /**
  * Writes TA-102's course page into the placeholder entry the first seed made
  * ("Data centers (working title)", at /academy/courses/ta-102), once: only
- * while it still has the placeholder slug and no headline. It stays unlisted.
+ * while it still has the placeholder slug and no headline. It is listed.
  */
 async function upgradeTA102(payload: Payload): Promise<void> {
   const { docs } = await payload.find({ collection: 'courses', where: { slug: { equals: TA102_PLACEHOLDER_SLUG } }, limit: 1, depth: 0 })
