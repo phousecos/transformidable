@@ -208,3 +208,22 @@ export async function addPartner(env: KadeEnv, body: PartnerAdd): Promise<{ pers
   }
   return res.json();
 }
+
+export interface JobReport { job: string; ok: boolean; at: string; ms: number; detail: string }
+
+/** The morning's steps, reported to KADE's system check (docs/system-check.md). */
+export async function reportJobs(env: KadeEnv, jobs: JobReport[]) {
+  if (!env.KADE_ACCESS_CLIENT_SECRET) throw new KadeError(0, "KADE_ACCESS_CLIENT_SECRET is not set");
+  const res = await fetch(new URL("/api/integrations/bd/job-reports", env.KADE_API_URL), {
+    method: "POST",
+    headers: {
+      "CF-Access-Client-Id": env.KADE_ACCESS_CLIENT_ID,
+      "CF-Access-Client-Secret": env.KADE_ACCESS_CLIENT_SECRET,
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify({ jobs }),
+    redirect: "manual",
+  });
+  if (res.status !== 201) throw new KadeError(res.status, `KADE job-reports: HTTP ${res.status} ${(await res.text()).slice(0, 300)}`);
+}

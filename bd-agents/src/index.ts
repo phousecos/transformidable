@@ -5,7 +5,8 @@
  * - HTTP: the review page and its API, behind Cloudflare Access (src/auth.ts).
  * Trigger the cron locally with `npx wrangler dev --remote --test-scheduled`.
  */
-import { handle, type ApiEnv } from "./api";
+import { handle, selfCheck, type ApiEnv } from "./api";
+import { reportJobs, type JobReport } from "./kade";
 import { buildPosts, buildShortVideo, weekOf } from "./content";
 import { buildToday, todayET } from "./daily";
 import { syncGaps } from "./gaps";
@@ -14,14 +15,19 @@ import { flushTouches } from "./contact";
 
 export interface Env extends ApiEnv {}
 
+/** Each morning's steps and how they went, reported to KADE's system check at the end. */
+const jobs: JobReport[] = [];
+
 async function step<T>(name: string, run: () => Promise<T>): Promise<T | undefined> {
   const started = Date.now();
   try {
     const results = await run();
     console.log(JSON.stringify({ level: "info", job: name, ms: Date.now() - started, results }));
+    jobs.push({ job: name, ok: true, at: new Date(started).toISOString(), ms: Date.now() - started, detail: JSON.stringify(results ?? null).slice(0, 500) });
     return results;
   } catch (e) {
     console.log(JSON.stringify({ level: "error", job: name, ms: Date.now() - started, error: String(e) }));
+    jobs.push({ job: name, ok: false, at: new Date(started).toISOString(), ms: Date.now() - started, detail: String(e).slice(0, 500) });
     return undefined;
   }
 }
@@ -47,6 +53,10 @@ export default {
           await step("week-posts", () => buildPosts(env, today, "week"));
           await step("week-short-video", () => buildShortVideo(env, weekOf(today)));
         }
+        // Last: load what the page loads, then tell KADE how the morning went (docs/system-check.md).
+        await step("page-check", () => selfCheck(env));
+        try { await reportJobs(env, jobs.splice(0)); }
+        catch (e) { console.log(JSON.stringify({ level: "error", job: "report-jobs", error: String(e) })); }
       })(),
     );
   },

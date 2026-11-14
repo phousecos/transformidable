@@ -297,7 +297,31 @@ async function saveLinkedinStats(env: ApiEnv, who: string, body: Record<string, 
   return json({ ok: true });
 }
 
+/**
+ * The morning self-check (KADE docs/system-check.md): runs what the page loads (today, partners, influencers, the
+ * week and results from KADE), so a page that would fail to load is reported before anyone opens it.
+ */
+export async function selfCheck(env: ApiEnv) {
+  const d = await today(env, todayET());
+  for (const [name, r] of [["partners", await partnerList(env)], ["influencers", await influencers(env)]] as const) {
+    if (!r.ok) throw new Error(`${name} answered HTTP ${r.status}`);
+  }
+  await weekView(env);
+  await resultsView(env);
+  return { actionsToday: d.actions.length };
+}
+
+/** Every error under /api/ answers in JSON, so the page shows the reason instead of "Unexpected token '<'". */
 export async function handle(req: Request, env: ApiEnv): Promise<Response> {
+  try { return await route(req, env); }
+  catch (e) {
+    console.log(JSON.stringify({ level: "error", path: new URL(req.url).pathname, error: String(e) }));
+    if (new URL(req.url).pathname.startsWith("/api/")) return json({ error: `Something failed on the server: ${String((e as Error).message ?? e).slice(0, 300)}` }, 500);
+    return new Response("Something failed on the server. Try again in a minute.", { status: 500 });
+  }
+}
+
+async function route(req: Request, env: ApiEnv): Promise<Response> {
   const url = new URL(req.url);
   let who: string;
   try {
