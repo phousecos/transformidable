@@ -227,3 +227,38 @@ export async function reportJobs(env: KadeEnv, jobs: JobReport[]) {
   });
   if (res.status !== 201) throw new KadeError(res.status, `KADE job-reports: HTTP ${res.status} ${(await res.text()).slice(0, 300)}`);
 }
+
+/** A POST to KADE's BD routes; 422 answers carry KADE's own reason. */
+async function kadePost<T>(env: KadeEnv, path: string, body: unknown): Promise<T> {
+  if (!env.KADE_ACCESS_CLIENT_SECRET) throw new KadeError(0, "KADE_ACCESS_CLIENT_SECRET is not set");
+  const res = await fetch(new URL(`/api/integrations/bd/${path}`, env.KADE_API_URL), {
+    method: "POST",
+    headers: {
+      "CF-Access-Client-Id": env.KADE_ACCESS_CLIENT_ID,
+      "CF-Access-Client-Secret": env.KADE_ACCESS_CLIENT_SECRET,
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify(body),
+    redirect: "manual",
+  });
+  if (res.status !== 201) {
+    const text = await res.text();
+    let msg = text.slice(0, 300);
+    try { msg = (JSON.parse(text) as { error?: string }).error ?? msg; } catch { /* not JSON */ }
+    throw new KadeError(res.status, res.status === 422 ? msg : `KADE ${path}: HTTP ${res.status} ${msg}`);
+  }
+  return res.json<T>();
+}
+
+export interface KadeReply { id: string; person_id: string; full_name: string; organization: string | null; occurred_at: string; note: string | null; suggested_outcome: string; suggestion_note: string | null }
+export interface KadeInbox {
+  drafts: { waiting: number; sentThisWeek: number; requested: number; old: { id: string; full_name: string; organization: string | null; subject: string; created_at: string; removedOn: string }[] };
+  replies: KadeReply[];
+}
+/** Email for the daily list (KADE docs/outreach-email.md): drafts waiting, and replies with a suggested outcome. */
+export const inbox = (env: KadeEnv) => get<KadeInbox>(env, "inbox", {});
+/** "Email instead": KADE drafts an email to this person tomorrow morning. */
+export const requestEmail = (env: KadeEnv, personId: string) => kadePost<{ personId: string; email: string }>(env, "email-requests", { personId });
+/** A reply's suggestion set aside. */
+export const dismissReply = (env: KadeEnv, id: string) => kadePost<{ ok: boolean }>(env, "reply-dismissals", { id });

@@ -139,6 +139,11 @@ form.stats .wide { grid-column:1 / -1; }
     </main>
     <aside class="side">
       <section class="panel">
+        <div><h2 style="font-size:16px">Email</h2>
+          <p class="muted small" style="margin:0">Outreach drafts waiting in your Gmail Drafts, and email replies with what KADE thinks they mean. Confirm to record it, or set it aside.</p></div>
+        <div id="inbox"><p class="muted small">Loading…</p></div>
+      </section>
+      <section class="panel">
         <div><h2 style="font-size:16px">Replies and meetings</h2>
           <p class="muted small">Record a reply, meeting or no here; it goes on their record in KADE. Suggestions pause until you close the conversation; not interested pauses them for 12 months; asked to stop is permanent.</p></div>
         <div id="contacts"></div>
@@ -368,6 +373,14 @@ function actionCard(a, draftLabel) {
   });
   bar.appendChild(done);
   bar.appendChild(button("Skip", "", function () { post("/api/actions/" + a.id, { status: "skipped" }).then(load).catch(function (e) { toast(e.message); }); }));
+  if (a.action_type === "connect" && a.person_id && !a.partner_type && a.segment !== "influencer") {
+    var ei = button("Email instead", "quiet", function () {
+      ei.disabled = true;
+      post("/api/actions/" + a.id + "/email-instead").then(function (r) { toast("KADE will draft an email to " + r.email + " tomorrow morning."); return load(); })
+        .catch(function (e) { toast(e.message); ei.disabled = false; });
+    });
+    bar.appendChild(ei);
+  }
   if (a.action_type === "connect" && a.person_id) {
     var ac = button("Already connected", "quiet", function () {
       ac.disabled = true;
@@ -483,6 +496,46 @@ document.getElementById("partnerform").onsubmit = function (e) {
   post("/api/partners", body).then(function () { toast("Added in KADE. They come up for an invitation from tomorrow."); e.target.reset(); return loadPartners(); })
     .catch(function (err) { toast(err.message); });
 };
+
+// ---- Email (KADE docs/outreach-email.md) ----
+var SUGGESTED = { meeting_booked: "Meeting booked", not_interested: "Not interested", stop_request: "Asked to stop", reply: "Just a reply" };
+function renderInbox(d) {
+  var box = document.getElementById("inbox"); box.textContent = "";
+  var dr = d.drafts;
+  box.appendChild(el("p", "small", dr.waiting + " in Gmail Drafts · " + dr.sentThisWeek + " sent this week" + (dr.requested ? " · " + dr.requested + " asked for tomorrow" : "")));
+  if (dr.old.length) {
+    var o = el("div", "item");
+    o.appendChild(el("div", "small", "Waiting over 3 days (send or delete them; KADE removes them on the date shown):"));
+    dr.old.forEach(function (x) { o.appendChild(el("div", "muted small", x.full_name + (x.organization ? ", " + x.organization : "") + " · removed " + nice(x.removedOn))); });
+    box.appendChild(o);
+  }
+  d.replies.forEach(function (r) {
+    var it = el("div", "item");
+    add(it, add(el("div", "head"), el("span", "name", r.full_name), el("span", "muted small", (r.organization || "") + " · " + nice(r.occurred_at.slice(0, 10)))));
+    if (r.note) it.appendChild(el("div", "small", r.note));
+    it.appendChild(el("div", "muted small", "Suggested: " + (SUGGESTED[r.suggested_outcome] || r.suggested_outcome) + (r.suggestion_note ? ". " + r.suggestion_note : "")));
+    var bar = el("div", "head");
+    var setAside = function () { return post("/api/replies/" + encodeURIComponent(r.id) + "/dismiss").then(loadInbox); };
+    if (r.suggested_outcome !== "reply" && r.local_person_id) {
+      var ok = button("Confirm: " + SUGGESTED[r.suggested_outcome], "primary small", function () {
+        ok.disabled = true;
+        post("/api/people/" + r.local_person_id + "/outcome", { kind: r.suggested_outcome, note: "Confirmed from KADE's suggestion" })
+          .then(function () { toast("Recorded."); return load(); }).then(loadInbox).catch(function (e) { toast(e.message); ok.disabled = false; });
+      });
+      bar.appendChild(ok);
+    }
+    bar.appendChild(button(r.suggested_outcome === "reply" ? "OK, nothing to record" : "Not that: set aside", "quiet small", function () { setAside().catch(function (e) { toast(e.message); }); }));
+    it.appendChild(bar);
+    if (r.local_person_id) it.appendChild(outcomeMenu(r.local_person_id));
+    else it.appendChild(el("div", "muted small", "Not on the daily list: record an outcome in KADE."));
+    box.appendChild(it);
+  });
+  if (!d.replies.length) box.appendChild(el("p", "empty", "No email replies waiting."));
+}
+function loadInbox() {
+  return fetch("/api/inbox").then(function (r) { return r.json(); }).then(function (d) { if (d.error) throw new Error(d.error); renderInbox(d); })
+    .catch(function (e) { document.getElementById("inbox").textContent = "Could not load: " + e.message; });
+}
 
 document.getElementById("influencerform").onsubmit = function (e) {
   e.preventDefault();
@@ -794,6 +847,7 @@ showTab();
 load();
 loadInfluencers();
 loadPartners();
+loadInbox();
 </script>
 </body>
 </html>`;
