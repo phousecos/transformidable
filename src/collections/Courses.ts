@@ -253,6 +253,23 @@ export const Courses: CollectionConfig = {
               ],
             },
             {
+              type: 'collapsible',
+              label: 'Co-sponsor and independence',
+              admin: { description: 'For courses with a co-sponsor or a topic where neutrality matters. Empty fields are left out.' },
+              fields: [
+                {
+                  type: 'row',
+                  fields: [
+                    { name: 'cosponsorLead', label: 'Lead-in', type: 'text', admin: { width: '25%', description: 'Blank: "Co-sponsored with".' } },
+                    { name: 'cosponsorName', label: 'Co-sponsor', type: 'text', admin: { width: '40%', description: 'Shown under the hero buttons, e.g. Center for Responsible Infrastructure.' } },
+                    { name: 'cosponsorUrl', label: 'Link', type: 'text', admin: { width: '35%', description: 'e.g. https://crifuture.info/' } },
+                  ],
+                },
+                { name: 'independenceHeadline', label: 'Independence headline', type: 'text', admin: { description: 'e.g. Independent and nonpartisan' } },
+                { name: 'independenceNote', label: 'Independence statement', type: 'textarea', admin: { rows: 3, description: `Who funds and shapes the content. Shown before the questions. ${ITALICS}` } },
+              ],
+            },
+            {
               name: 'faq',
               label: 'Questions',
               type: 'array',

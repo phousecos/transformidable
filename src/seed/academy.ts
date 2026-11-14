@@ -11,8 +11,9 @@ import type { Payload } from 'payload'
 // date, once each (a course whose Ways to take it is still empty).
 //
 // Left out on purpose until decided (open items in the copy doc): the
-// transfer/refund and continuing-education answers, TA-102's title (seeded
-// unlisted), the instructor photo and the take-away card image (uploads).
+// transfer/refund and continuing-education answers, the final TA-102 title
+// (seeded unlisted as Know What You're Siting), the instructor photo and the
+// take-away card images (uploads).
 
 const list = (items: string[]) => items.map((text) => ({ text }))
 
@@ -299,23 +300,130 @@ const APPLIED = {
   ...APPLIED_PAGE,
 }
 
-const TA102 = {
+// TA-102: data centers, from "Data Centers for Public Officials — Course
+// Outline" (Nov 13, 2026). Nonpartisan by design: benefits and concerns get
+// equal parts, and the course never recommends approve or deny. Unlisted
+// until its title is final; its dates come from the class platform.
+const TA102_PAGE = {
   code: 'TA-102',
-  title: 'Data centers (working title)',
-  slug: 'ta-102',
+  title: 'Know What You’re Siting',
+  slug: 'know-what-youre-siting',
   topicTag: 'Data centers',
   level: 'foundations',
   offerings: ['open', 'private'],
+  privateFormat: 'Online · can be tailored to the proposal in front of your body',
   privateTerms: 'Same per-seat price · 8-seat minimum',
-  oneLine: 'What to ask before you approve a data center: power, water, land use, tax incentives and community impact.',
-  format: '90 minutes · live online',
+  oneLine: 'What data centers are, what they bring, and what they cost, so any proposal can be tested on its merits.',
+  format: '2 hours · live online',
   availability: 'coming',
   statusLabel: 'Early 2027',
-  priceLabel: '$199 founding',
-  // Unlisted until it has a title.
-  listed: false,
-  sortOrder: 40,
+  webinarSeries: 'know-what-youre-siting',
+  priceLabel: '$199 founding ($249)',
+  creditRule: 'Fee credited toward any Academy course within six months; credit follows whoever paid.',
+  sortOrder: 15,
+
+  takeawayName: 'Before You Vote on a Data Center',
+  takeawayDescription:
+    'TA-102 ends with *Before You Vote on a Data Center*: ten questions that test any proposal on its own merits, and six gaps to look for in the record.',
+  takeawayHighlights: list(['Megawatts · Water · Tariff', 'Jobs · Revenue · Disclosure']),
+
+  eyebrow: 'TA-102 · 2-hour live course',
+  headline: 'Know what you’re',
+  headlineAccent: 'siting.',
+  subhead:
+    'A fair, factual foundation for any data center decision that reaches your agenda. What data centers are, what they bring, and what they cost. The course takes no position on whether any community should host one.',
+  facts: list(['2 hours, live online', '16–20 officials per cohort', 'Nonpartisan · no position on any proposal']),
+
+  whyHeadline: 'Data center proposals are reaching local agendas.',
+  whyAccent: 'The numbers rarely come with both sides.',
+  whyBody:
+    'A proposal arrives with an economic impact study, a water figure and a jobs number. Residents arrive with other numbers. This course gives you the vocabulary, the evidence on both sides, and the questions that test a proposal on its own merits, whatever position your body ends up taking.',
+
+  agendaEyebrow: 'What happens in the two hours',
+  agendaHeadline: 'Two hours, six parts',
+  agendaNote: 'Benefits and concerns each get their own part, so neither is presented as the rebuttal to the other.',
+  agenda: [
+    { minutes: 20, title: 'What a data center actually is', description: 'Follow one everyday action, a video call or an online tax payment, to the building that serves it. Quick poll: how many data centers did you use today?' },
+    { minutes: 10, title: 'Shapes and sizes', description: 'Enterprise, colocation, hyperscale, edge and AI campuses, and why megawatts, not square feet, is the number to ask for.' },
+    { minutes: 20, title: 'What a community can gain', description: 'Tax base, construction and operations jobs, supplier spending and infrastructure commitments, and how to read an economic impact study.' },
+    { minutes: 30, title: 'What a community weighs', description: 'Electricity and rates, water, land, noise and backup generators, incentives and transparency: what the evidence shows and where it’s still contested.' },
+    { minutes: 10, title: 'Who decides what', description: 'Local zoning and permits, the utility, the state regulator and state incentives, and where your body has leverage.' },
+    { minutes: 25, title: 'The agenda item', description: 'In small groups, review a fictional proposal and staff memo, and list the evidence missing before anyone could vote. There is no right vote, only a complete or incomplete record.' },
+    { minutes: 5, title: 'Wrap and questions', isBreak: true },
+  ],
+
+  outcomesHeadline: 'By the end, you’ll be able to',
+  outcomes: list([
+    'Explain in plain words what a data center is, and how the main types differ in size and footprint',
+    'Describe the benefits a community can gain: tax base, jobs, supplier spending, infrastructure investment',
+    'Describe the concerns communities raise: electricity and rates, water, land and noise, incentives, transparency',
+    'Tell a claim from evidence in a developer’s, advocate’s or utility’s numbers',
+    'Name which decisions sit with your body and which with utilities, regulators or the state',
+    'Ask ten questions that test any proposal on its own merits',
+  ]),
+  leaveWithHeadline: 'You leave with',
+  leaveWith: list([
+    'The *Before You Vote on a Data Center* card (10 questions and 6 gaps to look for)',
+    'A Who Decides What worksheet to fill in for your own jurisdiction',
+    'A plain-language glossary, from megawatt to PILOT',
+    'Certificate of completion',
+    'Your fee credited toward any Academy course within six months',
+  ]),
+
+  whoFor:
+    'Legislators and legislative staff leads, city and county council members, county commissioners, planning and zoning boards, utility and authority boards, and economic development boards.',
+  notFor: 'Anyone looking for a case for or against a particular project. The course grades the completeness of the record, never the vote.',
+  howItRuns: list([
+    'Live in our virtual classroom; works in Chrome, Edge or Safari on a laptop or desktop.',
+    'National in scope: no state-specific rules, but the questions to ask your own utility, regulators and attorney.',
+    'Every figure is sourced, shows who paid for it, and carries an as-of date; numbers are refreshed before each cohort.',
+    'Not recorded. Captions on.',
+  ]),
+
+  cosponsorName: 'Center for Responsible Infrastructure',
+  cosponsorUrl: 'https://crifuture.info/',
+  independenceHeadline: 'Independent and nonpartisan',
+  independenceNote:
+    'No developer, utility or advocacy group on either side funds or shapes this course. Benefits and concerns get equal time, every industry-funded figure is paired with an independent one, and the instructor never says whether a community should host a data center.',
+
+  faq: [
+    {
+      question: 'Does the course take a side?',
+      answer:
+        'No. It presents benefits and concerns with the same care, cites sources on both sides, and never recommends approving or denying a proposal. Officials critical of projects come from both parties, for different reasons.',
+    },
+    {
+      question: 'How much does it cost?',
+      answer:
+        '$249 per seat; $199 for founding cohorts. Your fee is credited toward any Academy course within six months; if your organization paid, the credit goes to your organization.',
+    },
+    {
+      question: 'Can my organization pay by invoice or purchase order?',
+      answer: 'Yes. Tell us when you register and we’ll send an invoice to the contact you name.',
+    },
+    {
+      question: 'Does it cover my state’s rules?',
+      answer: 'It’s national. Instead of teaching one state’s rules, it shows you which questions to ask your own utility, regulators and attorney, and you map who decides what in your jurisdiction.',
+    },
+    { question: 'Do I need a technical background?', answer: 'No. The course is built for decision-makers, not engineers.' },
+    { question: 'Is the session recorded?', answer: 'No. Officials speak more freely without a recording.' },
+    {
+      question: 'Could this count as a public meeting?',
+      answer:
+        'If a majority of your body attends together, it might. Tell us when you register and we’ll coordinate with your clerk, or set up a dedicated session. This is not legal advice.',
+    },
+  ],
+
+  finalHeadline: 'A data center proposal is coming.',
+  finalAccent: 'Know what to ask.',
+  seoTitle: 'TA-102 Data Centers for Public Officials | Transformidable Academy',
+  seoDescription:
+    'A two-hour, nonpartisan live course for councils, commissions, planning boards and legislatures: what data centers are, what they bring, what they cost, and ten questions to test any proposal.',
 }
+
+const TA102 = { ...TA102_PAGE, listed: false }
+// The placeholder entry the first seed made, before the course was written.
+const TA102_PLACEHOLDER_SLUG = 'ta-102'
 
 // What upgradeCourses() fills in, by slug, on courses made before Ways to
 // take it. Only empty fields are filled.
@@ -323,7 +431,7 @@ const UPGRADES: Record<string, Record<string, unknown>> = {
   [TA101.slug]: { offerings: TA101.offerings, privateFormat: TA101.privateFormat, privateTerms: TA101.privateTerms },
   [WORKSHOP.slug]: { offerings: ['private'], availability: 'scheduled' },
   [APPLIED.slug]: { ...APPLIED_PAGE, offerings: APPLIED.offerings, privateFormat: APPLIED.privateFormat, privateTerms: APPLIED.privateTerms },
-  [TA102.slug]: { offerings: TA102.offerings, privateTerms: TA102.privateTerms },
+  [TA102_PLACEHOLDER_SLUG]: { offerings: TA102.offerings, privateTerms: TA102.privateTerms },
 }
 
 const isEmpty = (v: unknown) => v == null || v === '' || (Array.isArray(v) && v.length === 0)
@@ -386,6 +494,19 @@ async function fixTA101(payload: Payload): Promise<void> {
   if (!Object.keys(data).length) return
   await payload.update({ collection: 'courses', id: c.id, data: data as any })
   console.log('[seed:academy] Fixed TA-101’s agenda and next-course answer.')
+}
+
+/**
+ * Writes TA-102's course page into the placeholder entry the first seed made
+ * ("Data centers (working title)", at /academy/courses/ta-102), once: only
+ * while it still has the placeholder slug and no headline. It stays unlisted.
+ */
+async function upgradeTA102(payload: Payload): Promise<void> {
+  const { docs } = await payload.find({ collection: 'courses', where: { slug: { equals: TA102_PLACEHOLDER_SLUG } }, limit: 1, depth: 0 })
+  const c = docs[0] as Record<string, any> | undefined
+  if (!c || c.headline) return
+  await payload.update({ collection: 'courses', id: c.id, data: TA102_PAGE as any })
+  console.log('[seed:academy] Wrote TA-102 Know What You’re Siting.')
 }
 
 const ACADEMY_PAGE = {
@@ -518,6 +639,7 @@ export async function seedAcademy(payload: Payload): Promise<void> {
   await upgradeCourses(payload)
   await upgradeToTA201(payload)
   await fixTA101(payload)
+  await upgradeTA102(payload)
 
   const page = (await payload.findGlobal({ slug: 'academy-page', depth: 0 })) as { heroHeadline?: string }
   if (!page?.heroHeadline) {
