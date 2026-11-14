@@ -142,7 +142,7 @@ form.stats .wide { grid-column:1 / -1; }
     <aside class="side">
       <section class="panel">
         <div><h2 style="font-size:16px">Replies and meetings</h2>
-          <p class="muted small">Record a reply, meeting or no here; it goes on their record in KADE. Suggestions pause until you close the conversation; not interested pauses them for 12 months; asked to stop is permanent.</p></div>
+          <p class="muted small">Record a reply, meeting or no here; it goes on their record in Signals. Suggestions pause until you close the conversation; not interested pauses them for 12 months; asked to stop is permanent.</p></div>
         <div id="contacts"></div>
       </section>
       <section class="panel">
@@ -182,7 +182,7 @@ form.stats .wide { grid-column:1 / -1; }
     <aside class="side">
       <section class="panel">
         <div style="display:flex;justify-content:space-between;align-items:baseline"><h2 style="font-size:16px">Your partners</h2><span class="muted small" id="partnercount"></span></div>
-        <p class="muted small" style="margin:0">Fractional CFOs and CHROs, deal advisors, ERP firms and recruiters who serve the same buyers. KADE finds some each Monday; add your own here. Up to five invitations a day, a call ask once they accept, and a check-in six weeks after you last talked.</p>
+        <p class="muted small" style="margin:0">Fractional CFOs and CHROs, deal advisors, ERP firms and recruiters who serve the same buyers. Signals finds some each Monday; add your own here. Up to five invitations a day, a call ask once they accept, and a check-in six weeks after you last talked.</p>
         <div id="partners"></div>
         <form id="partnerform" style="display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--soft);padding-top:12px">
           <label class="field">Name <input name="name" required style="min-height:44px;border:1px solid var(--fieldline);border-radius:8px;padding:0 10px;background:var(--card)"></label>
@@ -203,7 +203,7 @@ form.stats .wide { grid-column:1 / -1; }
   <section id="tab-email" hidden style="display:flex;flex-direction:column;gap:20px;max-width:760px">
       <section class="panel">
         <div><h2 style="font-size:16px">Email</h2>
-          <p class="muted small" style="margin:0">Outreach drafts waiting in your Gmail Drafts, and email replies with what KADE thinks they mean. Confirm to record it, or set it aside.</p></div>
+          <p class="muted small" style="margin:0">Outreach drafts waiting in your Gmail Drafts, and email replies with what Signals thinks they mean. Confirm to record it, or set it aside.</p></div>
         <div id="inbox"><p class="muted small">Loading…</p></div>
       </section>
   </section>
@@ -219,7 +219,7 @@ form.stats .wide { grid-column:1 / -1; }
 
   <section id="tab-week" hidden style="display:flex;flex-direction:column;gap:20px">
     <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:8px">
-      <h2 id="weektitle">This week</h2><span class="muted small" id="weeknote">Written by KADE each Monday at 6:00 from its records.</span>
+      <h2 id="weektitle">This week</h2><span class="muted small" id="weeknote">Written by Signals each Monday at 6:00 from its records.</span>
     </div>
     <div class="split">
       <section class="main" style="display:flex;flex-direction:column;gap:20px">
@@ -238,7 +238,7 @@ form.stats .wide { grid-column:1 / -1; }
 
   <section id="tab-results" hidden style="display:flex;flex-direction:column;gap:20px">
     <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:8px">
-      <h2>Prospects: this week so far</h2><span class="muted small">Counted in KADE from the contact history. Weeks start Monday. Partners are counted separately below.</span>
+      <h2>Prospects: this week so far</h2><span class="muted small">Counted in Signals from the contact history. Weeks start Monday. Partners are counted separately below.</span>
     </div>
     <div class="tiles" id="tiles"></div>
     <div class="split">
@@ -351,7 +351,7 @@ function outcomeMenu(personId) {
     var note = kind === "reply" || kind === "meeting_booked" ? (prompt("A short note (optional), e.g. what they said or the meeting date:") || "") : "";
     sel.disabled = true;
     post("/api/people/" + personId + "/outcome", { kind: kind, note: note }).then(function (r) {
-      toast(r.kade && r.kade.sent ? "Recorded in KADE." : "Saved. It will reach KADE on the next retry.");
+      toast(r.kade && r.kade.sent ? "Recorded in Signals." : "Saved. It will reach Signals on the next retry.");
       return load();
     }).catch(function (e) { toast(e.message); sel.disabled = false; sel.value = ""; });
   };
@@ -376,7 +376,7 @@ function actionCard(a, draftLabel) {
   if (a.action_type === "comment" && a.status === "todo" && a.text == null) return commentStart(c, a);
   if (a.status !== "todo") {
     var line = el("div", "ok-line"); line.appendChild(check());
-    line.appendChild(document.createTextNode(a.status === "done" ? "Done · recorded in KADE" : "Skipped"));
+    line.appendChild(document.createTextNode(a.status === "done" ? "Done · recorded in Signals" : "Skipped"));
     if (a.status !== "done") line.style.color = "var(--muted)";
     c.appendChild(line);
     return c;
@@ -406,7 +406,7 @@ function actionCard(a, draftLabel) {
   if (a.action_type === "connect" && a.person_id && !a.partner_type && a.segment !== "influencer") {
     var ei = button("Email instead", "quiet", function () {
       ei.disabled = true;
-      post("/api/actions/" + a.id + "/email-instead").then(function (r) { toast("KADE will draft an email to " + r.email + " tomorrow morning."); return load(); })
+      post("/api/actions/" + a.id + "/email-instead").then(function (r) { toast("Signals will draft an email to " + r.email + " tomorrow morning."); return load(); })
         .catch(function (e) { toast(e.message); ei.disabled = false; });
     });
     bar.appendChild(ei);
@@ -427,7 +427,7 @@ function actionCard(a, draftLabel) {
     });
     bar.appendChild(rd);
   }
-  if (a.kade_url) bar.appendChild(link("KADE", a.kade_url, "quiet"));
+  if (a.kade_url) bar.appendChild(link("Signals", a.kade_url, "quiet"));
   if (a.action_type === "follow_up") bar.appendChild(outcomeMenu(a.person_id));
   c.appendChild(bar);
   return c;
@@ -484,13 +484,13 @@ document.getElementById("connfile").onchange = function (e) {
   f.text().then(function (csv) { msg.textContent = "Matching your connections…"; return post("/api/connections/import", { csv: csv }); })
     .then(function (r) {
       msg.textContent = r.inFile + " connections in the file; " + r.matched + " matched people on the list (" + r.byProfile + " by profile address, " + r.byName + " by name and organization), " +
-        r.acceptedInvites + " of them accepted invitations. Recording them in KADE…";
+        r.acceptedInvites + " of them accepted invitations. Recording them in Signals…";
       var sent = 0;
       function next() {
         return post("/api/kade/flush?limit=40").then(function (x) {
           sent += x.sent || 0;
-          if ((x.sent || 0) > 0) { msg.textContent = msg.textContent.replace(/ Recording them in KADE.*$/, "") + " Recording them in KADE… " + sent + " so far."; return next(); }
-          msg.textContent = msg.textContent.replace(/ Recording them in KADE.*$/, "") + " Recorded in KADE: " + sent + (x.failed ? "; the rest retry each morning." : ".");
+          if ((x.sent || 0) > 0) { msg.textContent = msg.textContent.replace(/ Recording them in Signals.*$/, "") + " Recording them in Signals… " + sent + " so far."; return next(); }
+          msg.textContent = msg.textContent.replace(/ Recording them in Signals.*$/, "") + " Recorded in Signals: " + sent + (x.failed ? "; the rest retry each morning." : ".");
         });
       }
       return next().then(load);
@@ -505,7 +505,7 @@ var PARTNER_STAGES = { "new": "Not invited yet", invited: "Invited", connected: 
 function renderPartners(list) {
   var box = document.getElementById("partners"); box.textContent = "";
   document.getElementById("partnercount").textContent = String(list.length);
-  if (!list.length) box.appendChild(el("p", "empty", "No partners yet. KADE's first search runs Monday morning."));
+  if (!list.length) box.appendChild(el("p", "empty", "No partners yet. Signals' first search runs Monday morning."));
   list.slice(0, 30).forEach(function (p) {
     var it = el("div", "item");
     var nm = el("a", "name", p.full_name); nm.href = p.linkedin_url || "#"; nm.target = "_blank"; nm.rel = "noopener"; nm.style.cssText = "font-size:14px;color:var(--ink)";
@@ -523,7 +523,7 @@ function loadPartners() {
 document.getElementById("partnerform").onsubmit = function (e) {
   e.preventDefault();
   var body = {}; new FormData(e.target).forEach(function (v, k) { body[k] = v; });
-  post("/api/partners", body).then(function () { toast("Added in KADE. They come up for an invitation from tomorrow."); e.target.reset(); return loadPartners(); })
+  post("/api/partners", body).then(function () { toast("Added in Signals. They come up for an invitation from tomorrow."); e.target.reset(); return loadPartners(); })
     .catch(function (err) { toast(err.message); });
 };
 
@@ -538,7 +538,7 @@ function renderInbox(d) {
   box.appendChild(el("p", "small", dr.waiting + " in Gmail Drafts · " + dr.sentThisWeek + " sent this week" + (dr.requested ? " · " + dr.requested + " asked for tomorrow" : "")));
   if (dr.old.length) {
     var o = el("div", "item");
-    o.appendChild(el("div", "small", "Waiting over 3 days (send or delete them; KADE removes them on the date shown):"));
+    o.appendChild(el("div", "small", "Waiting over 3 days (send or delete them; Signals removes them on the date shown):"));
     dr.old.forEach(function (x) { o.appendChild(el("div", "muted small", x.full_name + (x.organization ? ", " + x.organization : "") + " · removed " + nice(x.removedOn))); });
     box.appendChild(o);
   }
@@ -552,7 +552,7 @@ function renderInbox(d) {
     if (r.suggested_outcome !== "reply" && r.local_person_id) {
       var ok = button("Confirm: " + SUGGESTED[r.suggested_outcome], "primary small", function () {
         ok.disabled = true;
-        post("/api/people/" + r.local_person_id + "/outcome", { kind: r.suggested_outcome, note: "Confirmed from KADE's suggestion" })
+        post("/api/people/" + r.local_person_id + "/outcome", { kind: r.suggested_outcome, note: "Confirmed from Signals' suggestion" })
           .then(function () { toast("Recorded."); return load(); }).then(loadInbox).catch(function (e) { toast(e.message); ok.disabled = false; });
       });
       bar.appendChild(ok);
@@ -560,7 +560,7 @@ function renderInbox(d) {
     bar.appendChild(button(r.suggested_outcome === "reply" ? "OK, nothing to record" : "Not that: set aside", "quiet small", function () { setAside().catch(function (e) { toast(e.message); }); }));
     it.appendChild(bar);
     if (r.local_person_id) it.appendChild(outcomeMenu(r.local_person_id));
-    else it.appendChild(el("div", "muted small", "Not on the daily list: record an outcome in KADE."));
+    else it.appendChild(el("div", "muted small", "Not on the daily list: record an outcome in Signals."));
     box.appendChild(it);
   });
   if (!d.replies.length) box.appendChild(el("p", "empty", "No email replies waiting."));
@@ -658,9 +658,9 @@ function renderStatus(d) {
   s.appendChild(pill(String(d.pending.length), " invites pending"));
   var conv = d.contacts.filter(function (p) { return p.contact_state === "in_conversation"; }).length;
   s.appendChild(pill(String(conv), " in conversation"));
-  s.appendChild(pill(String(d.openGaps), " hot accounts waiting for research in KADE"));
-  if (d.unsentToKade) s.appendChild(pill(String(d.unsentToKade), " not yet in KADE (retried each morning)", "warn"));
-  else s.appendChild(el("span", "pill ok", "All recorded in KADE"));
+  s.appendChild(pill(String(d.openGaps), " hot accounts waiting for research in Signals"));
+  if (d.unsentToKade) s.appendChild(pill(String(d.unsentToKade), " not yet in Signals (retried each morning)", "warn"));
+  else s.appendChild(el("span", "pill ok", "All recorded in Signals"));
 }
 
 // ---- Posts ----
@@ -748,23 +748,23 @@ function renderWeek() {
     add(posts, add(el("p", "small"), el("b", "", nice(x.due_date) + " "), document.createTextNode(postKind(x) + ": " + (x.title || "Post") + " "), el("span", "muted", "(" + x.status + ")")));
   });
   var ev = document.getElementById("wkevents"), e = d.events;
-  if (!e || e.error) line(ev, e && e.error ? "KADE's events are not available." : "No events yet.", "empty");
+  if (!e || e.error) line(ev, e && e.error ? "Signals' events are not available." : "No events yet.", "empty");
   else {
     var waiting = e.proposals.filter(function (x) { return x.status === "proposed"; }).length;
-    if (waiting) { var wl = el("a", "", waiting + " proposals for this month to approve or decline in KADE"); wl.href = d.kadeEventsUrl; wl.target = "_blank"; wl.rel = "noopener"; add(ev, add(el("p", "small"), wl)); }
+    if (waiting) { var wl = el("a", "", waiting + " proposals for this month to approve or decline in Signals"); wl.href = d.kadeEventsUrl; wl.target = "_blank"; wl.rel = "noopener"; add(ev, add(el("p", "small"), wl)); }
     e.upcoming.forEach(function (u) {
-      line(ev, u.title + ": " + (u.starts_at && u.join_url ? new Date(u.starts_at).toLocaleDateString() + "; " + u.in_drafts + " invitations in Drafts, " + u.sent + " sent" : "set the date and registration link in KADE"), "small");
+      line(ev, u.title + ": " + (u.starts_at && u.join_url ? new Date(u.starts_at).toLocaleDateString() + "; " + u.in_drafts + " invitations in Drafts, " + u.sent + " sent" : "set the date and registration link in Signals"), "small");
     });
     var sv = e.proposals.filter(function (x) { return x.kind === "short_video" && x.status === "approved"; });
     if (sv.length) line(ev, "Short videos approved: " + sv.map(function (x) { return x.title; }).join("; "), "small muted");
     if (!waiting && !e.upcoming.length && !sv.length) line(ev, "Nothing scheduled. Proposals come on the first Monday of the month.", "empty");
   }
   if (!p || p.error) {
-    line(document.getElementById("wkdecide"), p && p.error ? "KADE's plan is not available: " + p.error : "No plan yet. KADE writes it Monday at 6:00 (or from KADE, Admin, Gmail: Write this week's plan now).", "empty");
+    line(document.getElementById("wkdecide"), p && p.error ? "Signals' plan is not available: " + p.error : "No plan yet. Signals writes it Monday at 6:00 (or from Signals, Admin, Gmail: Write this week's plan now).", "empty");
     return;
   }
   document.getElementById("weektitle").textContent = "Week of " + nice(p.weekOf);
-  document.getElementById("weeknote").textContent = "Written by KADE " + new Date(p.generatedAt).toLocaleString() + " from its records.";
+  document.getElementById("weeknote").textContent = "Written by Signals " + new Date(p.generatedAt).toLocaleString() + " from its records.";
   var decide = document.getElementById("wkdecide");
   var waiting = p.conversations.filter(function (c) { return c.waitingOnYou; });
   if (!p.decide.pursuits.length && !waiting.length) line(decide, "Nothing waiting on you.", "empty");
@@ -830,7 +830,7 @@ function renderResults() {
     add(tiles, add(el("div", "tile"), el("span", "muted small", t[1]), el("span", "big", String(val(weeks[0], t[0]))), el("span", "muted small", t[2]())));
   });
   var box = document.getElementById("weektable"); box.textContent = "";
-  if (!kadeOk) box.appendChild(el("p", "empty", "KADE results not available" + (d.kade && d.kade.error ? ": " + d.kade.error : "") + ". Posts and LinkedIn numbers are shown."));
+  if (!kadeOk) box.appendChild(el("p", "empty", "Signals results not available" + (d.kade && d.kade.error ? ": " + d.kade.error : "") + ". Posts and LinkedIn numbers are shown."));
   var table = el("table"), thead = el("thead"), hr = el("tr");
   hr.appendChild(el("th", "", ""));
   weeks.forEach(function (w) { var th = el("th", "", nice(w)); th.scope = "col"; hr.appendChild(th); });
