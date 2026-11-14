@@ -273,6 +273,11 @@
 .tr .aa-checks { list-style: none; padding: 0; margin: 0; font-family: var(--sans); font-size: .98rem; color: var(--ink); }
 .tr .aa-checks li { position: relative; padding: 6px 0 6px 28px; }
 .tr .aa-checks li::before { content: ""; position: absolute; left: 3px; top: 12px; width: 11px; height: 6px; border-left: 2px solid var(--aa-wine-text); border-bottom: 2px solid var(--aa-wine-text); transform: rotate(-45deg); }
+.tr .aa-cosponsor { font-family: var(--sans); font-size: .9rem; color: rgba(251, 246, 239, .82); margin: 18px 0 0; }
+.tr .aa-cosponsor a { color: #fbf6ef; text-decoration: underline; text-underline-offset: 3px; }
+.tr .aa-cosponsor a:hover { color: var(--gold); }
+.tr .aa-independence > * { max-width: 760px; }
+.tr .aa-independence .aa-body { margin-bottom: 0; }
 .tr .aa-leave-note { font-family: var(--sans); font-size: .92rem; line-height: 1.55; color: var(--ink-body); margin: 14px 0 0; max-width: 56ch; }
 .tr .aa-leave { font-family: var(--sans); font-size: .98rem; line-height: 1.65; color: var(--ink); margin: 0; max-width: 56ch; }
 

@@ -30,6 +30,7 @@ import {
   getAcademyFeed,
   getAcademyPage,
   getCourses,
+  isPerSeat,
   isReduced,
   money,
   offersOpen,
@@ -63,6 +64,16 @@ export async function generateMetadata({ params }) {
 }
 
 const hasItems = (list) => Array.isArray(list) && list.length > 0;
+
+/** An http(s) link from the admin, or null. */
+function safeUrl(url) {
+  try {
+    const u = new URL(String(url || "").trim());
+    return u.protocol === "https:" || u.protocol === "http:" ? u.toString() : null;
+  } catch {
+    return null;
+  }
+}
 
 /** Agenda parts with their numbers; breaks aren't numbered. */
 function numberParts(agenda) {
@@ -165,7 +176,8 @@ export default async function CoursePage({ params }) {
       : { label: open ? "Tell me when dates open" : "Join the interest list", href: `${INTEREST_HREF}?course=${course.slug}${open ? "&reason=waitlist" : ""}` };
   // "Bring your whole board" when the main action is a seat and a private session is also offered.
   const secondary = priv && primary.href !== dedicatedHref ? { label: page.heroSecondary, href: dedicatedHref } : null;
-  const priceLine = open ? priceFact(course, next, page.foundingLabel) : priv ? course.privateTerms : null;
+  // A per-seat course that's coming shows its price line, so the price is known before dates open.
+  const priceLine = open ? priceFact(course, next, page.foundingLabel) : isPerSeat(course) && course.priceLabel ? course.priceLabel : priv ? course.privateTerms : null;
   const facts = [...(course.facts || []).map((f) => f.text), priceLine].filter(Boolean);
   const nextCourse = course.nextCourse && typeof course.nextCourse === "object" ? course.nextCourse : null;
   // "You leave with" sits under the outcomes beside the take-away card; without a card it takes the card's column.
@@ -233,6 +245,12 @@ export default async function CoursePage({ params }) {
           </ul>
         )}
         <ButtonRow primary={primary} secondary={secondary} />
+        {course.cosponsorName && (
+          <p className="aa-cosponsor">
+            {course.cosponsorLead || "Co-sponsored with"}{" "}
+            {safeUrl(course.cosponsorUrl) ? <a href={safeUrl(course.cosponsorUrl)} rel="noopener">{course.cosponsorName}</a> : course.cosponsorName}
+          </p>
+        )}
       </AcademyHero>
 
       {open && (
@@ -338,6 +356,15 @@ export default async function CoursePage({ params }) {
                 </ul>
               </div>
             )}
+          </div>
+        </section>
+      )}
+
+      {course.independenceNote && (
+        <section className="aa-band aa-band--sand" aria-labelledby="aa-independence-h">
+          <div className="wrap aa-independence">
+            <h2 className="aa-h3" id="aa-independence-h">{course.independenceHeadline || "Independent and nonpartisan"}</h2>
+            <p className="aa-body"><Em>{course.independenceNote}</Em></p>
           </div>
         </section>
       )}
