@@ -7,6 +7,8 @@
  * list a day; the card links to their recent activity, a person pastes a post, and Claude drafts the
  * comment (LinkedIn's rules allow no reading of feeds). Reshare: the latest company-page post,
  * once, with a drafted intro. Up to 2 influencers join the 9 connection requests.
+ * Partners (KADE docs/partners.md, November 13, 2026): up to 5 invitations a day on top, with a peer note; once
+ * accepted, a message asking for a 15-minute call; 6 weeks after the last contact with one she has met, a check-in.
  */
 import { draft, type ClaudeEnv, type DraftKind } from "./claude";
 
@@ -19,6 +21,8 @@ export const CONNECTS_PER_DAY = 9;
 export const COMMENTS_PER_DAY = 5;
 export const INFLUENCER_COMMENTS_PER_DAY = 2;
 export const INFLUENCER_CONNECTS_PER_DAY = 2;
+export const PARTNER_CONNECTS_PER_DAY = 5;
+export const PARTNER_CHECK_INS_PER_DAY = 3;
 /** A person is offered for a comment at most once a week. */
 const COMMENT_EVERY_DAYS = 7;
 const PER_ACCOUNT_PER_WEEK = 2;
@@ -44,16 +48,27 @@ interface Candidate {
   pursued: number;
   linkedin_url: string | null;
   segment: string;
+  partner_type: string | null;
 }
 
 type ActionType = "connect" | "follow_up" | "withdraw_invite" | "comment";
 /** A profile's recent posts and comments page, where a comment is chosen. */
 export const activityUrl = (profile: string | null) => profile ? `${profile.replace(/[?#].*$/, "").replace(/\/+$/, "")}/recent-activity/all/` : null;
 
-const COLS = "p.id, p.full_name, p.title, p.organization, p.kade_account_id, p.kade_summary, p.kade_tier, p.kade_heat, p.pursued, p.linkedin_url, p.segment";
+const COLS = "p.id, p.full_name, p.title, p.organization, p.kade_account_id, p.kade_summary, p.kade_tier, p.kade_heat, p.pursued, p.linkedin_url, p.segment, p.partner_type";
+export const PARTNER_LABELS: Record<string, string> = {
+  fractional_finance: "fractional CFO or controller", fractional_hr: "fractional CHRO",
+  deal_advisor: "M&A, integration or audit advisor", erp_recruiter: "ERP consultancy or executive recruiter",
+};
 export const firstName = (full: string) => full.trim().split(/\s+/)[0] ?? full;
 
-function why(c: Candidate, kind: string): string {
+function why(c: Candidate, kind: string, checkIn = false): string {
+  if (c.partner_type) {
+    const label = PARTNER_LABELS[c.partner_type] ?? "partner";
+    if (checkIn) return `Partner (${label}): six weeks since you last talked, a check-in`;
+    if (kind === "follow_up") return `Partner (${label}) accepted: ask for a 15-minute call`;
+    return `Partner (${label}): serves the same buyers; referrals both ways`;
+  }
   if (c.segment === "influencer") return kind === "comment" ? "From your influencer list: comment on a recent post" : "From your influencer list";
   const parts = [c.pursued ? "open pursuit" : null, c.kade_tier ? `${c.kade_tier}${c.kade_heat != null ? ` (heat ${c.kade_heat.toFixed(2)})` : ""}` : null];
   const head = kind === "follow_up" ? "Accepted your invite recently" : kind === "withdraw_invite" ? `Invite pending ${WITHDRAW_AFTER_DAYS}+ days`
@@ -61,22 +76,24 @@ function why(c: Candidate, kind: string): string {
   return [head, ...parts.filter(Boolean)].join(" · ");
 }
 
-async function addAction(env: DailyEnv, date: string, rank: number, type: ActionType, c: Candidate) {
+async function addAction(env: DailyEnv, date: string, rank: number, type: ActionType, c: Candidate, checkIn = false) {
   let queueId: string | null = null;
   // A comment is drafted once a person pastes the post; nothing to draft yet.
   if (type === "connect" || type === "follow_up") {
-    const kind: DraftKind = type === "connect" ? "connection_note" : "follow_up";
-    const d = await draft(env, kind, { firstName: firstName(c.full_name), title: c.title, organization: c.organization, context: c.kade_summary });
+    const kind: DraftKind = c.partner_type
+      ? (type === "connect" ? "partner_note" : checkIn ? "partner_check_in" : "partner_call")
+      : type === "connect" ? "connection_note" : "follow_up";
+    const d = await draft(env, kind, { firstName: firstName(c.full_name), title: c.title, organization: c.organization, context: c.partner_type ? null : c.kade_summary });
     queueId = crypto.randomUUID();
     await env.DB.prepare(
       `INSERT INTO review_queue (id, system, item_type, channel, person_id, title, draft, context_json, created_by_agent, due_date)
        VALUES (?1, 'advisory', ?2, 'linkedin', ?3, ?4, ?5, ?6, ?7, ?8)`,
     ).bind(queueId, type === "connect" ? "connection_note" : "dm", c.id, `${c.full_name}, ${c.organization ?? ""}`, d.text,
-      JSON.stringify({ tier: c.kade_tier, heat: c.kade_heat, pursued: !!c.pursued, drafted_by: d.by, draft_error: d.error ?? null }), `engagement-engine:${d.by}`, date).run();
+      JSON.stringify({ tier: c.kade_tier, heat: c.kade_heat, pursued: !!c.pursued, draft_kind: kind, drafted_by: d.by, draft_error: d.error ?? null }), `engagement-engine:${d.by}`, date).run();
   }
   await env.DB.prepare(
     `INSERT INTO actions (id, action_date, rank, action_type, person_id, queue_id, reason, target_url) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)`,
-  ).bind(crypto.randomUUID(), date, rank, type, c.id, queueId, why(c, type), type === "comment" ? activityUrl(c.linkedin_url) : c.linkedin_url).run();
+  ).bind(crypto.randomUUID(), date, rank, type, c.id, queueId, why(c, type, checkIn), type === "comment" ? activityUrl(c.linkedin_url) : c.linkedin_url).run();
 }
 
 /** The latest company-page post published in the last 5 days and not reshared yet, with a drafted intro. */
@@ -163,6 +180,24 @@ export async function buildToday(env: DailyEnv & { LINKEDIN_PAGE_URL?: string },
     connects.push(c);
   }
 
+  // Partners (KADE docs/partners.md): invitations on top of the 9, and check-ins with those she has met.
+  // A partner in a conversation (a call booked) can still be checked in with; paused or stopped cannot.
+  const partnerConnects = (await env.DB.prepare(
+    `SELECT ${COLS} FROM people p
+     WHERE p.partner_type IS NOT NULL AND p.linkedin_url IS NOT NULL AND p.connection_status = 'none' AND p.do_not_contact = 0 AND ${CONTACT_OPEN} AND ${touchedToday}
+       AND NOT EXISTS (SELECT 1 FROM actions a WHERE a.person_id = p.id AND a.action_type = 'connect' AND (a.status <> 'skipped' OR a.action_date >= date(?1, '-30 days')))
+     ORDER BY p.created_at LIMIT ?2`,
+  ).bind(date, PARTNER_CONNECTS_PER_DAY + 5).all<Candidate>()).results.filter((c) => !busy.has(c.id)).slice(0, PARTNER_CONNECTS_PER_DAY);
+  for (const c of partnerConnects) busy.add(c.id);
+  const partnerCheckIns = (await env.DB.prepare(
+    `SELECT ${COLS} FROM people p
+     WHERE p.partner_type IS NOT NULL AND p.partner_check_in_on IS NOT NULL AND p.partner_check_in_on <= ?1 AND p.connection_status = 'connected'
+       AND p.do_not_contact = 0 AND p.contact_state IN ('open', 'in_conversation') AND ${touchedToday}
+       AND NOT EXISTS (SELECT 1 FROM actions a WHERE a.person_id = p.id AND a.action_type = 'follow_up' AND a.action_date >= date(?1, '-30 days'))
+     ORDER BY p.partner_check_in_on LIMIT ?2`,
+  ).bind(date, PARTNER_CHECK_INS_PER_DAY + 5).all<Candidate>()).results.filter((c) => !busy.has(c.id)).slice(0, PARTNER_CHECK_INS_PER_DAY);
+  for (const c of partnerCheckIns) busy.add(c.id);
+
   const withdraws = (await env.DB.prepare(
     `SELECT ${COLS} FROM people p
      WHERE p.connection_status = 'pending' AND p.invited_at < date(?1, '-${WITHDRAW_AFTER_DAYS} days')
@@ -175,7 +210,9 @@ export async function buildToday(env: DailyEnv & { LINKEDIN_PAGE_URL?: string },
   for (const c of [...prospectComments, ...influencerComments]) await addAction(env, date, ++rank, "comment", c);
   const reshares = await addReshare(env, date, ++rank);
   for (const c of [...connects, ...influencerConnects]) await addAction(env, date, ++rank, "connect", c);
+  for (const c of partnerCheckIns) await addAction(env, date, ++rank, "follow_up", c, true);
+  for (const c of partnerConnects) await addAction(env, date, ++rank, "connect", c);
   for (const c of withdraws) await addAction(env, date, ++rank, "withdraw_invite", c);
   return { date, skipped: false, followUps: followUps.length, comments: prospectComments.length + influencerComments.length, reshares,
-    connects: connects.length + influencerConnects.length, withdraws: withdraws.length };
+    connects: connects.length + influencerConnects.length, withdraws: withdraws.length, partnerConnects: partnerConnects.length, partnerCheckIns: partnerCheckIns.length };
 }

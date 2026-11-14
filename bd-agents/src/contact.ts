@@ -18,12 +18,16 @@ export const KIND_BY_ACTION: Record<string, string> = {
   reshare: "reshare",
 };
 /** Outcomes the page can record, and what each does to the person here until KADE answers. */
-export const OUTCOMES: Record<string, { state: string; label: string }> = {
+/** A null state leaves the person's state as it is (a referral is not a reply). */
+export const OUTCOMES: Record<string, { state: string | null; label: string }> = {
   reply: { state: "in_conversation", label: "Replied" },
   meeting_booked: { state: "in_conversation", label: "Meeting booked" },
   not_interested: { state: "paused", label: "Not interested" },
   stop_request: { state: "stopped", label: "Asked to stop" },
   conversation_closed: { state: "open", label: "Conversation closed" },
+  // Partners (KADE docs/partners.md): referrals both ways.
+  referral_received: { state: null, label: "Referred a client to me" },
+  referral_given: { state: null, label: "I referred a client to them" },
 };
 
 export function touchStatement(db: D1Database, t: { id: string; personId: string; kind: string; queueId?: string | null; at: string; by: string; note?: string | null }) {

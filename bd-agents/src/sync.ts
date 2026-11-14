@@ -6,7 +6,7 @@
  * of truth; fields the BD side owns (segment once set, connection status, email, Apollo ID,
  * do-not-contact) are never overwritten.
  */
-import { PAGE_SIZE, peoplePage, type KadeEnv, type KadePerson } from "./kade";
+import { PAGE_SIZE, partners, peoplePage, type KadeEnv, type KadePerson } from "./kade";
 
 export interface SyncEnv extends KadeEnv {
   DB: D1Database;
@@ -88,5 +88,32 @@ export async function syncPeople(env: SyncEnv): Promise<SyncResult> {
   }
   const result = { rows, pages, cooled, capped: !complete };
   await writeState(env.DB, "people:last_run", JSON.stringify({ at: syncedAt, ...result })).run();
+  return result;
+}
+
+/**
+ * Partners (KADE docs/partners.md): everyone KADE lists, each morning and after one is added here. Kept as
+ * segment 'warm' and out of KADE's hot scope, with the kind, stage and next check-in as KADE reads them from
+ * contact history. Someone KADE no longer lists stops being a partner here; their history stays.
+ */
+export async function syncPartners(env: SyncEnv) {
+  const { partners: list } = await partners(env);
+  const now = new Date().toISOString();
+  const stmts = list.map((p) => env.DB.prepare(
+    `INSERT INTO people (id, kade_contact_id, full_name, title, organization, segment, linkedin_url, in_kade_scope, synced_at, updated_at,
+       partner_type, partner_stage, partner_check_in_on)
+     VALUES (?1, ?2, ?3, ?4, ?5, 'warm', ?6, 0, ?7, ?7, ?8, ?9, ?10)
+     ON CONFLICT(kade_contact_id) DO UPDATE SET
+       full_name = excluded.full_name, title = COALESCE(excluded.title, people.title), organization = COALESCE(excluded.organization, people.organization),
+       linkedin_url = COALESCE(people.linkedin_url, excluded.linkedin_url), partner_type = excluded.partner_type,
+       partner_stage = excluded.partner_stage, partner_check_in_on = excluded.partner_check_in_on, synced_at = excluded.synced_at, updated_at = excluded.updated_at`,
+  ).bind(crypto.randomUUID(), p.person_id, p.full_name, p.title, p.firm, p.linkedin_url, now, p.partner_type, p.stage, p.check_in_on));
+  for (let i = 0; i < stmts.length; i += 50) await env.DB.batch(stmts.slice(i, i + 50));
+  const gone = await env.DB.prepare(
+    `UPDATE people SET partner_type = NULL, partner_stage = NULL, partner_check_in_on = NULL, updated_at = ?2
+     WHERE partner_type IS NOT NULL AND kade_contact_id NOT IN (SELECT value FROM json_each(?1))`,
+  ).bind(JSON.stringify(list.map((p) => p.person_id)), now).run();
+  const result = { partners: list.length, removed: gone.meta.changes ?? 0 };
+  await writeState(env.DB, "partners:last_run", JSON.stringify({ at: now, ...result })).run();
   return result;
 }

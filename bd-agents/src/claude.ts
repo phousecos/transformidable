@@ -10,7 +10,8 @@ export interface ClaudeEnv {
   AI_MODEL?: string;
 }
 
-export type DraftKind = "connection_note" | "follow_up" | "comment" | "reshare_intro";
+/** partner_* (KADE docs/partners.md): to peers who serve the same buyers, not prospects. */
+export type DraftKind = "connection_note" | "follow_up" | "comment" | "reshare_intro" | "partner_note" | "partner_call" | "partner_check_in";
 
 export interface DraftSubject {
   firstName: string;
@@ -24,7 +25,7 @@ export interface DraftSubject {
 
 /** LinkedIn's limit for a connection note on a free account is 200 characters. */
 /** LinkedIn limits: a connection note 200 characters, a comment 1,250. Reshare intros are kept short. */
-export const LIMITS: Record<DraftKind, number> = { connection_note: 200, follow_up: 600, comment: 1250, reshare_intro: 400 };
+export const LIMITS: Record<DraftKind, number> = { connection_note: 200, follow_up: 600, comment: 1250, reshare_intro: 400, partner_note: 200, partner_call: 600, partner_check_in: 600 };
 
 const SYSTEM = `You draft short LinkedIn messages for Dr. Jerri Bland to send from her own account. She is a governance advisor (ERP and core systems, IT controls, AI governance, M&A technology integration) with 25 years of enterprise IT leadership in large universities (refer to her past roles only in general terms; never name an institution, employer, client or prospect). She writes peer to peer: plain, warm, specific, brief.
 
@@ -50,6 +51,17 @@ function prompt(kind: DraftKind, s: DraftSubject): string {
   if (kind === "reshare_intro") {
     return `Jerri is resharing her company page's LinkedIn post to her own profile. Write the one or two sentence intro that goes above it (under 300 characters): why it matters to a leader, in her voice. No hashtags, no "check out", no links.${post}`;
   }
+  // Partners: peers who serve the same buyers. Asking a peer for a short call is right here; the prospect rules against it do not apply.
+  const peer = `${who} is a peer, not a prospect: they advise the same kinds of leaders Jerri does (finance, people, deals, ERP or executive search), and the aim is a relationship where each can refer work to the other. For this message only, the rule against asking for a call does not apply; everything else (discretion, no pitch, no names of clients) still does.`;
+  if (kind === "partner_note") {
+    return `${peer} Write a LinkedIn connection request note to them. At most ${LIMITS.partner_note} characters including spaces. One or two sentences, peer to peer: they work with the same executives Jerri does, and it would be good to compare notes. No ask beyond connecting.`;
+  }
+  if (kind === "partner_call") {
+    return `${peer} They just accepted Jerri's connection request. Write a short message (at most ${LIMITS.partner_call} characters): thanks, one sentence on the overlap (the same leaders, from different sides: Jerri on governing ERP, AI and integration decisions), and a light ask for a 15-minute call to learn how they work and where she might send people their way. Make it easy to say yes or no.`;
+  }
+  if (kind === "partner_check_in") {
+    return `${peer} Jerri met them some weeks ago. Write a short check-in (at most ${LIMITS.partner_check_in} characters): warm, one useful thought or question about what their clients are dealing with now, and an open offer to help if a client of theirs needs governance help on ERP, AI or an integration. No pressure, no recap of the last call.`;
+  }
   if (kind === "connection_note") {
     return `Write a LinkedIn connection request note to ${who}. At most ${LIMITS.connection_note} characters including spaces. One or two sentences: a reason to connect grounded in their role and a governance topic relevant to their organization.${ctx}`;
   }
@@ -59,6 +71,9 @@ function prompt(kind: DraftKind, s: DraftSubject): string {
 export function template(kind: DraftKind, s: DraftSubject): string {
   if (kind === "comment") return `Well put, ${s.firstName}. The question underneath this is the governance one: who decides, and who answers for it when it goes sideways.`;
   if (kind === "reshare_intro") return "A question worth taking into your next leadership meeting.";
+  if (kind === "partner_note") return `Hi ${s.firstName}, we seem to work with the same executives from different sides. Would be glad to connect and compare notes.`.slice(0, LIMITS.partner_note);
+  if (kind === "partner_call") return `Thanks for connecting, ${s.firstName}. We work with the same leaders from different sides: I help them govern ERP, AI and integration decisions. Would you be open to a 15-minute call to hear how you work and where I might send people your way?`;
+  if (kind === "partner_check_in") return `Hi ${s.firstName}, I was thinking about our conversation. What are your clients wrestling with this season? If any of them are facing an ERP, AI or integration decision, I'm glad to help.`;
   if (kind === "connection_note") {
     return `Hi ${s.firstName}, I work with executive teams on governing ERP and AI programs and would value connecting.`.slice(0, LIMITS.connection_note);
   }
