@@ -1,0 +1,29 @@
+// Influence: one of KADE's four apps (KADE docs/platform-apps.md, docs/influence.md), in the KADE Analytics account.
+// Deploy from this folder: npx wrangler deploy. Workers Builds: root directory "influence", no build command.
+{
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "name": "kade-influence",
+  "account_id": "14b6d2012633a27148f5f9921158a7ed",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": false,
+  "routes": [{ "pattern": "influence.kadeanalytics.com", "custom_domain": true }],
+  "d1_databases": [
+    { "binding": "DB", "database_name": "kade-influence", "database_id": "30c1cb82-0d6a-4f28-8b0d-b16671bb4499", "migrations_dir": "migrations" },
+  ],
+  // Mondays at 10:00 UTC (5:00 New York): the week's posts and the short-video script.
+  "triggers": { "crons": ["0 10 * * 1"] },
+  "vars": {
+    "KADE_API_URL": "https://signals.kadeanalytics.com",
+    "ACCESS_TEAM_DOMAIN": "https://aged-rice-f04a.cloudflareaccess.com",
+    "ACCESS_AUD": "8814fa78a0297c39979a206941b87f4bf72e634b8d0a7a3149c38fda48cb8165",
+    "ALLOWED_EMAIL_DOMAINS": "jerribland.com,jlynne.co",
+    "AI_MODEL": "claude-sonnet-5-5",
+    "SITE_URL": "https://betransformidable.com",
+  },
+  // Signals, privately, inside the KADE account.
+  "services": [{ "binding": "SIGNALS", "service": "kade-research-dev", "entrypoint": "InfluenceGateway" }],
+  "observability": { "enabled": true },
+  // Secret: ANTHROPIC_API_KEY (Claude, for drafting posts).
+}
