@@ -269,3 +269,33 @@ export async function signalsPeople(env: KadeEnv, ids: string[]): Promise<Signal
   for (let i = 0; i < ids.length; i += 100) out.push(...(await influenceCall<{ people: SignalsPerson[] }>(env, `people?ids=${encodeURIComponent(ids.slice(i, i + 100).join(","))}`)).people);
   return out;
 }
+
+// ---- Research (KADE docs/influence-research.md): Influence asks; Signals researches within its queue and budget ----
+
+export interface Appearance { url: string; title: string | null; kind: string; outlet: string | null; published_date: string | null; summary: string | null; confirmed: boolean; found_at: string }
+export interface PersonResearch { person_id: string; researched_at: string | null; waiting: boolean; checking: number; appearances: Appearance[] }
+export interface DiscoveryRequest {
+  communities: { key: string; label: string; subjects?: string }[];
+  types: { key: string; label: string }[];
+  focus: string; count: number; exclude: string[];
+}
+export interface Candidate { personId: string; name: string; affiliation: string | null; linkedinUrl: string | null; community: string | null; type: string | null; why: string | null }
+
+/** Queues footprint scans (and on Mondays the week's discovery). Signals skips anyone researched in the last six days. */
+export const requestResearch = (env: KadeEnv, body: { footprint?: { personId: string; affiliation?: string | null }[]; discovery?: DiscoveryRequest | null }) =>
+  influenceCall<{ queued: number; skipped: { personId: string; reason: string }[]; discovery: string | null }>(env, "research", { method: "POST", body, ok: 201 });
+
+/** What research has found on these people. */
+export async function signalsResearch(env: KadeEnv, ids: string[]): Promise<PersonResearch[]> {
+  const out: PersonResearch[] = [];
+  for (let i = 0; i < ids.length; i += 100) out.push(...(await influenceCall<{ people: PersonResearch[] }>(env, `appearances?ids=${encodeURIComponent(ids.slice(i, i + 100).join(","))}`)).people);
+  return out;
+}
+
+/** Discovery candidates from scans finished after `since`. */
+export const discoveries = (env: KadeEnv, since: string) =>
+  influenceCall<{ scans: { scanId: string; finishedAt: string; candidates: Candidate[] }[] }>(env, `discoveries?since=${encodeURIComponent(since)}`);
+
+/** Saves the LinkedIn profile she pastes for a discovered person, or names the Signals person who already has it. */
+export const linkLinkedIn = (env: KadeEnv, personId: string, linkedinUrl: string) =>
+  influenceCall<{ personId: string; linked: boolean }>(env, "people/linkedin", { method: "POST", body: { personId, linkedinUrl } });

@@ -12,8 +12,8 @@
   "d1_databases": [
     { "binding": "DB", "database_name": "kade-influence", "database_id": "30c1cb82-0d6a-4f28-8b0d-b16671bb4499", "migrations_dir": "migrations" },
   ],
-  // Mondays at 10:00 UTC (5:00 New York): the week's posts and the short-video script.
-  "triggers": { "crons": ["0 10 * * 1"] },
+  // Monday 10:00 UTC: the week's posts. Hourly at :15: research (KADE docs/influence-research.md; src/index.ts HOURLY).
+  "triggers": { "crons": ["0 10 * * 1", "15 * * * *"] },
   "vars": {
     "KADE_API_URL": "https://signals.kadeanalytics.com",
     "ACCESS_TEAM_DOMAIN": "https://aged-rice-f04a.cloudflareaccess.com",

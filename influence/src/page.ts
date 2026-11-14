@@ -128,7 +128,8 @@ form.stats .wide { grid-column:1 / -1; }
       <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap">
         <h2>Your influence network</h2><span class="muted small" id="netsummary"></span>
       </div>
-      <p class="muted small" style="margin:4px 0 12px">People who shape the conversations you want to be part of. Score them on the six criteria and the tier follows; the stage comes from what actually happened.</p>
+      <p class="muted small" style="margin:4px 0 12px">People who shape the conversations you want to be part of. Research proposes their scores with evidence and the tier follows; change any score and yours stands. The stage comes from what actually happened.</p>
+      <div id="suggested"></div>
       <div id="tiers"></div>
       <div id="netlist"></div>
     </main>
@@ -264,55 +265,153 @@ document.getElementById("buildposts").onclick = function () {
 };
 
 
-// ---- Network (KADE docs/influence.md) ----
-var net = { people: [], settings: null, stages: {}, open: null };
+// ---- Network (KADE docs/influence.md, docs/influence-research.md) ----
+var net = { people: [], suggested: [], candidates: {}, settings: null, screening: [], stages: {}, open: null, research: {} };
 function label(list, key) { var x = (list || []).filter(function (i) { return i.key === key; })[0]; return x ? x.label : ""; }
 function option(sel, value, text, cur) { var o = el("option", "", text); o.value = value; if (String(cur || "") === String(value)) o.selected = true; sel.appendChild(o); }
 function fillSelect(sel, list, cur, blank) { sel.textContent = ""; option(sel, "", blank, cur); list.forEach(function (i) { option(sel, i.key, i.label, cur); }); }
+function met(p) { var n = 0; var sc = p.screening || {}; Object.keys(sc).forEach(function (k) { if (sc[k] === true) n++; }); return n; }
+function tierOf(score) { var t = net.settings.tiers.slice().sort(function (a, b) { return b.min - a.min; }).filter(function (x) { return score != null && score >= x.min; })[0]; return t ? t.tier : null; }
+var KINDS = { article: "Article", podcast_host: "Podcast (host)", podcast_guest: "Podcast (guest)", talk: "Talk", newsletter: "Newsletter", report: "Report", book: "Book", press: "Press", other: "Other" };
+var PLAN = [["why", "Why they matter"], ["function", "Which function benefits"], ["topics", "Topics to contribute on"], ["collaboration", "Collaboration areas"], ["cadence", "Cadence"], ["competitive", "Competitive notes"], ["objective", "First objective"]];
+function findPerson(id) { return net.people.concat(net.suggested).filter(function (x) { return x.person_id === id; })[0]; }
 function renderNetwork() {
-  var s = net.settings, list = document.getElementById("netlist"), tiers = document.getElementById("tiers");
-  list.textContent = ""; tiers.textContent = "";
+  var s = net.settings, list = document.getElementById("netlist"), tiers = document.getElementById("tiers"), sug = document.getElementById("suggested");
+  list.textContent = ""; tiers.textContent = ""; sug.textContent = "";
   document.getElementById("netsummary").textContent = net.people.length + " people";
   fillSelect(document.getElementById("addcommunity"), s.communities, "", "Choose later");
   fillSelect(document.getElementById("addtype"), s.types, "", "Choose later");
+  var c = net.candidates || {};
+  if (net.suggested.length || c.screening || c.notQualified) {
+    var box = el("section", "panel"); box.style.marginBottom = "14px";
+    var hd = el("div", "head"); hd.style.justifyContent = "space-between";
+    add(hd, el("h2", "", "Suggested (" + net.suggested.length + ")"), el("span", "muted small", [c.screening ? c.screening + " being researched" : null, c.notQualified ? c.notQualified + " did not qualify" : null].filter(Boolean).join(" · ")));
+    box.appendChild(hd);
+    box.appendChild(el("p", "muted small", "Found by research: they meet at least 3 of the 7 conditions and score 50 or more. Follow them on LinkedIn yourself, then click Follow; or pass and they will not come back."));
+    if (!net.suggested.length) box.appendChild(el("p", "empty", "No one waiting. New candidates arrive each week."));
+    net.suggested.forEach(function (p) { box.appendChild(personItem(p, true)); });
+    sug.appendChild(box);
+  }
   var tile = el("div", "tiles");
   s.tiers.forEach(function (t) {
     var n = net.people.filter(function (p) { return p.tier === t.tier; }).length;
     add(tile, add(el("div", "tile"), el("span", "muted small", "Tier " + t.tier + ": " + t.label), el("span", "big", String(n)), el("span", "muted small", "target " + t.target)));
   });
   var unscored = net.people.filter(function (p) { return !p.tier; }).length;
-  add(tile, add(el("div", "tile"), el("span", "muted small", "Not yet tiered"), el("span", "big", String(unscored)), el("span", "muted small", "score them to place them")));
+  add(tile, add(el("div", "tile"), el("span", "muted small", "Not yet tiered"), el("span", "big", String(unscored)), el("span", "muted small", "research scores them")));
   tiers.appendChild(tile);
   if (net.signalsError) list.appendChild(el("p", "muted small", "Signals could not be reached for stages and marks: " + net.signalsError));
   if (!net.people.length) list.appendChild(el("p", "empty", "No one yet. Add the people whose conversations you want to be part of."));
-  net.people.forEach(function (p) {
-    var it = el("div", "item"); it.style.cursor = "pointer";
-    var head = el("div", "head");
-    var nm = el("span", "name", p.full_name);
-    var tags = el("span", "tags");
-    tags.appendChild(el("span", "tag", p.tier ? "Tier " + p.tier : "Not tiered"));
-    if (p.prospect) tags.appendChild(el("span", "tag warn", "Prospect"));
-    if (p.partner) tags.appendChild(el("span", "tag ok", "Partner"));
-    add(head, nm, tags);
-    it.appendChild(head);
-    it.appendChild(el("div", "muted small", [label(s.communities, p.community), label(s.types, p.type), net.stages[p.stage] || p.stage,
-      p.score != null ? "score " + Math.round(p.score) : null].filter(Boolean).join(" · ")));
-    if (p.affiliation || p.signals_role) it.appendChild(el("div", "small", p.affiliation || p.signals_role));
-    if (p.next_action) it.appendChild(el("div", "small", "Next: " + p.next_action));
-    it.onclick = function () { net.open = p.person_id; renderDetail(); };
-    list.appendChild(it);
+  net.people.forEach(function (p) { list.appendChild(personItem(p, false)); });
+  var run = button("Run research steps now", "small", function () {
+    run.disabled = true; run.textContent = "Running… (up to a minute)";
+    post("/api/research/run").then(function (r) {
+      toast("Asked for " + r.requested.queued + " footprints" + (r.requested.discovery === "queued" ? " and this week's discovery" : "") + "; " + r.taken.added + " new candidates; " + r.scored.scored + " scored.");
+      return loadNetwork();
+    }).catch(function (e) { toast(e.message); run.disabled = false; run.textContent = "Run research steps now"; });
   });
+  run.style.marginTop = "12px"; list.appendChild(run);
   renderDetail();
+}
+function personItem(p, candidate) {
+  var s = net.settings;
+  var it = el("div", "item"); it.style.cursor = "pointer";
+  var head = el("div", "head");
+  var tags = el("span", "tags");
+  if (candidate) tags.appendChild(el("span", "tag", "Would be Tier " + (tierOf(p.score) || "?") + " · " + met(p) + " of 7"));
+  else tags.appendChild(el("span", "tag", p.tier ? "Tier " + p.tier : "Not tiered"));
+  if (p.prospect) tags.appendChild(el("span", "tag warn", "Prospect"));
+  if (p.partner) tags.appendChild(el("span", "tag ok", "Partner"));
+  add(head, el("span", "name", p.full_name), tags);
+  it.appendChild(head);
+  it.appendChild(el("div", "muted small", [label(s.communities, p.community), label(s.types, p.type), candidate ? null : (net.stages[p.stage] || p.stage),
+    p.score != null ? "score " + Math.round(p.score) : null].filter(Boolean).join(" · ")));
+  if (p.affiliation || p.signals_role) it.appendChild(el("div", "small", p.affiliation || p.signals_role));
+  if (candidate && p.why) it.appendChild(el("div", "small", p.why));
+  if (!candidate && p.next_action) it.appendChild(el("div", "small", "Next: " + p.next_action));
+  it.onclick = function () { net.open = p.person_id; renderDetail(); loadResearch(p.person_id); };
+  return it;
+}
+function loadResearch(id) {
+  return fetch("/api/network/" + encodeURIComponent(id) + "/research").then(function (r) { return r.json(); }).then(function (d) {
+    if (d.error) throw new Error(d.error);
+    net.research[id] = d; if (net.open === id) renderDetail();
+  }).catch(function (e) { net.research[id] = { error: e.message }; if (net.open === id) renderDetail(); });
+}
+function researchBlock(p) {
+  var wrap = el("div", ""); wrap.style.cssText = "display:flex;flex-direction:column;gap:6px;margin:10px 0";
+  var r = net.research[p.person_id];
+  var top = el("div", "head"); top.style.justifyContent = "space-between";
+  top.appendChild(el("span", "label", "Research"));
+  var again = button("Research now", "small", function () {
+    again.disabled = true;
+    post("/api/network/" + encodeURIComponent(p.person_id) + "/research").then(function (x) {
+      toast(x.queued ? "Asked. Signals researches within the next few minutes; scores follow within the hour." : "Not asked: " + x.reason);
+      return loadResearch(p.person_id);
+    }).catch(function (e) { toast(e.message); again.disabled = false; });
+  });
+  top.appendChild(again);
+  wrap.appendChild(top);
+  if (!r) { wrap.appendChild(el("span", "muted small", "Loading…")); return wrap; }
+  if (r.error) { wrap.appendChild(el("span", "muted small", "Could not load: " + r.error)); return wrap; }
+  wrap.appendChild(el("span", "muted small", [r.researched_at ? "Last researched " + nice(r.researched_at.slice(0, 10)) : "Not researched yet", r.waiting ? "research in progress" : null, r.checking ? r.checking + (r.checking === 1 ? " page" : " pages") + " being checked" : null].filter(Boolean).join(" · ")));
+  if (r.researched_at && !r.appearances.length) wrap.appendChild(el("span", "muted small", "No public work found."));
+  r.appearances.slice(0, 12).forEach(function (a) {
+    var row = el("div", "small");
+    var t = el("a", "", a.title || a.url); t.href = a.url; t.target = "_blank"; t.rel = "noopener";
+    add(row, t, el("div", "muted small", [a.published_date ? nice(a.published_date) : null, KINDS[a.kind] || a.kind, a.outlet, a.confirmed ? null : "unconfirmed"].filter(Boolean).join(" · ")));
+    wrap.appendChild(row);
+  });
+  if (r.appearances.length > 12) wrap.appendChild(el("span", "muted small", (r.appearances.length - 12) + " more"));
+  return wrap;
+}
+function screeningBlock(p) {
+  if (!p.screening) return null;
+  var wrap = el("div", ""); wrap.style.margin = "6px 0 10px";
+  wrap.appendChild(el("div", "label", "Screening: " + met(p) + " of 7 met"));
+  net.screening.forEach(function (c) {
+    var v = p.screening[c.key];
+    wrap.appendChild(el("div", "small", (v === true ? "Yes · " : v === false ? "No · " : "Unknown · ") + c.label));
+  });
+  return wrap;
 }
 function renderDetail() {
   var box = document.getElementById("detail"), s = net.settings;
-  var p = net.people.filter(function (x) { return x.person_id === net.open; })[0];
+  var p = findPerson(net.open);
   box.hidden = !p; box.textContent = "";
   if (!p) return;
+  var candidate = p.status === "candidate";
   var head = el("div", "head"); head.style.justifyContent = "space-between";
   add(head, el("h2", "", p.full_name), p.linkedin_url ? link("LinkedIn", p.linkedin_url, "small") : null);
   box.appendChild(head);
+  if (p.affiliation || p.signals_role) box.appendChild(el("div", "small", p.affiliation || p.signals_role));
   if (p.prospect) box.appendChild(el("p", "small", "A prospect in Signals: decide knowingly before featuring them publicly, and never make the connection identifiable."));
+  if (candidate) {
+    if (p.why) box.appendChild(el("p", "small", p.why));
+    box.appendChild(el("div", "label", "Scores from research: " + (p.score != null ? Math.round(p.score) : "not enough known")));
+    s.criteria.forEach(function (c) {
+      var cur = p.scores[c.key] || {};
+      box.appendChild(el("div", "small", c.label + ": " + (cur.score != null ? cur.score + " of 5" : "unknown")));
+      if (cur.evidence) box.appendChild(el("div", "muted small", cur.evidence));
+    });
+    add(box, screeningBlock(p), researchBlock(p));
+    var f = el("form"); f.style.cssText = "display:flex;flex-direction:column;gap:8px";
+    var li = el("input"); li.type = "url"; li.placeholder = "https://www.linkedin.com/in/…"; li.value = p.linkedin_url || "";
+    f.appendChild(add(el("label", "field", p.linkedin_url ? "LinkedIn profile" : "Their LinkedIn profile (research did not find it)"), li));
+    var bar = el("div", "actions");
+    var fol = button("Follow", "primary", function () {
+      fol.disabled = true;
+      post("/api/network/" + encodeURIComponent(p.person_id) + "/follow", { linkedinUrl: li.value }).then(function (r) { net.open = r.personId; toast("Added to your network."); return loadNetwork(); })
+        .catch(function (e) { toast(e.message); fol.disabled = false; });
+    });
+    var pass = button("Pass", "", function () {
+      post("/api/network/" + encodeURIComponent(p.person_id) + "/pass").then(function () { net.open = null; toast("Passed. They will not be suggested again."); return loadNetwork(); }).catch(function (e) { toast(e.message); });
+    });
+    add(bar, fol, pass); f.appendChild(bar);
+    f.onsubmit = function (e) { e.preventDefault(); };
+    box.appendChild(f);
+    return;
+  }
   var f = el("form"); f.style.cssText = "display:flex;flex-direction:column;gap:8px";
   var aff = el("input"); aff.name = "affiliation"; aff.value = p.affiliation || "";
   var com = el("select"); com.name = "community"; fillSelect(com, s.communities, p.community, "None");
@@ -325,10 +424,11 @@ function renderDetail() {
     var row = el("div", ""); row.style.cssText = "display:grid;grid-template-columns:1fr 64px;gap:8px;align-items:center";
     var inp = el("input"); inp.type = "number"; inp.min = "1"; inp.max = "5"; inp.value = cur.score != null ? cur.score : "";
     scoreInputs[c.key] = inp;
-    add(row, el("span", "small", c.label + " (" + c.weight + ")"), inp);
+    add(row, el("span", "small", c.label + " (" + c.weight + ")" + (cur.by === "owner" ? " · yours" : cur.by === "research" ? " · research" : "")), inp);
     f.appendChild(row);
     if (cur.evidence) f.appendChild(el("div", "muted small", cur.evidence));
   });
+  var sb = screeningBlock(p); if (sb) f.appendChild(sb);
   var tier = el("select"); tier.name = "tier";
   option(tier, "", "Follow the score" + (p.score != null ? " (" + Math.round(p.score) + ")" : ""), p.tier_set_by ? p.tier : "");
   s.tiers.forEach(function (t) { option(tier, t.tier, "Tier " + t.tier + ": " + t.label, p.tier_set_by ? p.tier : ""); });
@@ -338,12 +438,27 @@ function renderDetail() {
   var next = el("input"); next.name = "next_action"; next.value = p.next_action || "";
   var notes = el("textarea"); notes.rows = 3; notes.value = p.notes || "";
   add(f, add(el("label", "field", "Tier"), tier), add(el("label", "field", "Stage"), stage), add(el("label", "field", "Next action"), next), add(el("label", "field", "Notes"), notes));
+  var planInputs = null;
+  if (p.tier === 1 || p.plan) {
+    planInputs = {};
+    f.appendChild(el("div", "label", "Relationship plan" + (p.plan && p.plan.auto ? " (drafted from research; edit it and it is yours)" : p.plan ? " (yours)" : " (drafted after the next research)")));
+    PLAN.forEach(function (k) {
+      var ta = el("textarea"); ta.rows = 2; ta.value = (p.plan && p.plan[k[0]]) || "";
+      planInputs[k[0]] = ta;
+      f.appendChild(add(el("label", "field", k[1]), ta));
+    });
+  }
   var bar = el("div", "actions");
   var save = button("Save", "primary", function () {
     var scores = {};
-    s.criteria.forEach(function (c) { var v = scoreInputs[c.key].value; scores[c.key] = { score: v === "" ? null : Number(v), evidence: (p.scores[c.key] || {}).evidence || null }; });
+    s.criteria.forEach(function (c) { var v = scoreInputs[c.key].value; scores[c.key] = { score: v === "" ? null : Number(v) }; });
+    var b = { affiliation: aff.value, community: com.value, type: typ.value, scores: scores, tier: tier.value, stage: stage.value, next_action: next.value, notes: notes.value };
+    if (planInputs) {
+      var changed = PLAN.some(function (k) { return (planInputs[k[0]].value || "") !== ((p.plan && p.plan[k[0]]) || ""); });
+      if (changed) { var plan = {}; PLAN.forEach(function (k) { if (planInputs[k[0]].value.trim()) plan[k[0]] = planInputs[k[0]].value.trim(); }); b.plan = plan; }
+    }
     save.disabled = true;
-    post("/api/network/" + encodeURIComponent(p.person_id), { affiliation: aff.value, community: com.value, type: typ.value, scores: scores, tier: tier.value, stage: stage.value, next_action: next.value, notes: notes.value })
+    post("/api/network/" + encodeURIComponent(p.person_id), b)
       .then(function (r) { toast(r.tier ? "Saved. Tier " + r.tier + "." : "Saved."); return loadNetwork(); })
       .catch(function (e) { toast(e.message); save.disabled = false; });
   });
@@ -354,17 +469,19 @@ function renderDetail() {
   f.appendChild(bar);
   f.onsubmit = function (e) { e.preventDefault(); };
   box.appendChild(f);
+  box.appendChild(researchBlock(p));
 }
 function loadNetwork() {
   return fetch("/api/network").then(function (r) { return r.json(); }).then(function (d) {
     if (d.error) throw new Error(d.error);
-    net.people = d.people; net.settings = d.settings; net.stages = d.stages; net.signalsError = d.signalsError; renderNetwork();
+    net.people = d.people; net.suggested = d.suggested || []; net.candidates = d.candidates || {}; net.settings = d.settings; net.screening = d.screening || [];
+    net.stages = d.stages; net.signalsError = d.signalsError; renderNetwork();
   }).catch(function (e) { document.getElementById("netlist").textContent = "Could not load: " + e.message; });
 }
 document.getElementById("addform").onsubmit = function (e) {
   e.preventDefault();
   var b = {}; new FormData(e.target).forEach(function (v, k) { b[k] = v; });
-  post("/api/network", b).then(function () { toast("Added."); e.target.reset(); return loadNetwork(); }).catch(function (err) { toast(err.message); });
+  post("/api/network", b).then(function () { toast("Added. Research starts within the next few minutes."); e.target.reset(); return loadNetwork(); }).catch(function (err) { toast(err.message); });
 };
 
 // ---- Tabs ----
