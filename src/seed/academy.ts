@@ -16,6 +16,16 @@ import type { Payload } from 'payload'
 
 const list = (items: string[]) => items.map((text) => ({ text }))
 
+// TA-101's agenda once added up to 75 of its 90 minutes; this part closes the gap.
+const TA101_QA = {
+  minutes: 15,
+  title: 'Questions and next steps',
+  description: 'Bring the AI items on your own agenda. Open questions, then what to do before your next vote.',
+}
+const TA101_OLD_NEXT_ANSWER = 'Governing AI Adoption, a 4-hour private workshop for your organization. Or see the other Academy courses.'
+const TA101_NEXT_ANSWER =
+  'TA-201 Governing AI Adoption, a four-hour live workshop in open cohorts or for your whole board. Your TA-101 fee is credited toward it.'
+
 const TA101 = {
   code: 'TA-101',
   title: 'Know What You’re Governing',
@@ -53,13 +63,14 @@ const TA101 = {
     'It arrives inside a software renewal, a vendor upgrade, a grant, or a tool staff started using last spring. You are accountable for it either way. TA-101 gives you the vocabulary and the questions to govern it, in one sitting.',
 
   agendaEyebrow: 'What happens in the 90 minutes',
-  agendaHeadline: 'Ninety minutes, five parts',
+  agendaHeadline: 'Ninety minutes, six parts',
   agenda: [
     { minutes: 20, title: 'What AI actually is', description: 'See why fluent answers aren’t always correct, in a live demo and a quick poll.' },
     { minutes: 12, title: 'Where AI shows up', description: 'Learn the five shapes of AI and the four doors it comes through, including the ones that skip your agenda.' },
     { minutes: 15, title: 'What can go wrong', description: 'Walk through four real public-sector cases and the seven ways AI fails.' },
     { minutes: 10, title: 'Governing vs. managing', description: 'Learn six governance disciplines and one question for each.' },
     { minutes: 18, title: 'The agenda item', description: 'Work a fictional staff memo in a small group and take a position: approve, approve with conditions, or table.' },
+    TA101_QA,
   ],
 
   outcomesHeadline: 'By the end, you’ll be able to',
@@ -107,7 +118,7 @@ const TA101 = {
     },
     {
       question: 'What comes after TA-101?',
-      answer: 'Governing AI Adoption, a 4-hour private workshop for your organization. Or see the other Academy courses.',
+      answer: TA101_NEXT_ANSWER,
     },
   ],
 
@@ -118,42 +129,8 @@ const TA101 = {
     'A 90-minute live course for city and county councils, commissions, legislatures and school boards: what AI is, where it shows up, how it goes wrong, and what to ask before you approve it.',
 }
 
-// The workshop and the applied program: catalog fields plus page copy from
-// the earlier Academy site, so their course pages say what is covered.
-const WORKSHOP_PAGE = {
-  eyebrow: 'Workshop · half day · private for your organization',
-  headline: 'Governing AI',
-  headlineAccent: 'adoption.',
-  subhead:
-    'An interactive workshop that helps governing bodies and executive teams turn AI awareness into practical governance expectations.',
-  facts: list(['Half day, or two online sessions', 'For one organization', 'Adapted to your sector']),
-  whyHeadline: 'Understanding AI is only the beginning.',
-  whyAccent: 'Governing it is the work.',
-  whyBody:
-    'As organizations introduce AI, leaders must decide who has authority to make decisions, how risks are evaluated, what evidence supports deployment, and when concerns require escalation. Using realistic scenarios, your team works through the decisions, responsibilities and oversight needed to govern AI adoption.',
-  outcomesHeadline: 'What you’ll work through',
-  outcomes: list([
-    'Establishing AI decision rights and accountability',
-    'Evaluating proposed AI uses against your objectives and risk',
-    'Distinguishing operational management from governance oversight',
-    'Identifying the information leaders need before authorizing AI initiatives',
-    'Designing escalation, monitoring and reporting expectations',
-    'Developing priorities for the next 90 days',
-  ]),
-  leaveWithHeadline: 'You leave with',
-  leaveWith: list(['A preliminary AI Governance Oversight Scorecard', 'A 90-Day Governance Action Plan for your organization']),
-  whoFor: 'Governing boards, councils, executive teams, CIOs, AI program sponsors, and leaders responsible for organizational risk and accountability.',
-  howItRuns: list([
-    'Four hours, as a half-day session or two online sessions.',
-    'Adapted to your sector, the AI already in use, and your governance responsibilities.',
-  ]),
-  finalHeadline: 'Move beyond AI awareness.',
-  finalAccent: 'Govern what comes next.',
-  seoTitle: 'Governing AI Adoption: a private workshop | Transformidable Academy',
-  seoDescription:
-    'A half-day private workshop that helps governing bodies and executive teams set AI decision rights, oversight and reporting, and leave with a 90-day governance action plan.',
-}
-
+// The applied program: catalog fields plus page copy from the earlier Academy
+// site, so its course page says what is covered.
 const APPLIED_PAGE = {
   eyebrow: 'Applied program · about a full day · private',
   headline: 'Build AI governance',
@@ -186,21 +163,122 @@ const APPLIED_PAGE = {
     'An applied program for leadership teams to define AI decision rights, accountability, escalation and oversight, and leave with an AI Governance Action Brief.',
 }
 
+// TA-201: the four-hour workshop, in open cohorts (online in one or two
+// sessions, or in person; each date's format is set in the class platform) or
+// for one body. From the course page mockup of Nov 14, 2026.
+const WORKSHOP_PAGE = {
+  code: 'TA-201',
+  topicTag: 'AI',
+  level: 'workshop',
+  offerings: ['open', 'private'],
+  privateFormat: 'Tailored to your group',
+  privateTerms: 'We scope it with you and send a proposal',
+  oneLine: 'Turn AI awareness into the decision rights, evidence and oversight your body needs before and after it approves AI.',
+  format: '4 hours · live, online or in person',
+  availability: 'scheduled',
+  statusLabel: 'Founding cohorts open',
+  webinarSeries: 'governing-ai-adoption',
+  priceLabel: '$549 per seat · $449 founding',
+  creditRule: 'A TA-101 fee paid in the last six months is credited; credit follows whoever paid.',
+  listed: true,
+  sortOrder: 20,
+
+  eyebrow: 'Transformidable Academy · TA-201 · Live workshop',
+  headline: 'Govern what you’ve',
+  headlineAccent: 'adopted.',
+  subhead:
+    'A four-hour live workshop for legislators, council members, commissioners, and board members. It turns AI awareness into the decision rights, evidence, and oversight your body needs before and after it approves AI.',
+  facts: list(['4 hours, live · one half day or two sessions', '16–20 officials · online or in person', 'TA-101 recommended, not required']),
+
+  cohortsHeadline: 'Same workshop, three ways to sit for it.',
+  cohortsIntro:
+    'Every cohort covers the full four hours. Pick the format that fits your calendar: one online half day, two shorter online sessions a week apart, or in person. Capped at 20. All times Eastern.',
+
+  whyHeadline: 'The vote is where',
+  whyAccent: 'governing AI starts.',
+  whyBody:
+    'After approval, contracts renew, vendors add features, staff widen the use, and a pilot quietly becomes the default. Your body is still accountable for all of it. This workshop gives you the structure: who decides, what evidence you require, and when an issue comes back to you. You’ll practice it on realistic scenarios, not slides.',
+
+  agendaEyebrow: 'Agenda',
+  agendaHeadline: 'Four hours, six parts.',
+  agendaNote: 'In two-session cohorts, parts 1–3 run in session one and parts 4–6 in session two.',
+  agenda: [
+    { minutes: 35, title: 'Who decides', description: 'Map who can approve, buy, and switch on AI in your organization, and find the gaps where no one is accountable.' },
+    { minutes: 40, title: 'Is this use worth it?', description: 'Screen proposed AI uses against your objectives and risk, then test the screen on a fictional staff proposal.' },
+    { minutes: 30, title: 'Governing, not managing', description: 'Draw the line between governance oversight and operational management: what your body owns and what staff own.' },
+    { minutes: 15, title: 'Break', isBreak: true },
+    { minutes: 35, title: 'Before you say yes', description: 'Specify the information and evidence leaders need before authorizing an AI initiative, and how to ask for it.' },
+    { minutes: 40, title: 'When it comes back to you', description: 'Set escalation, monitoring, and reporting expectations. Tabletop exercise: an AI problem surfaces between meetings.' },
+    { minutes: 45, title: 'Your next 90 days', description: 'Score your current oversight and set priorities. Each participant leaves with a draft scorecard and action plan.' },
+  ],
+
+  outcomesHeadline: 'By the end, you’ll be able to',
+  outcomes: list([
+    'Assign AI decision rights and accountability',
+    'Screen a proposed AI use against objectives and risk',
+    'Separate governance oversight from operational management',
+    'Name the evidence you need before authorizing AI',
+    'Set escalation, monitoring, and reporting expectations',
+    'Set your body’s AI governance priorities for the next 90 days',
+  ]),
+  leaveWithHeadline: 'What you leave with',
+  leaveWith: list([
+    'The AI Governance Oversight Scorecard, with a preliminary score of where your oversight stands today',
+    'A 90-Day Governance Action Plan, drafted in the room (completed for your body in dedicated sessions)',
+    'Participant guide with scenarios, worksheets and glossary',
+    'Certificate of completion',
+  ]),
+  leaveWithNote: 'Took TA-101 in the last six months? Your fee is credited toward this workshop.',
+
+  whoFor:
+    'Legislators and legislative staff leads, city and county council members, county commissioners, school board members, authority and commission appointees, and public-entity and nonprofit board members, plus the executives and CIOs who report to them. Best if you’ve taken TA-101 or already know the AI basics.',
+  notFor: 'Technical teams that want to build or configure AI. New to AI? Start with TA-101.',
+  howItRuns: list([
+    'Four hours, as one half day or two 2-hour sessions',
+    'Live online (Chrome, Edge, or Safari on a laptop or desktop) or in person',
+    'Not recorded; captions on',
+    'Cameras on for scenario work',
+    'Open cohorts mix jurisdictions and body types',
+    'Dedicated sessions adapt to your sector and the AI already in use',
+  ]),
+
+  faq: [
+    {
+      question: 'What does it cost?',
+      answer:
+        '$549 per seat, or $449 in founding cohorts. A TA-101 fee paid in the last six months is credited. If your organization paid, the credit goes to the organization. Dedicated sessions are priced to your group.',
+    },
+    {
+      question: 'Do I need TA-101 first?',
+      answer: 'It’s recommended but not required. This workshop assumes you know what AI is and where it shows up. TA-101 covers both in 90 minutes.',
+    },
+    {
+      question: 'One session or two: which should I pick?',
+      answer: 'The content is the same. Two sessions are easier to fit around meetings; one half day keeps the scenario work together.',
+    },
+    { question: 'Can my organization pay by invoice?', answer: 'Yes, by invoice or purchase order. Tell us when you register.' },
+    { question: 'Is it recorded?', answer: 'No, so officials can speak freely.' },
+    {
+      question: 'Could it count as a public meeting?',
+      answer: 'Possibly, if a majority of your body attends together. Coordinate with your clerk, or request a dedicated session. This is not legal advice.',
+    },
+    {
+      question: 'What comes next?',
+      answer: 'Building AI Governance in Practice, or a dedicated advisory engagement through Transformidable Advisory.',
+    },
+  ],
+
+  finalHeadline: 'You approved it.',
+  finalAccent: 'Now govern it.',
+  nextCourseLabel: 'New to AI? Start with',
+  seoTitle: 'TA-201 Governing AI Adoption: a live workshop for public officials | Transformidable Academy',
+  seoDescription:
+    'A four-hour live workshop, online or in person, for councils, commissions, legislatures and boards: AI decision rights, evidence before approval, escalation and oversight, and a 90-day governance plan.',
+}
+
 const WORKSHOP = {
   title: 'Governing AI Adoption',
   slug: 'governing-ai-adoption',
-  topicTag: 'AI',
-  level: 'workshop',
-  offerings: ['private'],
-  privateFormat: 'Half day in person, or two online sessions · adapted to your organization',
-  privateTerms: '$8,000 per organization',
-  oneLine: 'Turn the questions into decisions, accountability and oversight for your organization.',
-  format: 'Half day',
-  availability: 'scheduled',
-  statusLabel: 'Available for your organization',
-  creditRule: 'Course credits apply, capped at 25% of the fee ($2,000).',
-  listed: true,
-  sortOrder: 20,
   ...WORKSHOP_PAGE,
 }
 
@@ -243,7 +321,7 @@ const TA102 = {
 // take it. Only empty fields are filled.
 const UPGRADES: Record<string, Record<string, unknown>> = {
   [TA101.slug]: { offerings: TA101.offerings, privateFormat: TA101.privateFormat, privateTerms: TA101.privateTerms },
-  [WORKSHOP.slug]: { ...WORKSHOP_PAGE, offerings: WORKSHOP.offerings, privateFormat: WORKSHOP.privateFormat, privateTerms: WORKSHOP.privateTerms, availability: 'scheduled', statusLabel: WORKSHOP.statusLabel },
+  [WORKSHOP.slug]: { offerings: ['private'], availability: 'scheduled' },
   [APPLIED.slug]: { ...APPLIED_PAGE, offerings: APPLIED.offerings, privateFormat: APPLIED.privateFormat, privateTerms: APPLIED.privateTerms },
   [TA102.slug]: { offerings: TA102.offerings, privateTerms: TA102.privateTerms },
 }
@@ -266,6 +344,48 @@ async function upgradeCourses(payload: Payload): Promise<void> {
     await payload.update({ collection: 'courses', id: c.id, data: data as any })
     console.log(`[seed:academy] Upgraded ${c.slug}.`)
   }
+}
+
+/**
+ * Rebuilds the half-day private workshop as TA-201 (open cohorts as well as
+ * private), once: only while the entry has no course code. Its copy is
+ * replaced outright, and it links back to TA-101 for newcomers.
+ */
+async function upgradeToTA201(payload: Payload): Promise<void> {
+  const { docs } = await payload.find({ collection: 'courses', where: { slug: { equals: WORKSHOP.slug } }, limit: 1, depth: 0 })
+  const c = docs[0] as Record<string, any> | undefined
+  if (!c || c.code) return
+  const { docs: ta101 } = await payload.find({ collection: 'courses', where: { slug: { equals: TA101.slug } }, limit: 1, depth: 0 })
+  await payload.update({
+    collection: 'courses',
+    id: c.id,
+    data: { ...WORKSHOP_PAGE, ...(ta101[0] && { nextCourse: ta101[0].id }) } as any,
+  })
+  console.log('[seed:academy] Rebuilt governing-ai-adoption as TA-201.')
+}
+
+/**
+ * TA-101's agenda added up to 75 of its 90 minutes. Adds the closing
+ * questions part, once (while the parts still total 75), and points its
+ * "What comes after" answer at TA-201.
+ */
+async function fixTA101(payload: Payload): Promise<void> {
+  const { docs } = await payload.find({ collection: 'courses', where: { slug: { equals: TA101.slug } }, limit: 1, depth: 0 })
+  const c = docs[0] as Record<string, any> | undefined
+  if (!c) return
+  const data: Record<string, unknown> = {}
+  const agenda = Array.isArray(c.agenda) ? c.agenda : []
+  const total = agenda.reduce((n: number, p: any) => n + (Number(p.minutes) || 0), 0)
+  if (total === 75) {
+    data.agenda = [...agenda, TA101_QA]
+    if (c.agendaHeadline === 'Ninety minutes, five parts') data.agendaHeadline = TA101.agendaHeadline
+  }
+  if (Array.isArray(c.faq) && c.faq.some((q: any) => q.answer === TA101_OLD_NEXT_ANSWER)) {
+    data.faq = c.faq.map((q: any) => (q.answer === TA101_OLD_NEXT_ANSWER ? { ...q, answer: TA101_NEXT_ANSWER } : q))
+  }
+  if (!Object.keys(data).length) return
+  await payload.update({ collection: 'courses', id: c.id, data: data as any })
+  console.log('[seed:academy] Fixed TA-101’s agenda and next-course answer.')
 }
 
 const ACADEMY_PAGE = {
@@ -391,10 +511,13 @@ export async function seedAcademy(payload: Payload): Promise<void> {
     const workshop = await payload.create({ collection: 'courses', data: WORKSHOP as any })
     await payload.create({ collection: 'courses', data: APPLIED as any })
     await payload.create({ collection: 'courses', data: TA102 as any })
-    await payload.create({ collection: 'courses', data: { ...TA101, nextCourse: workshop.id } as any })
+    const ta101 = await payload.create({ collection: 'courses', data: { ...TA101, nextCourse: workshop.id } as any })
+    await payload.update({ collection: 'courses', id: workshop.id, data: { nextCourse: ta101.id } as any })
     console.log('[seed:academy] Courses created.')
   }
   await upgradeCourses(payload)
+  await upgradeToTA201(payload)
+  await fixTA101(payload)
 
   const page = (await payload.findGlobal({ slug: 'academy-page', depth: 0 })) as { heroHeadline?: string }
   if (!page?.heroHeadline) {

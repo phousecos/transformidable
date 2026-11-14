@@ -17,7 +17,18 @@ import config from '@payload-config'
 import { getPayload } from 'payload'
 import { SITE_CAMPAIGN, type BriefingSeries, type BriefingSession } from './briefings.ts'
 
+/** A later part of a class in parts: registering for the date registers for every part. */
+export type AcademyPart = { id: number; startsAt: string; endsAt: string; durationMinutes: number }
+
+/** How a date is taught. Older feeds send no format: treat them as one online session. */
+export type AcademyFormat = 'online_one' | 'online_two' | 'in_person'
+
 export type AcademySession = BriefingSession & {
+  format?: AcademyFormat
+  /** "Online · two sessions", "In person · Raleigh, NC". */
+  formatText?: string
+  location?: string | null
+  parts?: AcademyPart[]
   priceCents: number
   regularPriceCents: number
   capacity: number | null
@@ -160,22 +171,45 @@ export function money(cents: number, currency = 'usd') {
 /** True when a date is priced below its course's regular price (a founding cohort). */
 export const isReduced = (s: AcademySession) => s.regularPriceCents > 0 && s.priceCents < s.regularPriceCents
 
-/** "Tue, Jan 13" and "12:00–1:30 pm ET", in Eastern. */
-export function sessionTimes(s: AcademySession) {
-  const tz = ACADEMY_TIMEZONE
-  const start = new Date(s.startsAt)
-  const end = new Date(s.endsAt)
-  const date = new Intl.DateTimeFormat('en-US', { timeZone: tz, weekday: 'short', month: 'short', day: 'numeric' }).format(start)
+const dayOf = (iso: string) =>
+  new Intl.DateTimeFormat('en-US', { timeZone: ACADEMY_TIMEZONE, weekday: 'short', month: 'short', day: 'numeric' }).format(new Date(iso))
+
+/** "12:00–1:30 pm" or "9:00 am–1:00 pm", in Eastern. */
+function timeRange(startsAt: string, endsAt: string) {
   const parts = (d: Date) => {
-    const p = new Intl.DateTimeFormat('en-US', { timeZone: tz, hour: 'numeric', minute: '2-digit', hour12: true }).formatToParts(d)
+    const p = new Intl.DateTimeFormat('en-US', { timeZone: ACADEMY_TIMEZONE, hour: 'numeric', minute: '2-digit', hour12: true }).formatToParts(d)
     const get = (t: string) => p.find((x) => x.type === t)?.value || ''
     return { time: `${get('hour')}:${get('minute')}`, period: get('dayPeriod').toLowerCase() }
   }
-  const a = parts(start)
-  const b = parts(end)
-  const time = a.period === b.period ? `${a.time}–${b.time} ${b.period}` : `${a.time} ${a.period}–${b.time} ${b.period}`
-  return { date, time: `${time} ET`, timeBare: time, iso: s.startsAt }
+  const a = parts(new Date(startsAt))
+  const b = parts(new Date(endsAt))
+  return a.period === b.period ? `${a.time}–${b.time} ${b.period}` : `${a.time} ${a.period}–${b.time} ${b.period}`
 }
+
+/**
+ * "Tue, Jan 13" and "12:00–1:30 pm ET", in Eastern. A class in parts lists
+ * every day ("Tue, Feb 9 & Tue, Feb 16") and its time once with "each" when
+ * the parts share it.
+ */
+export function sessionTimes(s: AcademySession) {
+  const all = [{ startsAt: s.startsAt, endsAt: s.endsAt }, ...(s.parts || [])]
+  const date = all.map((p) => dayOf(p.startsAt)).join(' & ')
+  const times = all.map((p) => timeRange(p.startsAt, p.endsAt))
+  const same = times.every((t) => t === times[0])
+  const time = same ? `${times[0]}${all.length > 1 ? ' each' : ''}` : times.join(', ')
+  return { date, time: same ? `${times[0]} ET${all.length > 1 ? ' each' : ''}` : `${time} ET`, timeBare: time, iso: s.startsAt }
+}
+
+/** The label for a date's format, e.g. "Online · two sessions". */
+export function formatText(s: AcademySession) {
+  if (s.formatText) return s.formatText
+  if (s.format === 'in_person') return ['In person', s.location].filter(Boolean).join(' · ')
+  return s.format === 'online_two' || (s.parts?.length ?? 0) > 0 ? 'Online · two sessions' : 'Online · one session'
+}
+
+/** True when a course's dates aren't all single online sessions, so pages show each date's format. */
+export const showsFormats = (sessions: AcademySession[]) =>
+  sessions.some((s) => (s.format && s.format !== 'online_one') || (s.parts?.length ?? 0) > 0)
 
 /** "9 of 20 seats left", "Full", or null when the date has no seat limit. */
 export function seatsText(s: AcademySession) {

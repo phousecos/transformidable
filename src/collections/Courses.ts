@@ -186,6 +186,15 @@ export const Courses: CollectionConfig = {
             },
             {
               type: 'collapsible',
+              label: 'Choose a cohort',
+              admin: { description: 'The dates table. Each date’s format (online in one or two sessions, or in person) is set on the date in the class platform.' },
+              fields: [
+                { name: 'cohortsHeadline', label: 'Headline', type: 'text', admin: { description: 'Under "Choose a cohort", e.g. "Same workshop, three ways to sit for it." Blank: none.' } },
+                { name: 'cohortsIntro', label: 'Intro', type: 'textarea', admin: { rows: 2, description: 'Blank: the Academy Page’s sessions intro.' } },
+              ],
+            },
+            {
+              type: 'collapsible',
               label: 'Why this course',
               fields: [
                 {
@@ -204,6 +213,7 @@ export const Courses: CollectionConfig = {
               fields: [
                 { name: 'agendaEyebrow', label: 'Eyebrow', type: 'text' },
                 { name: 'agendaHeadline', label: 'Headline', type: 'text' },
+                { name: 'agendaNote', label: 'Note', type: 'textarea', admin: { rows: 2, description: 'Under the headline, e.g. which parts run in each session of a two-session cohort.' } },
                 {
                   name: 'agenda',
                   label: 'Parts',
@@ -213,7 +223,8 @@ export const Courses: CollectionConfig = {
                       type: 'row',
                       fields: [
                         { name: 'minutes', type: 'number', admin: { width: '20%' } },
-                        { name: 'title', type: 'text', required: true, admin: { width: '80%' } },
+                        { name: 'title', type: 'text', required: true, admin: { width: '60%' } },
+                        { name: 'isBreak', label: 'Break', type: 'checkbox', admin: { width: '20%', description: 'Not numbered.' } },
                       ],
                     },
                     { name: 'description', type: 'textarea', admin: { rows: 2 } },
@@ -229,6 +240,7 @@ export const Courses: CollectionConfig = {
                 textList('outcomes', 'Outcomes'),
                 { name: 'leaveWithHeadline', label: 'Take-home headline', type: 'text' },
                 textList('leaveWith', 'You leave with', ITALICS),
+                { name: 'leaveWithNote', label: 'Note under take-home', type: 'text', admin: { description: 'e.g. "Took TA-101 in the last six months? Your fee is credited toward this workshop."' } },
               ],
             },
             {
@@ -261,7 +273,13 @@ export const Courses: CollectionConfig = {
                     { name: 'finalAccent', label: 'Accent', type: 'text', admin: { width: '40%' } },
                   ],
                 },
-                { name: 'nextCourse', label: 'Next course', type: 'relationship', relationTo: 'courses', admin: { description: 'Linked below the button.' } },
+                {
+                  type: 'row',
+                  fields: [
+                    { name: 'nextCourse', label: 'Linked course', type: 'relationship', relationTo: 'courses', admin: { width: '50%', description: 'Linked below the button.' } },
+                    { name: 'nextCourseLabel', label: 'Link text before its name', type: 'text', admin: { width: '50%', description: 'Blank: "Next course:". e.g. "New to AI? Start with".' } },
+                  ],
+                },
               ],
             },
             {
