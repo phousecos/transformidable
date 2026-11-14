@@ -124,6 +124,30 @@ export async function buildToday(env: DailyEnv & { LINKEDIN_PAGE_URL?: string },
   const have = Object.fromEntries(existing.results.map((r) => [r.action_type, r.n]));
   if (existing.results.length) return { date, skipped: true, have };
 
+  // Carry-over (owner, November 14, 2026): an item not done stays on the list for 7 days, oldest first, then drops.
+  // Each day's new items only top up to the daily numbers, so a missed day never doubles the invitations.
+  const expired = await env.DB.prepare(
+    "UPDATE actions SET status = 'skipped', outcome = 'Not done within 7 days', done_at = ?2 WHERE status = 'todo' AND action_date < date(?1, '-7 days')",
+  ).bind(date, new Date().toISOString()).run();
+  const carriedRows = (await env.DB.prepare(
+    `SELECT a.action_type, a.person_id, p.partner_type, p.segment FROM actions a LEFT JOIN people p ON p.id = a.person_id
+     WHERE a.status = 'todo' AND a.action_date < ?1 AND a.action_date >= date(?1, '-7 days')`,
+  ).bind(date).all<{ action_type: string; person_id: string | null; partner_type: string | null; segment: string | null }>()).results;
+  const carried = (type: string, who: "prospect" | "influencer" | "partner" | "any") => carriedRows.filter((r) => r.action_type === type
+    && (who === "any" || (who === "partner" ? !!r.partner_type : who === "influencer" ? r.segment === "influencer" && !r.partner_type : !r.partner_type && r.segment !== "influencer"))).length;
+  const left = (n: number) => Math.max(0, n);
+  const limits = {
+    followUps: left(FOLLOW_UPS_PER_DAY - carried("follow_up", "prospect") - carried("follow_up", "influencer")),
+    comments: left(COMMENTS_PER_DAY - carried("comment", "prospect")),
+    influencerComments: left(INFLUENCER_COMMENTS_PER_DAY - carried("comment", "influencer")),
+    connects: left(CONNECTS_PER_DAY - carried("connect", "prospect") - carried("connect", "influencer")),
+    influencerConnects: left(INFLUENCER_CONNECTS_PER_DAY - carried("connect", "influencer")),
+    partnerConnects: left(PARTNER_CONNECTS_PER_DAY - carried("connect", "partner")),
+    partnerCheckIns: left(PARTNER_CHECK_INS_PER_DAY - carried("follow_up", "partner")),
+    withdraws: left(5 - carried("withdraw_invite", "any")),
+  };
+  const carriedPeople = new Set(carriedRows.flatMap((r) => (r.person_id ? [r.person_id] : [])));
+
   const touchedToday = `NOT EXISTS (SELECT 1 FROM touches t WHERE t.person_id = p.id AND date(t.occurred_at) = ?1)`;
   // KADE's contact history (contact_state): no suggestions while in a conversation, paused (not interested) or stopped.
   const CONTACT_OPEN = `(p.contact_state = 'open' OR (p.contact_state = 'paused' AND p.paused_until <= ?1))`;
@@ -133,22 +157,22 @@ export async function buildToday(env: DailyEnv & { LINKEDIN_PAGE_URL?: string },
      WHERE p.connection_status = 'connected' AND p.do_not_contact = 0 AND ${CONTACT_OPEN} AND p.connected_at >= date(?1, '-14 days') AND ${touchedToday}
        AND NOT EXISTS (SELECT 1 FROM actions a WHERE a.person_id = p.id AND a.action_type = 'follow_up')
      ORDER BY p.connected_at LIMIT ?2`,
-  ).bind(date, FOLLOW_UPS_PER_DAY).all<Candidate>()).results;
+  ).bind(date, FOLLOW_UPS_PER_DAY + 5).all<Candidate>()).results.filter((c) => !carriedPeople.has(c.id)).slice(0, limits.followUps);
 
   const notCommentedRecently = `NOT EXISTS (SELECT 1 FROM actions a WHERE a.person_id = p.id AND a.action_type = 'comment' AND a.action_date >= date(?1, '-${COMMENT_EVERY_DAYS} days'))`;
   const lastComment = "(SELECT MAX(a.action_date) FROM actions a WHERE a.person_id = p.id AND a.action_type = 'comment')";
-  const busy = new Set(followUps.map((c) => c.id));
+  const busy = new Set([...carriedPeople, ...followUps.map((c) => c.id)]);
   const prospectComments = (await env.DB.prepare(
     `SELECT ${COLS} FROM people p
      WHERE p.segment <> 'influencer' AND p.in_kade_scope = 1 AND p.connection_status = 'connected' AND p.linkedin_url IS NOT NULL
        AND p.do_not_contact = 0 AND ${CONTACT_OPEN} AND ${touchedToday} AND ${notCommentedRecently}
      ORDER BY p.pursued DESC, ${lastComment} IS NOT NULL, ${lastComment}, p.kade_heat DESC LIMIT 20`,
-  ).bind(date).all<Candidate>()).results.filter((c) => !busy.has(c.id)).slice(0, COMMENTS_PER_DAY);
+  ).bind(date).all<Candidate>()).results.filter((c) => !busy.has(c.id)).slice(0, limits.comments);
   const influencerComments = (await env.DB.prepare(
     `SELECT ${COLS} FROM people p
      WHERE p.segment = 'influencer' AND p.archived_at IS NULL AND p.linkedin_url IS NOT NULL AND p.do_not_contact = 0 AND ${touchedToday} AND ${notCommentedRecently}
      ORDER BY ${lastComment} IS NOT NULL, ${lastComment}, random() LIMIT ?2`,
-  ).bind(date, INFLUENCER_COMMENTS_PER_DAY).all<Candidate>()).results;
+  ).bind(date, INFLUENCER_COMMENTS_PER_DAY + 5).all<Candidate>()).results.filter((c) => !busy.has(c.id)).slice(0, limits.influencerComments);
   const influencerConnects = (await env.DB.prepare(
     `SELECT ${COLS} FROM people p
      WHERE p.segment = 'influencer' AND p.archived_at IS NULL AND p.linkedin_url IS NOT NULL AND p.connection_status = 'none' AND p.do_not_contact = 0 AND ${touchedToday}
@@ -156,7 +180,7 @@ export async function buildToday(env: DailyEnv & { LINKEDIN_PAGE_URL?: string },
      ORDER BY p.created_at LIMIT ?2`,
   ).bind(date, INFLUENCER_CONNECTS_PER_DAY + INFLUENCER_COMMENTS_PER_DAY).all<Candidate>()).results
     // One touch per person per day: someone up for a comment today is not also invited today.
-    .filter((c) => !influencerComments.some((x) => x.id === c.id)).slice(0, INFLUENCER_CONNECTS_PER_DAY);
+    .filter((c) => !busy.has(c.id) && !influencerComments.some((x) => x.id === c.id)).slice(0, Math.min(limits.influencerConnects, limits.connects));
   for (const c of [...prospectComments, ...influencerComments, ...influencerConnects]) busy.add(c.id);
 
   const pool = (await env.DB.prepare(
@@ -173,7 +197,7 @@ export async function buildToday(env: DailyEnv & { LINKEDIN_PAGE_URL?: string },
   const connects: Candidate[] = [];
   for (const c of pool) {
     if (busy.has(c.id)) continue;
-    if (connects.length + influencerConnects.length >= CONNECTS_PER_DAY) break;
+    if (connects.length + influencerConnects.length >= limits.connects) break;
     const key = c.kade_account_id ?? c.id;
     if ((perAccount.get(key) ?? 0) >= PER_ACCOUNT_PER_WEEK) continue;
     perAccount.set(key, (perAccount.get(key) ?? 0) + 1);
@@ -187,7 +211,7 @@ export async function buildToday(env: DailyEnv & { LINKEDIN_PAGE_URL?: string },
      WHERE p.partner_type IS NOT NULL AND p.linkedin_url IS NOT NULL AND p.connection_status = 'none' AND p.do_not_contact = 0 AND ${CONTACT_OPEN} AND ${touchedToday}
        AND NOT EXISTS (SELECT 1 FROM actions a WHERE a.person_id = p.id AND a.action_type = 'connect' AND (a.status <> 'skipped' OR a.action_date >= date(?1, '-30 days')))
      ORDER BY p.created_at LIMIT ?2`,
-  ).bind(date, PARTNER_CONNECTS_PER_DAY + 5).all<Candidate>()).results.filter((c) => !busy.has(c.id)).slice(0, PARTNER_CONNECTS_PER_DAY);
+  ).bind(date, PARTNER_CONNECTS_PER_DAY + 5).all<Candidate>()).results.filter((c) => !busy.has(c.id)).slice(0, limits.partnerConnects);
   for (const c of partnerConnects) busy.add(c.id);
   const partnerCheckIns = (await env.DB.prepare(
     `SELECT ${COLS} FROM people p
@@ -195,7 +219,7 @@ export async function buildToday(env: DailyEnv & { LINKEDIN_PAGE_URL?: string },
        AND p.do_not_contact = 0 AND p.contact_state IN ('open', 'in_conversation') AND ${touchedToday}
        AND NOT EXISTS (SELECT 1 FROM actions a WHERE a.person_id = p.id AND a.action_type = 'follow_up' AND a.action_date >= date(?1, '-30 days'))
      ORDER BY p.partner_check_in_on LIMIT ?2`,
-  ).bind(date, PARTNER_CHECK_INS_PER_DAY + 5).all<Candidate>()).results.filter((c) => !busy.has(c.id)).slice(0, PARTNER_CHECK_INS_PER_DAY);
+  ).bind(date, PARTNER_CHECK_INS_PER_DAY + 5).all<Candidate>()).results.filter((c) => !busy.has(c.id)).slice(0, limits.partnerCheckIns);
   for (const c of partnerCheckIns) busy.add(c.id);
 
   const withdraws = (await env.DB.prepare(
@@ -203,7 +227,7 @@ export async function buildToday(env: DailyEnv & { LINKEDIN_PAGE_URL?: string },
      WHERE p.connection_status = 'pending' AND p.invited_at < date(?1, '-${WITHDRAW_AFTER_DAYS} days')
        AND NOT EXISTS (SELECT 1 FROM actions a WHERE a.person_id = p.id AND a.action_type = 'withdraw_invite')
      ORDER BY p.invited_at LIMIT 5`,
-  ).bind(date).all<Candidate>()).results;
+  ).bind(date).all<Candidate>()).results.filter((c) => !busy.has(c.id)).slice(0, limits.withdraws);
 
   let rank = 0;
   for (const c of followUps) await addAction(env, date, ++rank, "follow_up", c);
@@ -213,6 +237,6 @@ export async function buildToday(env: DailyEnv & { LINKEDIN_PAGE_URL?: string },
   for (const c of partnerCheckIns) await addAction(env, date, ++rank, "follow_up", c, true);
   for (const c of partnerConnects) await addAction(env, date, ++rank, "connect", c);
   for (const c of withdraws) await addAction(env, date, ++rank, "withdraw_invite", c);
-  return { date, skipped: false, followUps: followUps.length, comments: prospectComments.length + influencerComments.length, reshares,
+  return { date, skipped: false, carried: carriedRows.length, expired: expired.meta.changes ?? 0, followUps: followUps.length, comments: prospectComments.length + influencerComments.length, reshares,
     connects: connects.length + influencerConnects.length, withdraws: withdraws.length, partnerConnects: partnerConnects.length, partnerCheckIns: partnerCheckIns.length };
 }

@@ -23,7 +23,9 @@ async function today(env: ApiEnv, date: string) {
        p.segment, p.partner_type, q.id AS queue_id, COALESCE(q.final_text, q.draft) AS text, q.draft, json_extract(q.context_json, '$.drafted_by') AS drafted_by,
        json_extract(q.context_json, '$.post_title') AS post_title, json_extract(q.context_json, '$.post_text') AS post_text
      FROM actions a LEFT JOIN people p ON p.id = a.person_id LEFT JOIN review_queue q ON q.id = a.queue_id
-     WHERE a.action_date = ?1 ORDER BY a.rank`,
+     -- The day's list, and anything not done from the last 7 days (owner, November 14, 2026), oldest first.
+     WHERE a.action_date = ?1 OR (a.status = 'todo' AND a.action_date >= date(?1, '-7 days') AND a.action_date < ?1)
+     ORDER BY a.action_date, a.rank`,
   ).bind(date).all();
   const pending = await env.DB.prepare(
     `SELECT id AS person_id, full_name, title, organization, linkedin_url, invited_at FROM people
@@ -40,7 +42,9 @@ async function today(env: ApiEnv, date: string) {
   const monday = weekOf(date);
   const posts = await env.DB.prepare(
     `SELECT id, item_type, channel, title, COALESCE(final_text, draft) AS text, context_json, status, due_date, approved_by, sent_at
-     FROM review_queue WHERE system = 'media' AND item_type IN ('post_page', 'post_profile', 'short_video') AND due_date BETWEEN ?1 AND date(?1, '+20 days')
+     FROM review_queue WHERE system = 'media' AND item_type IN ('post_page', 'post_profile', 'short_video')
+       -- This week and the next two, and any from the two weeks before still not posted (carry-over).
+       AND (due_date BETWEEN ?1 AND date(?1, '+20 days') OR (due_date >= date(?1, '-14 days') AND due_date < ?1 AND status = 'proposed'))
      ORDER BY due_date`,
   ).bind(monday).all<{ context_json: string | null }>();
   return {
