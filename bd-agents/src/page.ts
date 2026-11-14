@@ -220,11 +220,11 @@ form.stats .wide { grid-column:1 / -1; }
 
   <section id="tab-results" hidden style="display:flex;flex-direction:column;gap:20px">
     <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:8px">
-      <h2>This week so far</h2><span class="muted small">Counted in KADE from the contact history. Weeks start Monday.</span>
+      <h2>Prospects: this week so far</h2><span class="muted small">Counted in KADE from the contact history. Weeks start Monday. Partners are counted separately below.</span>
     </div>
     <div class="tiles" id="tiles"></div>
     <div class="split">
-      <section class="main panel"><h2 style="font-size:16px">By week</h2><div class="scroll" id="weektable"></div></section>
+      <section class="main panel"><h2 style="font-size:16px">Prospects by week</h2><div class="scroll" id="weektable"></div></section>
       <div class="side">
         <section class="panel"><h2 style="font-size:16px">By service track, 8 weeks</h2><div id="tracks"></div></section>
         <section class="panel">
@@ -240,6 +240,15 @@ form.stats .wide { grid-column:1 / -1; }
           </form>
         </section>
       </div>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:8px;margin-top:12px;border-top:1px solid var(--soft);padding-top:20px">
+      <h2>Partners: this week so far</h2><span class="muted small">Fractional CFOs and CHROs, deal advisors, ERP firms and recruiters. Referrals both ways.</span>
+    </div>
+    <div class="tiles" id="ptiles"></div>
+    <div id="pstages" class="muted small"></div>
+    <div class="split">
+      <section class="main panel"><h2 style="font-size:16px">Partners by week</h2><div class="scroll" id="pweektable"></div></section>
+      <div class="side"><section class="panel"><h2 style="font-size:16px">By kind of partner, 8 weeks</h2><div id="ptypes"></div></section></div>
     </div>
   </section>
 </div>
@@ -753,7 +762,7 @@ function renderWeek() {
 }
 
 function loadResults() {
-  return fetch("/api/results").then(function (r) { return r.json(); }).then(function (d) { state.results = d; renderResults(); })
+  return fetch("/api/results").then(function (r) { return r.json(); }).then(function (d) { state.results = d; renderResults(); renderPartnerResults(); })
     .catch(function (e) { document.getElementById("weektable").textContent = "Could not load results: " + e.message; });
 }
 function renderResults() {
@@ -817,6 +826,58 @@ function renderResults() {
     var fill = el("div"); fill.style.width = pct(k.connect_accepted || 0, k.connect_sent || 0).replace("–", "0%"); rate.appendChild(fill);
     add(it, head, rate, el("div", "small", (k.connect_accepted || 0) + " accepted (" + pct(k.connect_accepted || 0, k.connect_sent || 0) + ") · " + (k.reply || 0) + " replies · " + (k.meeting_booked || 0) + " meetings"));
     tr.appendChild(it);
+  });
+}
+// Partners (KADE docs/partners.md), apart from prospects.
+var PROWS = [["connect_sent", "Invites sent"], ["connect_accepted", "Accepted"], ["rate", "Accept rate"], ["message_sent", "Messages sent"],
+  ["reply", "Replies"], ["meeting_booked", "Calls booked"], ["referral_received", "Referrals to you"], ["referral_given", "Referrals from you"]];
+function renderPartnerResults() {
+  var d = state.results, weeks = mondays(4);
+  var p = d.kade && !d.kade.error ? d.kade.partners : null;
+  var tiles = document.getElementById("ptiles"); tiles.textContent = "";
+  var box = document.getElementById("pweektable"); box.textContent = "";
+  var types = document.getElementById("ptypes"); types.textContent = "";
+  var stages = document.getElementById("pstages"); stages.textContent = "";
+  if (!p) { box.appendChild(el("p", "empty", "Partner results are not available yet.")); return; }
+  var byWeek = {}; (p.weeks || []).forEach(function (w) { byWeek[w.week] = w; });
+  function val(w, key) { var x = byWeek[w] || {}; return key === "rate" ? pct(x.connect_accepted || 0, x.connect_sent || 0) : (x[key] || 0); }
+  function sum(key) {
+    if (key === "rate") return pct(sum("connect_accepted"), sum("connect_sent"));
+    return (p.weeks || []).reduce(function (s, w) { return s + (w[key] || 0); }, 0);
+  }
+  [["connect_sent", "Invites sent", function () { return val(weeks[1], "connect_sent") + " last week"; }],
+   ["connect_accepted", "Accepted", function () { return val(weeks[1], "rate") + " accept rate last week"; }],
+   ["meeting_booked", "Calls booked", function () { return sum("meeting_booked") + " in 8 weeks"; }],
+   ["referral_received", "Referrals to you", function () { return sum("referral_received") + " in 8 weeks · " + sum("referral_given") + " from you"; }]].forEach(function (t) {
+    add(tiles, add(el("div", "tile"), el("span", "muted small", t[1]), el("span", "big", String(val(weeks[0], t[0]))), el("span", "muted small", t[2]())));
+  });
+  stages.textContent = "Where they stand now: " + p.total + " partners · " + p.new + " not invited yet · " + p.invited + " invited · " + p.connected + " connected · "
+    + p.talking + " talking · " + p.met + " met · " + p.referring + " referring" + (p.checkInsDue ? " · " + p.checkInsDue + " check-ins due" : "") + ".";
+  var table = el("table"), thead = el("thead"), hr = el("tr");
+  hr.appendChild(el("th", "", ""));
+  weeks.forEach(function (w) { var th = el("th", "", nice(w)); th.scope = "col"; hr.appendChild(th); });
+  var th8 = el("th", "", "8 weeks"); th8.scope = "col"; hr.appendChild(th8);
+  thead.appendChild(hr); table.appendChild(thead);
+  var tb = el("tbody");
+  PROWS.forEach(function (r) {
+    var tr = el("tr"), th = el("th", "", r[1]); th.scope = "row"; th.style.fontWeight = "500"; tr.appendChild(th);
+    weeks.forEach(function (w) { tr.appendChild(el("td", "", String(val(w, r[0])))); });
+    tr.appendChild(el("td", "total", String(sum(r[0]))));
+    tb.appendChild(tr);
+  });
+  table.appendChild(tb); box.appendChild(table);
+  var any = (p.types || []).filter(function (k) { return k.connect_sent || k.connect_accepted || k.meeting_booked || k.referral_received || k.referral_given; });
+  if (!any.length) types.appendChild(el("p", "empty", "No partner invitations in the last 8 weeks yet."));
+  any.forEach(function (k) {
+    var it = el("div", "item track");
+    var head = el("div", "head"); head.style.justifyContent = "space-between";
+    add(head, el("span", "name", k.label), el("span", "muted small", (k.connect_sent || 0) + " invites"));
+    head.firstChild.style.fontSize = "15px";
+    var rate = el("div", "rate"); rate.setAttribute("aria-hidden", "true");
+    var fill = el("div"); fill.style.width = pct(k.connect_accepted || 0, k.connect_sent || 0).replace("–", "0%"); rate.appendChild(fill);
+    add(it, head, rate, el("div", "small", (k.connect_accepted || 0) + " accepted (" + pct(k.connect_accepted || 0, k.connect_sent || 0) + ") · " + (k.meeting_booked || 0) + " calls · "
+      + (k.referral_received || 0) + " referrals to you · " + (k.referral_given || 0) + " from you"));
+    types.appendChild(it);
   });
 }
 (function setupStats() {

@@ -134,6 +134,13 @@ export interface KadeResults {
   since: string;
   weeks: ({ week: string } & Record<string, number>)[];
   tracks: ({ track: string } & Record<string, number>)[];
+  /** Partners (KADE docs/partners.md), counted apart from prospects. */
+  partners?: {
+    total: number; new: number; invited: number; connected: number; talking: number; met: number; referring: number; checkInsDue: number;
+    referralsReceived: number; referralsGiven: number;
+    weeks: ({ week: string } & Record<string, number>)[];
+    types: ({ type: string; label: string } & Record<string, number>)[];
+  };
 }
 /** Outreach results counted in KADE from its contact history and pursuits. */
 export function results(env: KadeEnv, weeks: number) {
