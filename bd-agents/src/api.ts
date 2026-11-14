@@ -6,7 +6,7 @@ import { AuthError, signedInEmail, type AuthEnv } from "./auth";
 import { buildPosts, buildShortVideo, weekOf, type ContentEnv } from "./content";
 import { draft, type DraftKind } from "./claude";
 import { buildToday, firstName, todayET, type DailyEnv } from "./daily";
-import { addPartner as kadeAddPartner, events as kadeEvents, KadeError, kadeOrgUrl, results as kadeResults, weekPlan, type KadeWeekPlan, type PartnerAdd } from "./kade";
+import { dismissReply as kadeDismissReply, inbox as kadeInbox, requestEmail as kadeRequestEmail, addPartner as kadeAddPartner, events as kadeEvents, KadeError, kadeOrgUrl, results as kadeResults, weekPlan, type KadeWeekPlan, type PartnerAdd } from "./kade";
 import { syncPartners } from "./sync";
 import { flushTouches, KIND_BY_ACTION, OUTCOMES, touchStatement } from "./contact";
 import { PAGE } from "./page";
@@ -137,6 +137,38 @@ async function draftComment(env: ApiEnv, actionId: string, body: { postText?: st
     ]);
   }
   return json({ ok: true, text: d.text, drafted_by: d.by, error: d.error ?? null });
+}
+
+/** Email (KADE docs/outreach-email.md): drafts waiting in Gmail, and replies with KADE's suggested outcome, matched to people here. */
+async function inboxView(env: ApiEnv) {
+  const d = await kadeInbox(env);
+  const ids = [...new Set(d.replies.map((r) => r.person_id))];
+  const local = ids.length ? (await env.DB.prepare("SELECT id, kade_contact_id FROM people WHERE kade_contact_id IN (SELECT value FROM json_each(?1))")
+    .bind(JSON.stringify(ids)).all<{ id: string; kade_contact_id: string }>()).results : [];
+  const byKade = new Map(local.map((p) => [p.kade_contact_id, p.id]));
+  return json({ drafts: d.drafts, replies: d.replies.map((r) => ({ ...r, local_person_id: byKade.get(r.person_id) ?? null })) });
+}
+/** "Email instead": the connect suggestion is set aside and KADE drafts an email tomorrow morning. */
+async function emailInstead(env: ApiEnv, actionId: string, who: string) {
+  const a = await env.DB.prepare(
+    "SELECT a.id, a.status, a.action_type, p.kade_contact_id, p.full_name FROM actions a JOIN people p ON p.id = a.person_id WHERE a.id = ?1",
+  ).bind(actionId).first<{ id: string; status: string; action_type: string; kade_contact_id: string | null; full_name: string }>();
+  if (!a) return json({ error: "No such action" }, 404);
+  if (a.status !== "todo") return json({ error: `Already ${a.status}` }, 409);
+  if (!a.kade_contact_id) return json({ error: `${a.full_name} is not a KADE contact, so KADE cannot email them` }, 422);
+  try {
+    const r = await kadeRequestEmail(env, a.kade_contact_id);
+    await env.DB.prepare("UPDATE actions SET status = 'skipped', done_at = ?2, outcome = ?3 WHERE id = ?1")
+      .bind(actionId, new Date().toISOString(), `Email instead, to ${r.email} (asked by ${who})`).run();
+    return json({ ok: true, email: r.email });
+  } catch (e) {
+    if (e instanceof KadeError && e.status === 422) return json({ error: e.message }, 422);
+    return json({ error: `KADE did not take the request: ${(e as Error).message}` }, 502);
+  }
+}
+async function dismissReplyHere(env: ApiEnv, id: string) {
+  try { await kadeDismissReply(env, id); return json({ ok: true }); }
+  catch (e) { return json({ error: (e as Error).message }, e instanceof KadeError && e.status === 422 ? 422 : 502); }
 }
 
 /** Partners (KADE docs/partners.md): as the morning sync brought them, with where each stands. */
@@ -308,6 +340,7 @@ export async function selfCheck(env: ApiEnv) {
   }
   await weekView(env);
   await resultsView(env);
+  await kadeInbox(env);
   return { actionsToday: d.actions.length };
 }
 
@@ -349,6 +382,9 @@ async function route(req: Request, env: ApiEnv): Promise<Response> {
   }
   if (req.method === "POST" && parts[0] === "api" && parts[1] === "posts" && parts[2]) return completePost(env, parts[2], who, await body());
   if (req.method === "POST" && parts[0] === "api" && parts[1] === "actions" && parts[2] && parts[3] === "redraft") return redraft(env, parts[2]);
+  if (req.method === "POST" && parts[0] === "api" && parts[1] === "actions" && parts[2] && parts[3] === "email-instead") return emailInstead(env, parts[2], who);
+  if (req.method === "GET" && url.pathname === "/api/inbox") return inboxView(env);
+  if (req.method === "POST" && parts[0] === "api" && parts[1] === "replies" && parts[2] && parts[3] === "dismiss") return dismissReplyHere(env, parts[2]);
   if (req.method === "POST" && parts[0] === "api" && parts[1] === "actions" && parts[2] && parts[3] === "comment-draft") return draftComment(env, parts[2], await body());
   if (req.method === "GET" && url.pathname === "/api/partners") return partnerList(env);
   if (req.method === "POST" && url.pathname === "/api/partners") return addPartnerHere(env, await body());
