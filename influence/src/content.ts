@@ -97,6 +97,12 @@ async function json<T>(url: string, init?: RequestInit, via?: Fetcher): Promise<
   }
 }
 
+async function readyIdeas(env: ContentEnv) {
+  const rows = await env.DB.prepare("SELECT id, title, question, format FROM ideas WHERE status = 'ready' AND kind = 'topic' ORDER BY priority, created_at LIMIT 3")
+    .all<{ id: string; title: string; question: string | null; format: string | null }>().catch(() => ({ results: [] as { id: string; title: string; question: string | null; format: string | null }[] }));
+  return rows.results.map((r) => ({ idea_id: r.id, title: r.title, question: r.question }));
+}
+
 export async function gather(env: ContentEnv, monday: string) {
   const site = (env.SITE_URL || "https://betransformidable.com").replace(/\/$/, "");
   const since = addDays(monday, -14);
@@ -124,6 +130,9 @@ export async function gather(env: ContentEnv, monday: string) {
       .map((w) => ({ title: w.title, startsAt: w.starts_at, registerUrl: w.join_url, audience: w.audience === "academy" ? "governing bodies (Academy briefing)" : "executives (advisory webinar)" })),
     episodeIdeas: (kev?.proposals ?? []).filter((p) => p.kind === "podcast_episode" && p.status === "approved").map((p) => ({ title: p.title, angle: p.angle })),
     shortVideoTopics: (kev?.proposals ?? []).filter((p) => p.kind === "short_video" && p.status === "approved").map((p) => ({ weekOf: p.week_of, title: p.title, angle: p.angle })),
+    // Her content ideas marked ready (KADE docs/influence-engagement.md): at most three a week, highest priority first.
+    // Who or what an idea came from never goes into a post, so only its substance is passed.
+    ideas: await readyIdeas(env),
   };
 }
 
@@ -154,6 +163,8 @@ ${avoid}
 Material:
 ${JSON.stringify(input, null, 2)}
 
+Each idea in "ideas" is one she chose: give each one post (source "idea", with its idea_id), before the themes. Never name a person, post or organization as the source of an idea; write it as her own question.
+
 Mix the sources: mostly the themes, plus a podcast episode if there is one and an upcoming session, webinar or course if there is one (a webinar or briefing in "webinars" gets one post in the three weeks before it, with its registration link). Do not repeat a topic.
 
 For each post, suggest one visual Jerri can make herself in Canva or record as a short: a quote graphic (one line from the post), a short carousel (3 to 5 slides of a distinction or questions), a 30 to 45 second vertical video in the Transformidable Thinking style (hook, the distinction, the closing question), or text only when a visual would not add anything. Vary the formats across the week; at least one quote graphic and no video (the weekly Transformidable Thinking short video is written separately). Visuals follow the same discretion rules as the text.
@@ -161,7 +172,7 @@ For each post, suggest one visual Jerri can make herself in Canva or record as a
 Return the posts in schedule order. Use an empty string for link when there is none.`;
 }
 
-interface Draft { day: string; channel: "page" | "profile"; theme: string; source: string; link: string | null; text: string; visual?: { format: string; headline: string; notes: string } }
+interface Draft { day: string; channel: "page" | "profile"; theme: string; source: string; idea_id?: string; link: string | null; text: string; visual?: { format: string; headline: string; notes: string } }
 
 /** Structured output (output_config.format): the reply text is JSON matching this schema. */
 const POSTS_SCHEMA = {
@@ -175,7 +186,8 @@ const POSTS_SCHEMA = {
           day: { type: "string" },
           channel: { type: "string", enum: ["page", "profile"] },
           theme: { type: "string" },
-          source: { type: "string", enum: ["themes", "podcast", "event", "course"] },
+          source: { type: "string", enum: ["themes", "podcast", "event", "course", "idea"] },
+          idea_id: { type: "string", description: "The idea_id when source is idea, otherwise empty" },
           link: { type: "string", description: "Episode, course or registration URL, or empty" },
           text: { type: "string" },
           visual: {
@@ -189,7 +201,7 @@ const POSTS_SCHEMA = {
             additionalProperties: false,
           },
         },
-        required: ["day", "channel", "theme", "source", "link", "text", "visual"],
+        required: ["day", "channel", "theme", "source", "idea_id", "link", "text", "visual"],
         additionalProperties: false,
       },
     },
@@ -242,16 +254,23 @@ export async function buildPosts(env: ContentEnv, today: string, mode: "week" | 
   const drafts = (parsed.posts ?? []).filter((d) => d && typeof d.text === "string" && d.text.trim()).slice(0, plan.length);
   if (!drafts.length) throw new Error(`Claude returned no posts (stop: ${body.stop_reason ?? "unknown"})`);
 
-  const stmts = drafts.map((d, i) => {
+  const ideaIds = new Set(input.ideas.map((i) => i.idea_id));
+  const stmts = drafts.flatMap((d, i) => {
     const slot = plan[i]; // the schedule decides date and channel, whatever the model said
-    return env.DB.prepare(
-      `INSERT INTO review_queue (id, system, item_type, channel, title, draft, context_json, created_by_agent, due_date)
-       VALUES (?1, 'media', ?2, ?3, ?4, ?5, ?6, ?7, ?8)`,
-    ).bind(crypto.randomUUID(), slot.channel === "page" ? "post_page" : "post_profile", slot.channel, (d.theme || "Post").slice(0, 120), String(d.text ?? "").trim(),
-      JSON.stringify({ source: d.source, link: d.link || null, visual: d.visual ?? null }), `content-agent:${model}`, slot.date);
+    const id = crypto.randomUUID();
+    const idea = d.source === "idea" && d.idea_id && ideaIds.has(d.idea_id) ? d.idea_id : null;
+    return [
+      env.DB.prepare(
+        `INSERT INTO review_queue (id, system, item_type, channel, title, draft, context_json, created_by_agent, due_date)
+         VALUES (?1, 'media', ?2, ?3, ?4, ?5, ?6, ?7, ?8)`,
+      ).bind(id, slot.channel === "page" ? "post_page" : "post_profile", slot.channel, (d.theme || "Post").slice(0, 120), String(d.text ?? "").trim(),
+        JSON.stringify({ source: d.source, link: d.link || null, visual: d.visual ?? null, idea: idea }), `content-agent:${model}`, slot.date),
+      // The idea is used: marked with the post that used it.
+      ...(idea ? [env.DB.prepare("UPDATE ideas SET status = 'used', used_in = ?2, updated_at = CURRENT_TIMESTAMP WHERE id = ?1 AND status = 'ready'").bind(idea, id)] : []),
+    ];
   });
   if (stmts.length) await env.DB.batch(stmts);
-  return { skipped: false, from, to, posts: stmts.length, sources: { themes: !!input.themes, episodes: input.episodes.length, sessions: input.sessions.length, courses: input.courses.length } };
+  return { skipped: false, from, to, posts: drafts.length, sources: { themes: !!input.themes, episodes: input.episodes.length, sessions: input.sessions.length, courses: input.courses.length, ideas: input.ideas.length } };
 }
 
 // ---------------------------------------------------------------------------------------

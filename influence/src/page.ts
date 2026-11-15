@@ -116,14 +116,42 @@ form.stats .wide { grid-column:1 / -1; }
       <span class="muted small" id="me"></span>
     </div>
     <nav aria-label="Sections">
+      <a href="#today" data-tab="today">Today</a>
       <a href="#network" data-tab="network">Network</a>
       <a href="#posts" data-tab="posts">Posts <span class="badge" id="postbadge" hidden></span></a>
+      <a href="#ideas" data-tab="ideas">Ideas <span class="badge" id="ideabadge" hidden></span></a>
     </nav>
   </div>
 </header>
 
 <div class="wrap page">
-  <section id="tab-network" class="split">
+  <section id="tab-today" class="split">
+    <main class="main">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap">
+        <h2 id="todayfocus">Today</h2><span class="muted small">Comment, connect and message by hand; record it here.</span>
+      </div>
+      <div id="progress" class="tiles"></div>
+      <div id="todaylist"></div>
+      <div id="outcomes"></div>
+    </main>
+    <aside class="side">
+      <section class="panel" id="composer"></section>
+    </aside>
+  </section>
+
+  <section id="tab-ideas" class="split" hidden>
+    <main class="main">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap">
+        <h2>Ideas</h2><span class="muted small">Mark an idea ready and Monday's drafting gives it a post.</span>
+      </div>
+      <div id="idealist"></div>
+    </main>
+    <aside class="side">
+      <section class="panel" id="ideaform"></section>
+    </aside>
+  </section>
+
+  <section id="tab-network" class="split" hidden>
     <main class="main">
       <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap">
         <h2>Your influence network</h2><span class="muted small" id="netsummary"></span>
@@ -306,7 +334,7 @@ function renderNetwork() {
   var run = button("Run research steps now", "small", function () {
     run.disabled = true; run.textContent = "Running… (up to a minute)";
     post("/api/research/run").then(function (r) {
-      toast("Asked for " + r.requested.queued + " footprints" + (r.requested.discovery === "queued" ? " and this week's discovery" : "") + "; " + r.taken.added + " new candidates; " + r.scored.scored + " scored.");
+      toast("Research asked for " + r.requested.queued + " people" + (r.requested.skipped ? " (" + r.requested.skipped + " already in progress or recently researched)" : "") + (r.requested.discovery === "queued" ? ", plus this week's discovery" : r.requested.discovery ? "; this week's discovery is already running" : "") + ". " + r.taken.added + " new candidates; " + r.scored.scored + " scored.");
       return loadNetwork();
     }).catch(function (e) { toast(e.message); run.disabled = false; run.textContent = "Run research steps now"; });
   });
@@ -484,11 +512,211 @@ document.getElementById("addform").onsubmit = function (e) {
   post("/api/network", b).then(function () { toast("Added. Research starts within the next few minutes."); e.target.reset(); return loadNetwork(); }).catch(function (err) { toast(err.message); });
 };
 
+// ---- Today (KADE docs/influence-engagement.md) ----
+var today = { data: null, person: null, draft: null };
+var STAGE_NAMES = { identified: "Identified", following: "Following", initial: "Initial engagement", recurring: "Recurring engagement", connected: "Connected", dialogue: "Professional dialogue", collaboration: "Collaboration opportunity", active: "Active relationship" };
+function renderToday() {
+  var d = today.data; if (!d) return;
+  d.approaches.forEach(function (a) { APPROACH_NAMES[a.key] = a.label; });
+  document.getElementById("todayfocus").textContent = d.focus ? "Today: " + d.focus : d.weekday === 0 || d.weekday === 6 ? "The weekend: this week so far" : "Today";
+  var pr = document.getElementById("progress"); pr.textContent = "";
+  var g = d.progress, t = g.targets;
+  [["Comments", g.comments, t.commentsMin + " to " + t.commentsMax], ["People engaged", g.people, "at least " + t.people], ["Continued discussions", g.continued, t.continued + " a week"], ["Ideas captured", g.ideas, t.ideasMin + " to " + t.ideasMax]].forEach(function (x) {
+    add(pr, add(el("div", "tile"), el("span", "muted small", x[0] + " this week"), el("span", "big", String(x[1])), el("span", "muted small", "target " + x[2])));
+  });
+  var list = document.getElementById("todaylist"); list.textContent = "";
+  if (d.signalsError) list.appendChild(el("p", "muted small", "Signals could not be reached: " + d.signalsError));
+  if (!d.people.length) list.appendChild(el("p", "empty", d.outcomesDay ? "Friday is for outcomes: close out the week's comments below and capture ideas." : d.weekday === 0 || d.weekday === 6 ? "No list on weekends." : "No one fits today's focus yet. As research tiers your network, they appear here."));
+  d.people.forEach(function (p) {
+    var it = el("div", "item");
+    var head = el("div", "head"); var tags = el("span", "tags");
+    tags.appendChild(el("span", "tag", p.tier ? "Tier " + p.tier : "Not tiered"));
+    tags.appendChild(el("span", "tag", STAGE_NAMES[p.stage] || p.stage));
+    if (p.prospect) tags.appendChild(el("span", "tag warn", "Prospect"));
+    if (p.partner) tags.appendChild(el("span", "tag ok", "Partner"));
+    if (p.commentedToday) tags.appendChild(el("span", "tag ok", "Commented today"));
+    add(head, el("span", "name", p.full_name), tags);
+    it.appendChild(head);
+    it.appendChild(el("div", "muted small", [p.why, p.affiliation, p.last_touch ? "last engaged " + nice(p.last_touch.slice(0, 10)) : "not engaged yet"].filter(Boolean).join(" · ")));
+    if (p.latest) {
+      var lw = el("div", "small"); lw.appendChild(document.createTextNode("Latest public work: "));
+      var a = el("a", "", p.latest.title || p.latest.url); a.href = p.latest.url; a.target = "_blank"; a.rel = "noopener";
+      add(lw, a, el("span", "muted", p.latest.outlet ? " · " + p.latest.outlet : ""));
+      it.appendChild(lw);
+    }
+    if (p.suggestConnect) it.appendChild(el("div", "small", "Engagement is recurring: this is the point to send a connection request, if it feels right."));
+    var bar = el("div", "actions");
+    if (p.activity_url) bar.appendChild(link("Their recent posts", p.activity_url, "small"));
+    bar.appendChild(button("Draft a comment", "small primary", function () { today.person = p.person_id; today.draft = null; renderComposer(); document.getElementById("composer").scrollIntoView({ behavior: "smooth", block: "start" }); }));
+    if (p.suggestConnect) bar.appendChild(button("Connection request sent", "small", function () { logKind(p.person_id, "connect_sent", "Recorded."); }));
+    it.appendChild(bar);
+    list.appendChild(it);
+  });
+  renderOutcomes();
+  renderComposer();
+}
+function logKind(personId, kind, msg) {
+  return post("/api/engagement", { personId: personId, kind: kind }).then(function () { toast(msg); return loadToday(); }).catch(function (e) { toast(e.message); });
+}
+function renderOutcomes() {
+  var d = today.data, box = document.getElementById("outcomes"); box.textContent = "";
+  if (!d.outcomes.length && !d.outcomesDay) return;
+  var p = el("section", "panel");
+  var head = el("div", "head"); head.style.justifyContent = "space-between";
+  add(head, el("h2", "", "This week's comments"), button("Suggest ideas", "small", function (e) {
+    var b = e.target; b.disabled = true; b.textContent = "Thinking…";
+    post("/api/ideas/suggest").then(function (r) { toast(r.added ? r.added + " ideas added to Ideas, as new." : "No new ideas this time."); return loadIdeas(); })
+      .catch(function (err) { toast(err.message); }).then(function () { b.disabled = false; b.textContent = "Suggest ideas"; });
+  }));
+  p.appendChild(head);
+  if (!d.outcomes.length) p.appendChild(el("p", "empty", "No comments recorded this week."));
+  d.outcomes.forEach(function (c) {
+    var it = el("div", "item");
+    var det = c.detail || {};
+    add(it, el("span", "name", c.full_name), el("div", "muted small", [nice(c.occurred_at.slice(0, 10)), det.topic, det.approach ? APPROACH_NAMES[det.approach] : null].filter(Boolean).join(" · ")));
+    if (det.text) { var tx = el("div", "small", det.text); tx.style.whiteSpace = "pre-wrap"; it.appendChild(tx); }
+    var bar = el("div", "actions");
+    if (det.postUrl) bar.appendChild(link("Open the post", det.postUrl, "small"));
+    if (c.responded) bar.appendChild(el("span", "tag ok", "Author responded"));
+    else bar.appendChild(button("Author responded", "small", function () { logKind(c.person_id, "reply", "Recorded: a continued discussion."); }));
+    bar.appendChild(button("Make this an idea", "small", function () { editIdea({ kind: "topic", title: det.topic || "", person_id: c.person_id, source_url: det.postUrl || "", origin: "comment" }); location.hash = "#ideas"; }));
+    it.appendChild(bar);
+    p.appendChild(it);
+  });
+  box.appendChild(p);
+}
+var APPROACH_NAMES = {};
+function renderComposer() {
+  var box = document.getElementById("composer"); box.textContent = "";
+  var d = today.data; if (!d) return;
+  box.appendChild(el("h2", "", "Draft a comment"));
+  box.appendChild(el("p", "muted small", "Paste the post, pick an approach, and edit the draft. It must add something: evidence, a question, a distinction or a governance implication."));
+  var who = el("select");
+  option(who, "", "Choose who wrote the post", today.person || "");
+  (net.people || []).forEach(function (p) { option(who, p.person_id, p.full_name, today.person || ""); });
+  who.onchange = function () { today.person = who.value; };
+  var postText = el("textarea"); postText.rows = 6; postText.placeholder = "Paste the post's text"; postText.value = (today.draft && today.draft.post) || "";
+  var appr = el("select");
+  d.approaches.forEach(function (a) { option(appr, a.key, a.label, (today.draft && today.draft.approach) || d.approaches[0].key); });
+  var hint = el("div", "muted small");
+  var setHint = function () { var a = d.approaches.filter(function (x) { return x.key === appr.value; })[0]; hint.textContent = a ? a.hint : ""; };
+  appr.onchange = setHint; setHint();
+  add(box, add(el("label", "field", "Whose post"), who), add(el("label", "field", "The post"), postText), add(el("label", "field", "Approach"), appr), hint);
+  var go = button(today.draft && today.draft.comment ? "Draft again" : "Draft", "primary", function () {
+    go.disabled = true; go.textContent = "Drafting…";
+    post("/api/comments/draft", { personId: who.value, post: postText.value, approach: appr.value }).then(function (r) {
+      today.draft = { post: postText.value, approach: r.approach, comment: r.comment, topic: r.topic, url: (today.draft && today.draft.url) || "" }; renderComposer();
+    }).catch(function (e) { toast(e.message); go.disabled = false; go.textContent = "Draft"; });
+  });
+  box.appendChild(add(el("div", "actions"), go));
+  if (!today.draft || !today.draft.comment) return;
+  var ta = el("textarea"); ta.rows = 7; ta.value = today.draft.comment;
+  var url = el("input"); url.type = "url"; url.placeholder = "https://www.linkedin.com/feed/update/…"; url.value = today.draft.url || "";
+  var topic = el("input"); topic.value = today.draft.topic || "";
+  add(box, add(el("label", "field", "Your comment"), ta), counter(ta, 1250), add(el("label", "field", "Link to the post (optional; records it once)"), url), add(el("label", "field", "Topic"), topic));
+  var bar = el("div", "actions");
+  bar.appendChild(button("Copy", "outline", function () { navigator.clipboard.writeText(ta.value).then(function () { toast("Copied. Post it on LinkedIn, then click Commented."); }); }));
+  var done = button("Commented", "primary", function () {
+    if (!who.value) { toast("Choose whose post it was."); return; }
+    done.disabled = true;
+    post("/api/engagement", { personId: who.value, kind: "comment", postUrl: url.value, topic: topic.value, approach: appr.value, text: ta.value })
+      .then(function (r) { toast(r.duplicate ? "Already recorded for that post." : "Recorded in their contact history."); today.draft = null; return loadToday(); })
+      .catch(function (e) { toast(e.message); done.disabled = false; });
+  });
+  bar.appendChild(done);
+  bar.appendChild(button("Save as an idea", "", function () { editIdea({ kind: "topic", title: topic.value, person_id: who.value || null, source_url: url.value, origin: "comment" }); location.hash = "#ideas"; }));
+  box.appendChild(bar);
+}
+function loadToday() {
+  return fetch("/api/today").then(function (r) { return r.json(); }).then(function (d) {
+    if (d.error) throw new Error(d.error);
+    today.data = d; renderToday();
+  }).catch(function (e) { document.getElementById("todaylist").textContent = "Could not load: " + e.message; });
+}
+
+// ---- Ideas ----
+var ideas = { list: [], functions: [], editing: null };
+var IDEA_KINDS = [["topic", "Topic or governance question"], ["podcast_topic", "Podcast topic"], ["podcast_guest", "Podcast guest"]];
+var IDEA_STATUS = { "new": "New", ready: "Ready for Monday", used: "Used", dropped: "Dropped" };
+function renderIdeas() {
+  var list = document.getElementById("idealist"); list.textContent = "";
+  var fresh = ideas.list.filter(function (i) { return i.status === "new"; }).length;
+  var badge = document.getElementById("ideabadge"); badge.hidden = !fresh; badge.textContent = String(fresh);
+  if (!ideas.list.length) list.appendChild(el("p", "empty", "No ideas yet. Save one from a comment, add one here, or ask for suggestions on Friday."));
+  ["new", "ready", "used", "dropped"].forEach(function (st) {
+    var group = ideas.list.filter(function (i) { return i.status === st; });
+    if (!group.length) return;
+    var p = el("section", "panel");
+    p.appendChild(el("h2", "", IDEA_STATUS[st] + " (" + group.length + ")"));
+    group.forEach(function (i) {
+      var it = el("div", "item");
+      var head = el("div", "head"); var tags = el("span", "tags");
+      tags.appendChild(el("span", "tag", (IDEA_KINDS.filter(function (k) { return k[0] === i.kind; })[0] || ["", i.kind])[1]));
+      if (i.priority === 1) tags.appendChild(el("span", "tag accent", "High priority"));
+      if (i.prospect) tags.appendChild(el("span", "tag warn", "Prospect"));
+      if (i.origin === "suggested") tags.appendChild(el("span", "tag", "Suggested"));
+      add(head, el("span", "name", i.title), tags);
+      it.appendChild(head);
+      if (i.question) it.appendChild(el("div", "small", i.question));
+      it.appendChild(el("div", "muted small", [i.function, i.format, i.person_name ? "from " + i.person_name : null, i.post ? "used in: " + i.post.title + " (" + nice(i.post.due_date) + ")" : null].filter(Boolean).join(" · ")));
+      var bar = el("div", "actions");
+      if (i.source_url) bar.appendChild(link("Source", i.source_url, "small"));
+      if (st === "new" || st === "dropped") bar.appendChild(button(i.kind === "topic" ? "Ready for Monday" : "Keep", "small primary", function () { setIdea(i.id, { status: "ready" }); }));
+      if (st === "ready") bar.appendChild(button("Back to new", "small", function () { setIdea(i.id, { status: "new" }); }));
+      if (st !== "dropped" && st !== "used") bar.appendChild(button("Drop", "small", function () { setIdea(i.id, { status: "dropped" }); }));
+      bar.appendChild(button("Edit", "small", function () { editIdea(i); }));
+      it.appendChild(bar);
+      p.appendChild(it);
+    });
+    list.appendChild(p);
+  });
+  renderIdeaForm();
+}
+function setIdea(id, b) { return post("/api/ideas/" + encodeURIComponent(id), b).then(loadIdeas).catch(function (e) { toast(e.message); }); }
+function editIdea(i) { ideas.editing = i; renderIdeaForm(); }
+function renderIdeaForm() {
+  var box = document.getElementById("ideaform"); box.textContent = "";
+  var i = ideas.editing || {};
+  box.appendChild(el("h2", "", i.id ? "Edit idea" : "Add an idea"));
+  var f = el("form"); f.style.cssText = "display:flex;flex-direction:column;gap:8px";
+  var kind = el("select"); IDEA_KINDS.forEach(function (k) { option(kind, k[0], k[1], i.kind || "topic"); });
+  var title = el("input"); title.value = i.title || ""; title.required = true;
+  var q = el("textarea"); q.rows = 2; q.value = i.question || "";
+  var fn = el("select"); option(fn, "", "Choose later", i.function || ""); (ideas.functions || []).forEach(function (x) { option(fn, x, x, i.function || ""); });
+  var fmt = el("input"); fmt.value = i.format || ""; fmt.placeholder = "post, article, episode, briefing…";
+  var rn = el("input"); rn.value = i.research_needed || "";
+  var pri = el("select"); [[1, "High"], [2, "Normal"], [3, "Low"]].forEach(function (x) { option(pri, x[0], x[1], i.priority || 2); });
+  var src = el("input"); src.type = "url"; src.value = i.source_url || "";
+  var who = el("select"); option(who, "", "No one", i.person_id || ""); (net.people || []).forEach(function (p) { option(who, p.person_id, p.full_name, i.person_id || ""); });
+  var notes = el("textarea"); notes.rows = 2; notes.value = i.notes || "";
+  add(f, add(el("label", "field", "Kind"), kind), add(el("label", "field", "Title"), title), add(el("label", "field", "The governance question"), q),
+    add(el("label", "field", "Function"), fn), add(el("label", "field", "Format"), fmt), add(el("label", "field", "Research needed"), rn), add(el("label", "field", "Priority"), pri),
+    add(el("label", "field", "From (person in your network, or the guest)"), who), add(el("label", "field", "Source link"), src), add(el("label", "field", "Notes"), notes));
+  var bar = el("div", "actions");
+  var save = button(i.id ? "Save" : "Add idea", "primary", function () {
+    var b = { kind: kind.value, title: title.value, question: q.value, "function": fn.value, format: fmt.value, research_needed: rn.value, priority: Number(pri.value), source_url: src.value, person_id: who.value, notes: notes.value, origin: i.origin };
+    save.disabled = true;
+    (i.id ? post("/api/ideas/" + encodeURIComponent(i.id), b) : post("/api/ideas", b)).then(function () { toast("Saved."); ideas.editing = null; return loadIdeas(); })
+      .catch(function (e) { toast(e.message); save.disabled = false; });
+  });
+  bar.appendChild(save);
+  if (ideas.editing) bar.appendChild(button("Cancel", "", function () { ideas.editing = null; renderIdeaForm(); }));
+  f.appendChild(bar);
+  f.onsubmit = function (e) { e.preventDefault(); };
+  box.appendChild(f);
+}
+function loadIdeas() {
+  return fetch("/api/ideas").then(function (r) { return r.json(); }).then(function (d) {
+    if (d.error) throw new Error(d.error);
+    ideas.list = d.ideas; ideas.functions = d.functions; renderIdeas();
+  }).catch(function (e) { document.getElementById("idealist").textContent = "Could not load: " + e.message; });
+}
+
 // ---- Tabs ----
-var TABS = ["network", "posts"];
+var TABS = ["today", "network", "posts", "ideas"];
 function showTab() {
-  var tab = (location.hash || "#network").slice(1);
-  if (TABS.indexOf(tab) < 0) tab = "network";
+  var tab = (location.hash || "#today").slice(1);
+  if (TABS.indexOf(tab) < 0) tab = "today";
   TABS.forEach(function (t) {
     document.getElementById("tab-" + t).hidden = t !== tab;
     var a = document.querySelector('nav a[data-tab="' + t + '"]');
@@ -509,7 +737,7 @@ function load() {
 fetch("/api/me").then(function (r) { return r.json(); }).then(function (d) { if (d.me) document.getElementById("me").textContent = "Signed in as " + d.me; }).catch(function () {});
 showTab();
 load();
-loadNetwork();
+loadNetwork().then(function () { loadToday(); loadIdeas(); });
 </script>
 </body>
 </html>`;
