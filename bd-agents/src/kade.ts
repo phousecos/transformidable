@@ -233,5 +233,8 @@ export interface KadeInbox {
 export const inbox = (env: KadeEnv) => get<KadeInbox>(env, "inbox", {});
 /** "Email instead": KADE drafts an email to this person tomorrow morning. */
 export const requestEmail = (env: KadeEnv, personId: string) => kadePost<{ personId: string; email: string }>(env, "email-requests", { personId });
+/** Someone no longer in the role (KADE docs/role-changes.md): moved, retired, on leave, or no longer deciding. */
+export const roleChange = (env: KadeEnv, body: { personId: string; organizationId?: string | null; reason: string; note?: string | null; returnOn?: string | null; newOrganization?: string | null; newTitle?: string | null }) =>
+  kadePost<{ personId: string; reason: string; endedRoles?: number; seatsFlagged?: number; pausedUntil?: string; newOrganization?: { id: string | null; name: string; note?: string } }>(env, "role-change", body);
 /** A reply's suggestion set aside. */
 export const dismissReply = (env: KadeEnv, id: string) => kadePost<{ ok: boolean }>(env, "reply-dismissals", { id });

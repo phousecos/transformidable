@@ -325,6 +325,40 @@ function outcomeMenu(personId) {
   return lab;
 }
 
+// ---- No longer in this role (KADE docs/role-changes.md) ----
+var ROLE_REASONS = [["moved", "Moved to another organization"], ["retired", "Retired"], ["leave", "On sabbatical or leave"], ["other", "No longer in a position to decide"]];
+function roleChangeButton(personId, card) {
+  var b = button("No longer in this role", "quiet", function () {
+    if (card.querySelector(".rolechange")) return;
+    var f = el("div", "rolechange"); f.style.cssText = "display:flex;flex-direction:column;gap:8px;margin-top:8px;padding-top:10px;border-top:1px solid var(--soft)";
+    var sel = el("select"); ROLE_REASONS.forEach(function (r) { var o = el("option", "", r[1]); o.value = r[0]; sel.appendChild(o); });
+    var org = el("input"); org.placeholder = "New organization, as Signals names it (optional)";
+    var title = el("input"); title.placeholder = "New title (optional)";
+    var back = el("input"); back.type = "date";
+    var note = el("input"); note.placeholder = "Note (optional), e.g. what they told you";
+    var orgRow = add(el("label", "field", "Where they went"), org), titleRow = add(el("label", "field", "Their new title"), title);
+    var backRow = add(el("label", "field", "Back around (leave blank: we'll check again in a year)"), back);
+    var show = function () { orgRow.hidden = titleRow.hidden = sel.value !== "moved"; backRow.hidden = sel.value !== "leave"; };
+    sel.onchange = show;
+    [org, title, back, note].forEach(function (x) { x.style.cssText = "min-height:40px;border:1px solid var(--fieldline);border-radius:8px;padding:0 10px;background:var(--card);width:100%;box-sizing:border-box"; });
+    add(f, add(el("label", "field", "What changed"), sel), orgRow, titleRow, backRow, add(el("label", "field", "Note"), note));
+    var save = button("Record", "primary", function () {
+      save.disabled = true;
+      post("/api/people/" + personId + "/role-change", { reason: sel.value, newOrganization: org.value, newTitle: title.value, returnOn: back.value, note: note.value }).then(function (r) {
+        var k = r.kade || {}, msg = "Recorded in Signals.";
+        if (k.seatsFlagged) msg += " The seat is flagged so Signals finds who holds it now.";
+        if (k.pausedUntil) msg += " Paused until " + nice(k.pausedUntil) + ".";
+        if (k.newOrganization) msg += k.newOrganization.id ? " Now at " + k.newOrganization.name + "; they return here only if it's hot." : " " + k.newOrganization.name + " isn't in Signals yet: add it there to follow them.";
+        toast(msg); return load();
+      }).catch(function (e) { toast(e.message); save.disabled = false; });
+    });
+    add(f, add(el("div", "actions"), save, button("Cancel", "quiet", function () { f.remove(); })));
+    show();
+    card.appendChild(f);
+  });
+  return b;
+}
+
 // ---- Today ----
 function actionCard(a, draftLabel) {
   var c = el("article", "card" + (a.status !== "todo" ? " done" : ""));
@@ -394,6 +428,8 @@ function actionCard(a, draftLabel) {
   }
   if (a.kade_url) bar.appendChild(link("Signals", a.kade_url, "quiet"));
   if (a.action_type === "follow_up") bar.appendChild(outcomeMenu(a.person_id));
+  // Prospects only: a partner isn't anyone's buyer.
+  if (a.status === "todo" && a.person_id && !a.partner_type && a.action_type !== "reshare") bar.appendChild(roleChangeButton(a.person_id, c));
   c.appendChild(bar);
   return c;
 }
@@ -564,6 +600,7 @@ function renderToday(d) {
       bar.appendChild(close);
     }
     bar.appendChild(outcomeMenu(p.person_id));
+    if (!p.partner_type) bar.appendChild(roleChangeButton(p.person_id, it));
     it.appendChild(bar);
     cbox.appendChild(it);
   });

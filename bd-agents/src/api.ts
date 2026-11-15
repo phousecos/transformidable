@@ -5,7 +5,7 @@
 import { AuthError, signedInEmail, type AuthEnv } from "./auth";
 import { draft, type DraftKind } from "./claude";
 import { buildToday, firstName, todayET, weekOf, type DailyEnv } from "./daily";
-import { dismissReply as kadeDismissReply, inbox as kadeInbox, requestEmail as kadeRequestEmail, addPartner as kadeAddPartner, events as kadeEvents, KadeError, kadeOrgUrl, results as kadeResults, weekPlan, type KadeWeekPlan, type PartnerAdd } from "./kade";
+import { dismissReply as kadeDismissReply, inbox as kadeInbox, requestEmail as kadeRequestEmail, addPartner as kadeAddPartner, events as kadeEvents, KadeError, kadeOrgUrl, roleChange, results as kadeResults, weekPlan, type KadeWeekPlan, type PartnerAdd } from "./kade";
 import { syncPartners } from "./sync";
 import { flushTouches, KIND_BY_ACTION, OUTCOMES, touchStatement } from "./contact";
 import { PAGE } from "./page";
@@ -32,7 +32,7 @@ async function today(env: ApiEnv, date: string) {
   ).all();
   // People to record a reply or meeting for: in a conversation, or connected in the last 60 days.
   const contacts = await env.DB.prepare(
-    `SELECT id AS person_id, full_name, title, organization, linkedin_url, connection_status, connected_at, contact_state, paused_until, kade_account_id FROM people
+    `SELECT id AS person_id, full_name, title, organization, linkedin_url, connection_status, connected_at, contact_state, paused_until, kade_account_id, partner_type FROM people
      WHERE contact_state = 'in_conversation' OR (connection_status = 'connected' AND connected_at >= date('now', '-60 days') AND contact_state = 'open')
      ORDER BY contact_state = 'in_conversation' DESC, connected_at DESC LIMIT 100`,
   ).all<{ kade_account_id: string | null }>();
@@ -222,6 +222,37 @@ async function recordOutcome(env: ApiEnv, personId: string, who: string, body: {
   return json({ ok: true, kade: await flushTouches(env, [touchId]).catch((e) => ({ error: String(e) })) });
 }
 
+/**
+ * Someone no longer in the role (KADE docs/role-changes.md). Signals records it once: roles end (or pause, for a leave),
+ * the seat is flagged for a successor, a move to an organization Signals knows carries them there. Here, their open
+ * suggestions are skipped and they leave the prospect list until Signals says otherwise.
+ */
+async function roleChangeFor(env: ApiEnv, personId: string, who: string, body: Record<string, unknown>) {
+  const p = await env.DB.prepare("SELECT id, kade_contact_id, kade_account_id, partner_type FROM people WHERE id = ?1").bind(personId)
+    .first<{ id: string; kade_contact_id: string | null; kade_account_id: string | null; partner_type: string | null }>();
+  if (!p) return json({ error: "No such person" }, 404);
+  if (!p.kade_contact_id) return json({ error: "This person isn't linked to Signals yet; try again after the next sync" }, 409);
+  const str = (k: string) => (typeof body[k] === "string" && (body[k] as string).trim() ? (body[k] as string).trim() : null);
+  let r;
+  try {
+    r = await roleChange(env, { personId: p.kade_contact_id, organizationId: p.kade_account_id, reason: String(body.reason ?? ""), note: str("note"), returnOn: str("returnOn"),
+      newOrganization: str("newOrganization"), newTitle: str("newTitle") });
+  } catch (e) {
+    if (e instanceof KadeError && e.status === 422) return json({ error: e.message }, 422);
+    throw e;
+  }
+  const now = new Date().toISOString();
+  const labels: Record<string, string> = { moved: "Moved to another organization", retired: "Retired", leave: "On sabbatical or leave", other: "No longer in a position to decide" };
+  await env.DB.batch([
+    env.DB.prepare("UPDATE actions SET status = 'skipped', done_at = ?2, outcome = ?3 WHERE person_id = ?1 AND status = 'todo'").bind(personId, now, `${labels[r.reason] ?? r.reason} (recorded by ${who})`),
+    r.reason === "leave"
+      ? env.DB.prepare("UPDATE people SET contact_state = 'paused', paused_until = ?2, updated_at = ?3 WHERE id = ?1").bind(personId, r.pausedUntil ?? null, now)
+      // No longer a prospect here; the next sync brings them back if Signals has them somewhere hot.
+      : env.DB.prepare("UPDATE people SET in_kade_scope = 0, kade_tier = NULL, pursued = 0, updated_at = ?2 WHERE id = ?1").bind(personId, now),
+  ]);
+  return json({ ok: true, kade: r });
+}
+
 const WEEKS = 8;
 
 /** This week: Signals' weekly plan and events. Posts and LinkedIn's numbers are Influence's (KADE docs/influence-measurement.md). */
@@ -295,6 +326,7 @@ async function route(req: Request, env: ApiEnv): Promise<Response> {
   if (req.method === "POST" && parts[0] === "api" && parts[1] === "actions" && parts[2]) return completeAction(env, parts[2], who, await body());
   if (req.method === "POST" && parts[0] === "api" && parts[1] === "people" && parts[2] && parts[3] === "connected") return markConnected(env, parts[2], who);
   if (req.method === "POST" && parts[0] === "api" && parts[1] === "people" && parts[2] && parts[3] === "outcome") return recordOutcome(env, parts[2], who, await body());
+  if (req.method === "POST" && parts[0] === "api" && parts[1] === "people" && parts[2] && parts[3] === "role-change") return roleChangeFor(env, parts[2], who, await body());
   if (req.method === "POST" && url.pathname === "/api/kade/flush") return json(await flushTouches(env, undefined, Math.min(200, Number(url.searchParams.get("limit")) || 200)));
   if (req.method === "POST" && parts[0] === "api" && parts[1] === "people" && parts[2] && parts[3] === "already-connected") {
     const r = await alreadyConnected(env, parts[2], who);
