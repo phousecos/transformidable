@@ -1,8 +1,0 @@
-{
-  "name": "kade-influence",
-  "private": true,
-  "description": "Deployed by Workers Builds with npx wrangler; nothing to build. This file stops npm from falling back to the website build at the repo root.",
-  "scripts": {
-    "build": "echo nothing to build"
-  }
-}
