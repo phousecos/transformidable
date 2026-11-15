@@ -347,7 +347,6 @@ function actionCard(a, draftLabel) {
     : add(el("div", "head"), el("span", "name", a.full_name), el("span", "muted", who(a)));
   var tags = el("span", "tags");
   if (a.status === "todo" && state.today && a.action_date < state.today) tags.appendChild(el("span", "tag warn", "From " + nice(a.action_date)));
-  if (a.segment === "influencer") tags.appendChild(el("span", "tag ok", "Influencer"));
   if (a.partner_type) tags.appendChild(el("span", "tag ok", "Partner"));
   if (a.pursued) tags.appendChild(el("span", "tag accent", "Pursuit"));
   if (a.kade_tier) tags.appendChild(el("span", "tag", a.kade_tier.charAt(0).toUpperCase() + a.kade_tier.slice(1)));
@@ -383,7 +382,7 @@ function actionCard(a, draftLabel) {
   });
   bar.appendChild(done);
   bar.appendChild(button("Skip", "", function () { post("/api/actions/" + a.id, { status: "skipped" }).then(load).catch(function (e) { toast(e.message); }); }));
-  if (a.action_type === "connect" && a.person_id && !a.partner_type && a.segment !== "influencer") {
+  if (a.action_type === "connect" && a.person_id && !a.partner_type) {
     var ei = button("Email instead", "quiet", function () {
       ei.disabled = true;
       post("/api/actions/" + a.id + "/email-instead").then(function (r) { toast("Signals will draft an email to " + r.email + " tomorrow morning."); return load(); })

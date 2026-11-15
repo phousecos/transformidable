@@ -5,6 +5,7 @@
 import { AuthError, signedInEmail, type AuthEnv } from "./auth";
 import { buildPosts, buildShortVideo, weekOf, type ContentEnv } from "./content";
 import { addToNetwork, followCandidate, InputError, networkView, passCandidate, removeMember, settings, STAGE_LABELS, updateMember, type NetworkEnv } from "./network";
+import { addIdea, draftComment, ideasView, logEngagement, suggestIdeas, todayView, updateIdea } from "./engage";
 import { requestDue, researchFor, researchNow, researchSettings, scoreChanged, takeDiscoveries } from "./research";
 import { PAGE } from "./page";
 
@@ -81,6 +82,16 @@ async function route(req: Request, env: ApiEnv): Promise<Response> {
   }
   if (req.method === "POST" && parts[0] === "api" && parts[1] === "network" && parts[2] && parts[3] === "follow") return input(async () => followCandidate(env, parts[2], ((await body()).linkedinUrl as string | undefined), who));
   if (req.method === "POST" && parts[0] === "api" && parts[1] === "network" && parts[2] && parts[3] === "pass") return input(async () => passCandidate(env, parts[2], who));
+  // Engagement (KADE docs/influence-engagement.md): Today, comment drafts, the log, and ideas.
+  if (req.method === "GET" && url.pathname === "/api/today") return json(await todayView(env, todayET()));
+  if (req.method === "POST" && url.pathname === "/api/comments/draft") return input(async () => draftComment(env, (await body()) as Record<string, string>));
+  if (req.method === "POST" && url.pathname === "/api/engagement") return input(async () => logEngagement(env, await body()));
+  if (req.method === "GET" && url.pathname === "/api/ideas") return json(await ideasView(env));
+  if (req.method === "POST" && url.pathname === "/api/ideas") {
+    return input(async () => { const b = await body(); return addIdea(env, b, who, b.origin === "comment" ? "comment" : "manual"); });
+  }
+  if (req.method === "POST" && url.pathname === "/api/ideas/suggest") return input(async () => suggestIdeas(env, todayET(), who));
+  if (req.method === "POST" && parts[0] === "api" && parts[1] === "ideas" && parts[2] && !parts[3]) return input(async () => updateIdea(env, parts[2], await body()));
   // The hourly and daily research steps, run now (the same steps the cron runs).
   if (req.method === "POST" && url.pathname === "/api/research/run") {
     const requested = await requestDue(env);

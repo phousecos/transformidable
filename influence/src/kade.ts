@@ -299,3 +299,18 @@ export const discoveries = (env: KadeEnv, since: string) =>
 /** Saves the LinkedIn profile she pastes for a discovered person, or names the Signals person who already has it. */
 export const linkLinkedIn = (env: KadeEnv, personId: string, linkedinUrl: string) =>
   influenceCall<{ personId: string; linked: boolean }>(env, "people/linkedin", { method: "POST", body: { personId, linkedinUrl } });
+
+// ---- Engagement (KADE docs/influence-engagement.md): the log is Signals' contact history ----
+
+export interface Engagement { id: string; person_id: string; kind: string; occurred_at: string; source: string; note: string | null; detail: Record<string, unknown> | null }
+
+export const recordEngagement = (env: KadeEnv, body: { personId: string; kind: string; postUrl?: string | null; topic?: string | null; approach?: string | null; text?: string | null; note?: string | null }) =>
+  influenceCall<{ id: string; duplicate: boolean }>(env, "engagement", { method: "POST", body, ok: 201 });
+
+export async function engagementLog(env: KadeEnv, ids: string[], since: string): Promise<Engagement[]> {
+  const out: Engagement[] = [];
+  for (let i = 0; i < ids.length; i += 100) {
+    out.push(...(await influenceCall<{ activity: Engagement[] }>(env, `engagement?ids=${encodeURIComponent(ids.slice(i, i + 100).join(","))}&since=${encodeURIComponent(since)}`)).activity);
+  }
+  return out;
+}

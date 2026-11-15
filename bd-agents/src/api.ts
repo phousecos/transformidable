@@ -97,7 +97,7 @@ async function redraft(env: ApiEnv, actionId: string) {
   const kind = (typeof prior.draft_kind === "string" ? prior.draft_kind as DraftKind : null) ?? KIND_FOR[a.action_type];
   if (!kind) return json({ error: "Nothing to draft for this action" }, 422);
   const d = await draft(env, kind, { firstName: a.full_name ? firstName(a.full_name) : "Jerri", title: a.title, organization: a.organization,
-    context: a.segment === "influencer" ? null : a.kade_summary, post: typeof prior.post_text === "string" ? prior.post_text : null });
+    context: a.kade_summary, post: typeof prior.post_text === "string" ? prior.post_text : null });
   if (d.by === "template") return json({ error: `Claude did not draft it: ${d.error ?? "unknown"}` }, 502);
   const ctx = { ...prior, drafted_by: d.by, draft_error: null };
   await env.DB.prepare("UPDATE review_queue SET draft = ?2, final_text = NULL, context_json = ?3, created_by_agent = ?4, updated_at = CURRENT_TIMESTAMP WHERE id = ?1")
@@ -116,7 +116,7 @@ async function draftComment(env: ApiEnv, actionId: string, body: { postText?: st
   if (!a) return json({ error: "No such comment" }, 404);
   if (a.status !== "todo") return json({ error: `Already ${a.status}` }, 409);
   const d = await draft(env, "comment", { firstName: firstName(a.full_name), title: a.title, organization: a.organization,
-    context: a.segment === "influencer" ? null : a.kade_summary, post });
+    context: a.kade_summary, post });
   const ctx = JSON.stringify({ post_text: post.slice(0, 6000), drafted_by: d.by, draft_error: d.error ?? null });
   if (a.queue_id) {
     await env.DB.prepare("UPDATE review_queue SET draft = ?2, final_text = NULL, context_json = ?3, created_by_agent = ?4, updated_at = CURRENT_TIMESTAMP WHERE id = ?1")
@@ -127,7 +127,7 @@ async function draftComment(env: ApiEnv, actionId: string, body: { postText?: st
       env.DB.prepare(
         `INSERT INTO review_queue (id, system, item_type, channel, person_id, title, draft, context_json, created_by_agent, due_date)
          VALUES (?1, ?2, 'comment', 'linkedin', ?3, ?4, ?5, ?6, ?7, ?8)`,
-      ).bind(queueId, a.segment === "influencer" ? "media" : "advisory", a.person_id, `${a.full_name}, ${a.organization ?? ""}`, d.text, ctx, `engagement-engine:${d.by}`, a.action_date),
+      ).bind(queueId, "advisory", a.person_id, `${a.full_name}, ${a.organization ?? ""}`, d.text, ctx, `engagement-engine:${d.by}`, a.action_date),
       env.DB.prepare("UPDATE actions SET queue_id = ?2 WHERE id = ?1").bind(a.id, queueId),
     ]);
   }
@@ -281,7 +281,7 @@ async function saveLinkedinStats(env: ApiEnv, who: string, body: Record<string, 
 }
 
 /**
- * The morning self-check (KADE docs/system-check.md): runs what the page loads (today, partners, influencers, the
+ * The morning self-check (KADE docs/system-check.md): runs what the page loads (today, partners, the
  * week and results from KADE), so a page that would fail to load is reported before anyone opens it.
  */
 export async function selfCheck(env: ApiEnv) {
