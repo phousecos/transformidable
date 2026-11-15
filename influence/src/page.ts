@@ -349,7 +349,7 @@ function renderNetwork() {
   var run = button("Run research steps now", "small", function () {
     run.disabled = true; run.textContent = "Running… (up to a minute)";
     post("/api/research/run").then(function (r) {
-      toast("Research asked for " + r.requested.queued + " people" + (r.requested.skipped ? " (" + r.requested.skipped + " already in progress or recently researched)" : "") + (r.requested.discovery === "queued" ? ", plus this week's discovery" : r.requested.discovery ? "; this week's discovery is already running" : "") + ". " + r.taken.added + " new candidates; " + r.scored.scored + " scored.");
+      toast("Research asked for " + r.requested.queued + " people" + (r.requested.skipped ? " (" + r.requested.skipped + " already in progress or recently researched)" : "") + (r.requested.discovery === "queued" ? ", plus this week's discovery" : r.requested.discovery ? "; this week's discovery is already running" : "") + ". " + r.taken.added + " new candidates; " + r.scored.scored + " scored." + (r.scored.firstError ? " Scoring failed for " + r.scored.errors + ": " + r.scored.firstError : ""));
       return loadNetwork();
     }).catch(function (e) { toast(e.message); run.disabled = false; run.textContent = "Run research steps now"; });
   });

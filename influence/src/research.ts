@@ -138,7 +138,7 @@ export async function scoreChanged(env: ResearchEnv, limit = 6) {
     } catch (e) { errors.push(`${row.full_name}: ${String((e as Error).message ?? e).slice(0, 200)}`); }
   }
   if (errors.length) console.log(JSON.stringify({ level: "warn", job: "scoreChanged", errors }));
-  return { scored, plans, errors: errors.length };
+  return { scored, plans, errors: errors.length, firstError: errors[0] ?? null };
 }
 
 /** One person's research, for the page. */
