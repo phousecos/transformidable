@@ -222,21 +222,12 @@ async function recordOutcome(env: ApiEnv, personId: string, who: string, body: {
   return json({ ok: true, kade: await flushTouches(env, [touchId]).catch((e) => ({ error: String(e) })) });
 }
 
-/** LinkedIn's own numbers, typed in weekly (LinkedIn shares no analytics with outside tools). */
-const LINKEDIN_STATS = ["followers_profile", "followers_page", "impressions_profile", "impressions_page", "profile_views"];
 const WEEKS = 8;
 
-/** Results: outreach from KADE (counted there), posts from the review queue, LinkedIn numbers from `results`. */
-/** This week: KADE's weekly plan, plus what only this list holds (this week's posts, the LinkedIn numbers entered). */
+/** This week: Signals' weekly plan and events. Posts and LinkedIn's numbers are Influence's (KADE docs/influence-measurement.md). */
 async function weekView(env: ApiEnv) {
-  const [kade, posts, linkedin, kev] = await Promise.all([
+  const [kade, kev] = await Promise.all([
     weekPlan(env).then((r) => r.plan).catch((e) => ({ error: String(e).slice(0, 300) })),
-    env.DB.prepare(
-      `SELECT id, title, channel, item_type, status, due_date FROM review_queue
-       WHERE system = 'media' AND item_type IN ('post_page', 'post_profile', 'short_video') AND due_date >= date('now', '-6 days', 'weekday 1') AND due_date < date('now', '-6 days', 'weekday 1', '+7 days')
-       ORDER BY due_date`,
-    ).all<{ id: string; title: string | null; channel: string | null; item_type: string; status: string; due_date: string | null }>(),
-    env.DB.prepare("SELECT MAX(metric_date) AS week FROM results WHERE source = 'linkedin' AND system = 'media'").first<{ week: string | null }>(),
     kadeEvents(env).catch((e) => ({ error: String(e).slice(0, 300) })),
   ]);
   const plan = kade && !("error" in kade) ? {
@@ -244,40 +235,11 @@ async function weekView(env: ApiEnv) {
     decide: { pursuits: (kade as KadeWeekPlan).decide.pursuits.map((p) => ({ ...p, kade_url: kadeOrgUrl(env, p.organizationId) })) },
     conversations: (kade as KadeWeekPlan).conversations.map((c) => ({ ...c, kade_url: new URL(`/#person/${encodeURIComponent(c.personId)}`, env.KADE_API_URL).toString() })),
   } : kade;
-  return { plan, posts: posts.results, linkedinLastEntered: linkedin?.week ?? null, events: kev, kadeEventsUrl: new URL("/#events", env.KADE_API_URL).toString() };
+  return { plan, events: kev, kadeEventsUrl: new URL("/#events", env.KADE_API_URL).toString() };
 }
 
 async function resultsView(env: ApiEnv) {
-  const [kade, posts, linkedin] = await Promise.all([
-    kadeResults(env, WEEKS).catch((e) => ({ error: String(e).slice(0, 300) })),
-    env.DB.prepare(
-      `SELECT date(sent_at, '-6 days', 'weekday 1') AS week, channel, COUNT(*) AS n FROM review_queue
-       WHERE system = 'media' AND item_type IN ('post_page', 'post_profile') AND status = 'sent' AND sent_at >= date('now', '-63 days')
-       GROUP BY week, channel`,
-    ).all<{ week: string; channel: string; n: number }>(),
-    env.DB.prepare(
-      `SELECT metric_date AS week, metric, value FROM results WHERE source = 'linkedin' AND system = 'media' AND metric_date >= date('now', '-63 days')`,
-    ).all<{ week: string; metric: string; value: number }>(),
-  ]);
-  return { kade, posts: posts.results, linkedin: linkedin.results, stats: LINKEDIN_STATS };
-}
-
-async function saveLinkedinStats(env: ApiEnv, who: string, body: Record<string, unknown>) {
-  const week = String(body.week ?? "");
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(week) || new Date(`${week}T00:00:00Z`).getUTCDay() !== 1) return json({ error: "week must be a Monday (YYYY-MM-DD)" }, 422);
-  const stmts: D1PreparedStatement[] = [];
-  for (const m of LINKEDIN_STATS) {
-    const raw = body[m];
-    if (raw === undefined || raw === null || raw === "") continue;
-    const v = Number(raw);
-    if (!Number.isFinite(v) || v < 0) return json({ error: `${m} must be a number` }, 422);
-    stmts.push(env.DB.prepare("DELETE FROM results WHERE source = 'linkedin' AND system = 'media' AND metric = ?1 AND metric_date = ?2").bind(m, week));
-    stmts.push(env.DB.prepare("INSERT INTO results (id, metric_date, system, source, metric, value, notes) VALUES (?1, ?2, 'media', 'linkedin', ?3, ?4, ?5)")
-      .bind(crypto.randomUUID(), week, m, v, `entered by ${who}`));
-  }
-  if (!stmts.length) return json({ error: "Enter at least one number" }, 422);
-  await env.DB.batch(stmts);
-  return json({ ok: true });
+  return { kade: await kadeResults(env, WEEKS).catch((e) => ({ error: String(e).slice(0, 300) })) };
 }
 
 /**
@@ -346,6 +308,5 @@ async function route(req: Request, env: ApiEnv): Promise<Response> {
   }
   if (req.method === "GET" && url.pathname === "/api/results") return json(await resultsView(env));
   if (req.method === "GET" && url.pathname === "/api/week") return json(await weekView(env));
-  if (req.method === "POST" && url.pathname === "/api/results/linkedin") return saveLinkedinStats(env, who, await body());
   return json({ error: "Not found" }, 404);
 }

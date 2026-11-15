@@ -104,6 +104,15 @@ form.stats .wide { grid-column:1 / -1; }
   .respond { margin-left:0; width:100%; }
   .actions .btn { flex:1 1 auto; }
 }
+/* Review: plain tables. */
+table.data { width:100%; border-collapse:collapse; font-size:13px; }
+table.data th, table.data td { text-align:right; padding:6px 8px; border-bottom:1px solid var(--soft); white-space:nowrap; }
+table.data th:first-child, table.data td:first-child { text-align:left; }
+table.data th { color:var(--muted); font-weight:600; }
+table.data tr.base td { background:var(--soft); font-style:italic; }
+.scroll { overflow-x:auto; }
+.bar { height:6px; background:var(--soft); border-radius:3px; overflow:hidden; }
+.bar > span { display:block; height:100%; background:var(--accent); }
 /* Influence: plain fields in forms match the selects. */
 .field input, .field textarea, #detail input, #detail textarea { min-height:40px; border:1px solid var(--fieldline); border-radius:8px; padding:8px 10px; background:var(--card); font:inherit; color:inherit; width:100%; box-sizing:border-box; }
 </style>
@@ -120,6 +129,7 @@ form.stats .wide { grid-column:1 / -1; }
       <a href="#network" data-tab="network">Network</a>
       <a href="#posts" data-tab="posts">Posts <span class="badge" id="postbadge" hidden></span></a>
       <a href="#ideas" data-tab="ideas">Ideas <span class="badge" id="ideabadge" hidden></span></a>
+      <a href="#review" data-tab="review">Review <span class="badge" id="reviewbadge" hidden></span></a>
     </nav>
   </div>
 </header>
@@ -149,6 +159,11 @@ form.stats .wide { grid-column:1 / -1; }
     <aside class="side">
       <section class="panel" id="ideaform"></section>
     </aside>
+  </section>
+
+  <section id="tab-review" class="split" hidden>
+    <main class="main" id="reviewmain"></main>
+    <aside class="side" id="reviewside"></aside>
   </section>
 
   <section id="tab-network" class="split" hidden>
@@ -712,8 +727,125 @@ function loadIdeas() {
   }).catch(function (e) { document.getElementById("idealist").textContent = "Could not load: " + e.message; });
 }
 
+// ---- Review (KADE docs/influence-measurement.md) ----
+var review = { data: null, month: null };
+function cell(v) { return v == null ? "–" : String(v); }
+function dataTable(head, rows, baseRow) {
+  var t = el("table", "data"), tr = el("tr");
+  head.forEach(function (h) { tr.appendChild(el("th", "", h)); });
+  t.appendChild(tr);
+  if (baseRow) { var b = el("tr", "base"); baseRow.forEach(function (c) { b.appendChild(el("td", "", cell(c))); }); t.appendChild(b); }
+  rows.forEach(function (r) { var x = el("tr"); r.forEach(function (c) { x.appendChild(el("td", "", cell(c))); }); t.appendChild(x); });
+  return add(el("div", "scroll"), t);
+}
+function shiftMonth(m, n) { var y = Number(m.slice(0, 4)), mo = Number(m.slice(5, 7)) - 1 + n; y += Math.floor(mo / 12); mo = ((mo % 12) + 12) % 12; return y + "-" + String(mo + 1).padStart(2, "0"); }
+function renderReview() {
+  var d = review.data; if (!d) return;
+  var main = document.getElementById("reviewmain"), side = document.getElementById("reviewside");
+  main.textContent = ""; side.textContent = "";
+  var monday = (function () { var t = new Date(d.today + "T12:00:00Z"); t.setUTCDate(t.getUTCDate() - ((t.getUTCDay() + 6) % 7)); return t.toISOString().slice(0, 10); })();
+  var due = !d.lastUpload || String(d.lastUpload.uploaded_at).slice(0, 10) < monday;
+  var badge = document.getElementById("reviewbadge"); badge.hidden = !due; badge.textContent = "1";
+  // Upload
+  var up = el("section", "panel");
+  up.appendChild(el("h2", "", "This week's LinkedIn numbers"));
+  up.appendChild(el("p", "muted small", d.lastUpload ? "Last upload: " + d.lastUpload.period_start + " to " + d.lastUpload.period_end + " (uploaded " + nice(String(d.lastUpload.uploaded_at).slice(0, 10)) + ")" + (d.followers ? ". Followers: " + d.followers.total + " on " + nice(d.followers.day) + "." : ".") : "Nothing uploaded yet."));
+  if (due) up.appendChild(el("p", "small", "Due this week. On LinkedIn: your profile → Analytics → set the past 28 days → Export. Then upload the .xlsx file here."));
+  var f = el("form"); f.style.cssText = "display:flex;flex-direction:column;gap:8px";
+  var file = el("input"); file.type = "file"; file.accept = ".xlsx"; file.name = "file";
+  var pv = el("input"); pv.type = "number"; pv.min = "0"; pv.name = "profile_views";
+  var sa = el("input"); sa.type = "number"; sa.min = "0"; sa.name = "search_appearances";
+  add(f, add(el("label", "field", "LinkedIn's export (.xlsx)"), file),
+    add(el("div", ""), add(el("label", "field", "Profile viewers, past 90 days (optional, from your dashboard)"), pv)),
+    add(el("div", ""), add(el("label", "field", "Search appearances, past week (optional)"), sa)));
+  var go = button("Upload", "primary", function () {
+    if (!file.files || !file.files[0]) { toast("Choose the .xlsx file first."); return; }
+    var fd = new FormData(f); go.disabled = true; go.textContent = "Reading…";
+    fetch("/api/linkedin/upload", { method: "POST", body: fd, redirect: "manual" }).then(function (r) {
+      if (r.type === "opaqueredirect" || r.status === 401 || r.status === 403) throw new Error(EXPIRED);
+      return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || r.status); return j; });
+    }).then(function (j) { toast("Read " + j.days + " days and " + j.posts + " posts (" + j.periodStart + " to " + j.periodEnd + ")."); return loadReview(); })
+      .catch(function (e) { toast(e.message); go.disabled = false; go.textContent = "Upload"; });
+  });
+  f.appendChild(add(el("div", "actions"), go));
+  f.onsubmit = function (e) { e.preventDefault(); };
+  up.appendChild(f);
+  main.appendChild(up);
+  // Weekly trends with the baseline
+  var tr = el("section", "panel");
+  tr.appendChild(el("h2", "", "Week by week"));
+  tr.appendChild(el("p", "muted small", d.baseline ? "Shaded: your baseline, the weekly average of " + d.baseline.from + " (" + d.baseline.weeks.map(nice).join(", ") + ")." : "The baseline appears once two full weeks are uploaded, before or after the start on " + nice(d.pilot.start) + "."));
+  var base = d.baseline ? ["Baseline", d.baseline.impressions, d.baseline.engagements, d.baseline.newFollowers, d.baseline.comments, null, null, null, null, null] : null;
+  tr.appendChild(dataTable(["Week of", "Impressions", "Engagements", "New followers", "Comments", "People", "Responses", "Connections", "Ideas", "Posts"],
+    d.weeks.map(function (w) { return [nice(w.week), w.impressions, w.engagements, w.newFollowers, w.comments, w.people, w.responses, w.connections, w.ideas, w.posts]; }), base));
+  main.appendChild(tr);
+  // The 90-day pilot
+  var pl = el("section", "panel");
+  pl.appendChild(el("h2", "", "90-day pilot: day " + d.pilot.day + " of 90"));
+  pl.appendChild(el("p", "muted small", "Planning assumptions from your plan, not promises. Started " + nice(d.pilot.start) + "."));
+  d.pilot.measures.forEach(function (m) {
+    var row = el("div", ""); row.style.cssText = "display:grid;grid-template-columns:1fr auto;gap:4px 12px;align-items:center";
+    var tgt = m.target[0] === m.target[1] ? String(m.target[0]) : m.target[0] + " to " + m.target[1];
+    add(row, el("span", "small", m.label), el("span", "small", m.value + " of " + tgt));
+    var bar = el("div", "bar"); var fill = el("span"); fill.style.width = Math.min(100, Math.round(100 * m.value / Math.max(1, m.target[0]))) + "%"; bar.appendChild(fill); bar.style.gridColumn = "1 / span 2";
+    row.appendChild(bar);
+    pl.appendChild(row);
+  });
+  main.appendChild(pl);
+  // The month's review
+  var r = d.review;
+  var rv = el("section", "panel");
+  var head = el("div", "head"); head.style.justifyContent = "space-between";
+  var nav = el("span", "actions");
+  nav.appendChild(button("Earlier", "small", function () { loadReview(shiftMonth(r.month, -1)); }));
+  if (r.month < d.today.slice(0, 7)) nav.appendChild(button("Later", "small", function () { loadReview(shiftMonth(r.month, 1)); }));
+  add(head, el("h2", "", "Review of " + r.month), nav);
+  rv.appendChild(head);
+  var li = r.linkedin || {};
+  rv.appendChild(el("p", "small", "LinkedIn: " + cell(li.impressions) + " impressions, " + cell(li.engagements) + " engagements, " + cell(li.new_followers) + " new followers (" + (li.days || 0) + " days uploaded). Comments: " + r.topics.length + "."));
+  function block(title, empty, items) {
+    rv.appendChild(el("div", "label", title));
+    if (!items.length) rv.appendChild(el("p", "empty", empty)); else items.forEach(function (x) { rv.appendChild(el("div", "small", x)); });
+  }
+  block("Who drew the most discussion", "No comments recorded this month.", r.discussions.map(function (x) { return x.name + ": " + x.replies + " responses to " + x.comments + " comments"; }));
+  block("By community", "Nothing yet.", r.byCommunity.map(function (x) { return (label(net.settings ? net.settings.communities : [], x.key) || x.key) + ": " + x.responded + " responses to " + x.comments + " comments"; }));
+  block("Which approaches drew responses", "No approaches recorded.", r.byApproach.map(function (x) { return (APPROACH_NAMES[x.key] || x.key) + ": " + x.responded + " of " + x.comments; }));
+  block("In recurring engagement or beyond", "No one yet.", r.recurring.map(function (x) { return x.name + " (" + (STAGE_NAMES[x.stage] || x.stage) + (x.tier ? ", Tier " + x.tier : "") + ")"; }));
+  block("What the comments were about", "No topics recorded.", r.topics.length ? [r.topics.join(" · ")] : []);
+  block("Ideas that became posts", "None this month.", r.ideasUsed.map(function (x) { return x.title + " → " + x.post_title + " (" + nice(x.due_date) + ")"; }));
+  block("Promotions, demotions and removals", "No changes.", r.tierChanges.map(function (x) {
+    return nice(x.at.slice(0, 10)) + ": " + x.full_name + " " + (x.change === "joined" ? "joined" : x.change === "removed" ? "removed" : (x.from_tier ? "Tier " + x.from_tier : "untiered") + " → " + (x.to_tier ? "Tier " + x.to_tier : "untiered")) + (x.by ? " (" + x.by + ")" : "");
+  }));
+  main.appendChild(rv);
+  // Side: what to change, and the audience
+  var nb = el("section", "panel");
+  nb.appendChild(el("h2", "", "What to change"));
+  nb.appendChild(el("p", "muted small", "Your decisions from the " + r.month + " review: tiers, rhythm, communities, the kinds of comments that work."));
+  var ta = el("textarea"); ta.rows = 8; ta.value = r.notes || "";
+  var sv = button("Save", "primary", function () { sv.disabled = true; post("/api/review/notes", { month: r.month, notes: ta.value }).then(function () { toast("Saved."); sv.disabled = false; }).catch(function (e) { toast(e.message); sv.disabled = false; }); });
+  add(nb, ta, add(el("div", "actions"), sv));
+  side.appendChild(nb);
+  var au = el("section", "panel");
+  au.appendChild(el("h2", "", "Your audience"));
+  au.appendChild(el("p", "muted small", "From the latest export. Private to this page."));
+  if (!r.audience.length) au.appendChild(el("p", "empty", "Upload an export to see it."));
+  ["Seniority", "Industry", "Job title"].forEach(function (cat) {
+    var rows = r.audience.filter(function (x) { return x.category === cat; });
+    if (!rows.length) return;
+    au.appendChild(el("div", "label", cat));
+    rows.slice(0, 6).forEach(function (x) { au.appendChild(el("div", "small", x.value + ": " + (x.pct == null ? "under 1%" : x.pct + "%"))); });
+  });
+  side.appendChild(au);
+}
+function loadReview(month) {
+  return fetch("/api/review" + (month ? "?month=" + encodeURIComponent(month) : "")).then(function (r) { return r.json(); }).then(function (d) {
+    if (d.error) throw new Error(d.error);
+    review.data = d; renderReview();
+  }).catch(function (e) { document.getElementById("reviewmain").textContent = "Could not load: " + e.message; });
+}
+
 // ---- Tabs ----
-var TABS = ["today", "network", "posts", "ideas"];
+var TABS = ["today", "network", "posts", "ideas", "review"];
 function showTab() {
   var tab = (location.hash || "#today").slice(1);
   if (TABS.indexOf(tab) < 0) tab = "today";
@@ -737,7 +869,7 @@ function load() {
 fetch("/api/me").then(function (r) { return r.json(); }).then(function (d) { if (d.me) document.getElementById("me").textContent = "Signed in as " + d.me; }).catch(function () {});
 showTab();
 load();
-loadNetwork().then(function () { loadToday(); loadIdeas(); });
+loadNetwork().then(function () { loadToday(); loadIdeas(); loadReview(); });
 </script>
 </body>
 </html>`;

@@ -314,3 +314,7 @@ export async function engagementLog(env: KadeEnv, ids: string[], since: string):
   }
   return out;
 }
+
+/** An email to the owner from her connected Gmail, sent by Signals (KADE docs/influence-measurement.md). */
+export const notifyOwner = (env: KadeEnv, subject: string, body: string) =>
+  influenceCall<{ sent: boolean; to: string }>(env, "notify", { method: "POST", body: { subject, body }, ok: 201 });
