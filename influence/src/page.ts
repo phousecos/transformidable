@@ -750,12 +750,14 @@ function renderReview() {
   var up = el("section", "panel");
   up.appendChild(el("h2", "", "This week's LinkedIn numbers"));
   up.appendChild(el("p", "muted small", d.lastUpload ? "Last upload: " + d.lastUpload.period_start + " to " + d.lastUpload.period_end + " (uploaded " + nice(String(d.lastUpload.uploaded_at).slice(0, 10)) + ")" + (d.followers ? ". Followers: " + d.followers.total + " on " + nice(d.followers.day) + "." : ".") : "Nothing uploaded yet."));
-  if (due) up.appendChild(el("p", "small", "Due this week. On LinkedIn: your profile → Analytics → set the past 28 days → Export. Then upload the .xlsx file here."));
+  up.appendChild(el("p", "muted small", d.lastPageUpload ? "Company page: last upload " + d.lastPageUpload.period_start + " to " + d.lastPageUpload.period_end + " (uploaded " + nice(String(d.lastPageUpload.uploaded_at).slice(0, 10)) + ")." : "Company page: nothing uploaded yet."));
+  if (due) up.appendChild(el("p", "small", "Due this week. Your profile: Analytics → past 28 days → Export (.xlsx). The company page: page admin → Analytics → Content → past 28 days → Export (.xls). Upload each file here."));
   var f = el("form"); f.style.cssText = "display:flex;flex-direction:column;gap:8px";
   var file = el("input"); file.type = "file"; file.accept = ".xlsx"; file.name = "file";
   var pv = el("input"); pv.type = "number"; pv.min = "0"; pv.name = "profile_views";
   var sa = el("input"); sa.type = "number"; sa.min = "0"; sa.name = "search_appearances";
-  add(f, add(el("label", "field", "LinkedIn's export (.xlsx)"), file),
+  file.accept = ".xlsx,.xls";
+  add(f, add(el("label", "field", "LinkedIn's export: your profile (.xlsx) or the company page's Content (.xls)"), file),
     add(el("div", ""), add(el("label", "field", "Profile viewers, past 90 days (optional, from your dashboard)"), pv)),
     add(el("div", ""), add(el("label", "field", "Search appearances, past week (optional)"), sa)));
   var go = button("Upload", "primary", function () {
@@ -764,7 +766,7 @@ function renderReview() {
     fetch("/api/linkedin/upload", { method: "POST", body: fd, redirect: "manual" }).then(function (r) {
       if (r.type === "opaqueredirect" || r.status === 401 || r.status === 403) throw new Error(EXPIRED);
       return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || r.status); return j; });
-    }).then(function (j) { toast("Read " + j.days + " days and " + j.posts + " posts (" + j.periodStart + " to " + j.periodEnd + ")."); return loadReview(); })
+    }).then(function (j) { toast((j.account === "page" ? "Company page: " : "Your profile: ") + "read " + j.days + " days and " + j.posts + " posts (" + j.periodStart + " to " + j.periodEnd + ")."); file.value = ""; return loadReview(); })
       .catch(function (e) { toast(e.message); go.disabled = false; go.textContent = "Upload"; });
   });
   f.appendChild(add(el("div", "actions"), go));
@@ -775,9 +777,9 @@ function renderReview() {
   var tr = el("section", "panel");
   tr.appendChild(el("h2", "", "Week by week"));
   tr.appendChild(el("p", "muted small", d.baseline ? "Shaded: your baseline, the weekly average of " + d.baseline.from + " (" + d.baseline.weeks.map(nice).join(", ") + ")." : "The baseline appears once two full weeks are uploaded, before or after the start on " + nice(d.pilot.start) + "."));
-  var base = d.baseline ? ["Baseline", d.baseline.impressions, d.baseline.engagements, d.baseline.newFollowers, d.baseline.comments, null, null, null, null, null] : null;
-  tr.appendChild(dataTable(["Week of", "Impressions", "Engagements", "New followers", "Comments", "People", "Responses", "Connections", "Ideas", "Posts"],
-    d.weeks.map(function (w) { return [nice(w.week), w.impressions, w.engagements, w.newFollowers, w.comments, w.people, w.responses, w.connections, w.ideas, w.posts]; }), base));
+  var base = d.baseline ? ["Baseline", d.baseline.impressions, d.baseline.engagements, d.baseline.newFollowers, d.baseline.pageImpressions, d.baseline.pageEngagements, d.baseline.comments, null, null, null, null, null] : null;
+  tr.appendChild(dataTable(["Week of", "Impressions", "Engagements", "New followers", "Page impressions", "Page engagements", "Comments", "People", "Responses", "Connections", "Ideas", "Posts"],
+    d.weeks.map(function (w) { return [nice(w.week), w.impressions, w.engagements, w.newFollowers, w.pageImpressions, w.pageEngagements, w.comments, w.people, w.responses, w.connections, w.ideas, w.posts]; }), base));
   main.appendChild(tr);
   // The 90-day pilot
   var pl = el("section", "panel");
@@ -802,7 +804,7 @@ function renderReview() {
   add(head, el("h2", "", "Review of " + r.month), nav);
   rv.appendChild(head);
   var li = r.linkedin || {};
-  rv.appendChild(el("p", "small", "LinkedIn: " + cell(li.impressions) + " impressions, " + cell(li.engagements) + " engagements, " + cell(li.new_followers) + " new followers (" + (li.days || 0) + " days uploaded). Comments: " + r.topics.length + "."));
+  rv.appendChild(el("p", "small", "Your profile: " + cell(li.impressions) + " impressions, " + cell(li.engagements) + " engagements, " + cell(li.new_followers) + " new followers (" + (li.days || 0) + " days uploaded). Company page: " + cell(li.page_impressions) + " impressions, " + cell(li.page_engagements) + " engagements (" + (li.page_days || 0) + " days). Comments: " + r.topics.length + "."));
   function block(title, empty, items) {
     rv.appendChild(el("div", "label", title));
     if (!items.length) rv.appendChild(el("p", "empty", empty)); else items.forEach(function (x) { rv.appendChild(el("div", "small", x)); });

@@ -19,7 +19,7 @@ export async function unzip(buf: ArrayBuffer): Promise<Map<string, Uint8Array>> 
   const b = new Uint8Array(buf);
   let eocd = -1;
   for (let i = b.length - 22; i >= Math.max(0, b.length - 65_557); i--) if (u32(b, i) === 0x06054b50) { eocd = i; break; }
-  if (eocd < 0) throw new Error("Not an .xlsx file (no zip directory found)");
+  if (eocd < 0) throw new Error("this is not an Excel file. Upload LinkedIn's analytics export: your profile's .xlsx, or the company page's Content .xls");
   const count = u16(b, eocd + 10);
   let p = u32(b, eocd + 16);
   const out = new Map<string, Uint8Array>();

@@ -1,10 +1,13 @@
 /**
- * LinkedIn's analytics export, uploaded weekly (KADE docs/influence-measurement.md). The profile export
- * (AggregateAnalytics_<name>_<start>_<end>.xlsx) has five sheets: DISCOVERY, ENGAGEMENT, TOP POSTS, FOLLOWERS and
- * DEMOGRAPHICS. A later upload replaces the days it covers, so nothing is counted twice.
+ * LinkedIn's analytics exports, uploaded weekly (KADE docs/influence-measurement.md). A later upload replaces the days
+ * it covers, so nothing is counted twice.
+ * - Her profile (AggregateAnalytics_<name>_<start>_<end>.xlsx): DISCOVERY, ENGAGEMENT, TOP POSTS, FOLLOWERS and
+ *   DEMOGRAPHICS sheets.
+ * - The company page's Content export (<page>_content_<n>.xls, the old binary format): Metrics (by day) and All posts.
  */
 import type { NetworkEnv } from "./network";
 import { InputError } from "./network";
+import { isXls, readXls } from "./xls";
 import { readXlsx, type Sheets } from "./xlsx";
 
 export interface ProfileExport {
@@ -73,12 +76,72 @@ export function parseProfile(s: Sheets): ProfileExport {
   return { periodStart: a, periodEnd: b, impressions: val("impressions"), membersReached: val("members reached"), daily: [...byDay.values()].sort((x, y) => x.day.localeCompare(y.day)), followers, posts: [...posts.values()], demographics };
 }
 
+export interface PageContentExport {
+  periodStart: string; periodEnd: string;
+  daily: { day: string; impressions: number | null; engagements: number | null }[];
+  posts: { url: string; publishedDate: string | null; impressions: number | null; engagements: number | null }[];
+}
+
+/** The company page's Content export: daily totals (organic and sponsored) and each post. Engagements are clicks, reactions, comments and reposts. */
+export function parsePageContent(s: Sheets): PageContentExport {
+  const metrics = sheet(s, "METRICS"), all = sheet(s, "ALL POSTS");
+  if (!metrics) throw new InputError("This is not the company page's Content export: it has no Metrics sheet");
+  const head = metrics.find((r) => (r[0] ?? "").trim().toLowerCase() === "date") ?? [];
+  const col = (name: string) => head.findIndex((h) => (h ?? "").trim().toLowerCase() === name);
+  const imp = col("impressions (total)") >= 0 ? col("impressions (total)") : col("impressions (organic)");
+  const eng = ["clicks (total)", "reactions (total)", "comments (total)", "reposts (total)"].map(col).filter((i) => i >= 0);
+  const daily = table(metrics, "Date").flatMap((r) => {
+    const day = usDate(r[0]); if (!day) return [];
+    const parts = eng.map((i) => num(r[i]));
+    return [{ day, impressions: imp >= 0 ? num(r[imp]) : null, engagements: parts.some((x) => x != null) ? parts.reduce<number>((n, x) => n + (x ?? 0), 0) : null }];
+  }).sort((a, b) => a.day.localeCompare(b.day));
+  if (!daily.length) throw new InputError("The Metrics sheet has no days in it");
+  const ph = all?.find((r) => (r[0] ?? "").trim().toLowerCase() === "post title") ?? [];
+  const pc = (name: string) => ph.findIndex((h) => (h ?? "").trim().toLowerCase() === name);
+  const posts = (all ? table(all, "Post title") : []).flatMap((r) => {
+    const url = (r[pc("post link")] ?? "").trim();
+    if (!/^https:\/\/www\.linkedin\.com\//i.test(url)) return [];
+    const parts = ["clicks", "likes", "comments", "reposts"].map((k) => num(r[pc(k)]));
+    return [{ url, publishedDate: usDate(r[pc("created date")]), impressions: num(r[pc("impressions")]), engagements: parts.some((x) => x != null) ? parts.reduce<number>((n, x) => n + (x ?? 0), 0) : null }];
+  });
+  return { periodStart: daily[0].day, periodEnd: daily[daily.length - 1].day, daily, posts };
+}
+
+/** Either kind of file, read by its format and then by its sheets. */
+export async function readExport(buf: ArrayBuffer): Promise<{ kind: "profile"; x: ProfileExport } | { kind: "page"; x: PageContentExport }> {
+  let sheets: Sheets;
+  try { sheets = isXls(buf) ? readXls(buf) : await readXlsx(buf); }
+  catch (e) { throw new InputError(`Could not read the file: ${(e as Error).message}`); }
+  const names = Object.keys(sheets).map((k) => k.trim().toUpperCase());
+  if (names.includes("DISCOVERY")) return { kind: "profile", x: parseProfile(sheets) };
+  if (names.includes("METRICS") && names.includes("ALL POSTS")) return { kind: "page", x: parsePageContent(sheets) };
+  throw new InputError(`Not an export Influence reads yet (sheets: ${Object.keys(sheets).join(", ") || "none"}). Upload your profile's analytics export or the company page's Content export.`);
+}
+
+async function savePage(env: NetworkEnv, fileName: string, x: PageContentExport, by: string) {
+  const ours = (await env.DB.prepare("SELECT id, due_date FROM review_queue WHERE status = 'sent' AND item_type = 'post_page'").all<{ id: string; due_date: string }>()).results;
+  const id = crypto.randomUUID();
+  await env.DB.batch([
+    env.DB.prepare(`INSERT INTO li_uploads (id, account, file_name, period_start, period_end, impressions, summary_json, uploaded_by) VALUES (?1, 'page', ?2, ?3, ?4, ?5, ?6, ?7)`)
+      .bind(id, fileName.slice(0, 200), x.periodStart, x.periodEnd, x.daily.reduce((n, d) => n + (d.impressions ?? 0), 0), JSON.stringify({ days: x.daily.length, posts: x.posts.length }), by),
+    ...x.daily.map((d) => env.DB.prepare(
+      `INSERT INTO li_daily (account, day, impressions, engagements) VALUES ('page', ?1, ?2, ?3)
+       ON CONFLICT (account, day) DO UPDATE SET impressions = COALESCE(excluded.impressions, impressions), engagements = COALESCE(excluded.engagements, engagements)`).bind(d.day, d.impressions, d.engagements)),
+    ...x.posts.map((p) => env.DB.prepare(
+      `INSERT INTO li_posts (url, account, published_date, impressions, engagements, post_id) VALUES (?1, 'page', ?2, ?3, ?4, ?5)
+       ON CONFLICT (url) DO UPDATE SET impressions = COALESCE(excluded.impressions, impressions), engagements = COALESCE(excluded.engagements, engagements),
+         post_id = COALESCE(post_id, excluded.post_id), seen_at = CURRENT_TIMESTAMP`)
+      .bind(p.url, p.publishedDate, p.impressions, p.engagements, ours.find((o) => o.due_date === p.publishedDate)?.id ?? null)),
+  ]);
+  return { id, account: "page", periodStart: x.periodStart, periodEnd: x.periodEnd, days: x.daily.length, posts: x.posts.length, followers: null };
+}
+
 /** Stores an upload: the days it covers replace what was there; the top posts keep their latest numbers; the audience is the latest snapshot. */
 export async function saveUpload(env: NetworkEnv, fileName: string, buf: ArrayBuffer, extra: { profileViews?: number | null; searchAppearances?: number | null }, by: string) {
   if (buf.byteLength > 5_000_000) throw new InputError("That file is larger than LinkedIn's export; choose the .xlsx file LinkedIn gave you");
-  let x: ProfileExport;
-  try { x = parseProfile(await readXlsx(buf)); }
-  catch (e) { if (e instanceof InputError) throw e; throw new InputError(`Could not read the file: ${(e as Error).message}`); }
+  const read = await readExport(buf);
+  if (read.kind === "page") return savePage(env, fileName, read.x, by);
+  const x = read.x;
   // Posts on the Posts tab published the same day as a top post are the same post (one profile post a day at most).
   const ours = (await env.DB.prepare("SELECT id, due_date FROM review_queue WHERE status = 'sent' AND item_type = 'post_profile'").all<{ id: string; due_date: string }>()).results;
   const id = crypto.randomUUID();
@@ -101,5 +164,5 @@ export async function saveUpload(env: NetworkEnv, fileName: string, buf: ArrayBu
       ...x.demographics.map((d) => env.DB.prepare("INSERT OR REPLACE INTO li_demographics (account, category, value, pct, as_of) VALUES ('profile', ?1, ?2, ?3, ?4)").bind(d.category, d.value, d.pct, x.periodEnd))] : []),
   ];
   await env.DB.batch(stmts);
-  return { id, periodStart: x.periodStart, periodEnd: x.periodEnd, days: x.daily.length, posts: x.posts.length, followers: x.followers?.total ?? null };
+  return { id, account: "profile", periodStart: x.periodStart, periodEnd: x.periodEnd, days: x.daily.length, posts: x.posts.length, followers: x.followers?.total ?? null };
 }
