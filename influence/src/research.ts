@@ -8,7 +8,7 @@
  */
 import { draftPlan, scorePerson } from "./judge";
 import { discoveries, requestResearch, signalsResearch, type Appearance, type PersonResearch } from "./kade";
-import { settings, tierFor, weightedScore, type NetworkEnv, type NetworkRow, type Scores } from "./network";
+import { logChange, settings, tierFor, weightedScore, type NetworkEnv, type NetworkRow, type Scores } from "./network";
 import type { ClaudeEnv } from "./claude";
 
 export interface ResearchEnv extends NetworkEnv, ClaudeEnv {}
@@ -134,6 +134,7 @@ export async function scoreChanged(env: ResearchEnv, limit = 6) {
            type = COALESCE(type, ?8), plan_json = ?9, research_key = ?10, scored_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
          WHERE person_id = ?1`,
       ).bind(row.person_id, JSON.stringify(scores), score, tier, JSON.stringify(a.screening), qualified, community, a.type, planJson, key).run();
+      if (row.status === "active" && tier !== row.tier) await logChange(env, row.person_id, row.full_name, row.tier, tier, "tier", "research");
     } catch (e) { errors.push(`${row.full_name}: ${String((e as Error).message ?? e).slice(0, 200)}`); }
   }
   if (errors.length) console.log(JSON.stringify({ level: "warn", job: "scoreChanged", errors }));

@@ -6,6 +6,8 @@ import { AuthError, signedInEmail, type AuthEnv } from "./auth";
 import { buildPosts, buildShortVideo, weekOf, type ContentEnv } from "./content";
 import { addToNetwork, followCandidate, InputError, networkView, passCandidate, removeMember, settings, STAGE_LABELS, updateMember, type NetworkEnv } from "./network";
 import { addIdea, draftComment, ideasView, logEngagement, suggestIdeas, todayView, updateIdea } from "./engage";
+import { saveUpload } from "./linkedin";
+import { reviewView, saveReviewNotes } from "./measure";
 import { requestDue, researchFor, researchNow, researchSettings, scoreChanged, takeDiscoveries } from "./research";
 import { PAGE } from "./page";
 
@@ -92,6 +94,20 @@ async function route(req: Request, env: ApiEnv): Promise<Response> {
   }
   if (req.method === "POST" && url.pathname === "/api/ideas/suggest") return input(async () => suggestIdeas(env, todayET(), who));
   if (req.method === "POST" && parts[0] === "api" && parts[1] === "ideas" && parts[2] && !parts[3]) return input(async () => updateIdea(env, parts[2], await body()));
+  // Measurement (KADE docs/influence-measurement.md): the weekly LinkedIn upload and the Review tab.
+  if (req.method === "GET" && url.pathname === "/api/review") return json(await reviewView(env, url.searchParams.get("month") ?? undefined));
+  if (req.method === "POST" && url.pathname === "/api/review/notes") {
+    return input(async () => { const b = await body(); return saveReviewNotes(env, String(b.month ?? ""), String(b.notes ?? "")); });
+  }
+  if (req.method === "POST" && url.pathname === "/api/linkedin/upload") {
+    return input(async () => {
+      const form = await req.formData().catch(() => { throw new InputError("Upload the .xlsx file as a form"); });
+      const file = form.get("file");
+      if (!file || typeof file === "string") throw new InputError("Choose LinkedIn's .xlsx export to upload");
+      const n = (k: string) => { const v = form.get(k); const x = typeof v === "string" && v.trim() ? Number(v) : null; return x != null && Number.isFinite(x) && x >= 0 ? Math.round(x) : null; };
+      return saveUpload(env, (file as File).name, await (file as File).arrayBuffer(), { profileViews: n("profile_views"), searchAppearances: n("search_appearances") }, who);
+    });
+  }
   // The hourly and daily research steps, run now (the same steps the cron runs).
   if (req.method === "POST" && url.pathname === "/api/research/run") {
     const requested = await requestDue(env);
@@ -101,7 +117,7 @@ async function route(req: Request, env: ApiEnv): Promise<Response> {
   }
   if (req.method === "POST" && url.pathname === "/api/network") return input(async () => addToNetwork(env, (await body()) as Record<string, string>, who));
   if (req.method === "POST" && parts[0] === "api" && parts[1] === "network" && parts[2] && !parts[3]) return input(async () => updateMember(env, parts[2], await body(), who));
-  if (req.method === "POST" && parts[0] === "api" && parts[1] === "network" && parts[2] && parts[3] === "remove") { await removeMember(env, parts[2]); return json({ ok: true }); }
+  if (req.method === "POST" && parts[0] === "api" && parts[1] === "network" && parts[2] && parts[3] === "remove") { await removeMember(env, parts[2], who); return json({ ok: true }); }
   if (req.method === "GET" && url.pathname === "/api/posts") return json({ today: todayET(), posts: await posts(env) });
   if (req.method === "POST" && url.pathname === "/api/posts/build") {
     const today = todayET();

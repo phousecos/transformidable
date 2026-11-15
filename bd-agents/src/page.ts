@@ -210,7 +210,6 @@ form.stats .wide { grid-column:1 / -1; }
       <div class="side">
         <section class="panel"><h2 style="font-size:16px">In motion</h2><div id="wkmotion"></div></section>
         <section class="panel"><h2 style="font-size:16px">Events</h2><div id="wkevents"></div></section>
-        <section class="panel"><h2 style="font-size:16px">Posts this week</h2><div id="wkposts"></div></section>
         <section class="panel"><h2 style="font-size:16px">Last week</h2><div id="wkresults"></div></section>
       </div>
     </div>
@@ -225,18 +224,6 @@ form.stats .wide { grid-column:1 / -1; }
       <section class="main panel"><h2 style="font-size:16px">Prospects by week</h2><div class="scroll" id="weektable"></div></section>
       <div class="side">
         <section class="panel"><h2 style="font-size:16px">By service track, 8 weeks</h2><div id="tracks"></div></section>
-        <section class="panel">
-          <div><h2 style="font-size:16px">LinkedIn numbers</h2><p class="muted small" id="statslast">From LinkedIn's analytics, once a week.</p></div>
-          <form class="stats" id="statsform">
-            <label class="wide">Week of <select name="week" id="statsweek"></select></label>
-            <label>Followers, you <input name="followers_profile" type="number" min="0"></label>
-            <label>Followers, page <input name="followers_page" type="number" min="0"></label>
-            <label>Impressions, you <input name="impressions_profile" type="number" min="0"></label>
-            <label>Impressions, page <input name="impressions_page" type="number" min="0"></label>
-            <label>Profile views <input name="profile_views" type="number" min="0"></label>
-            <div style="display:flex;align-items:flex-end"><button class="btn primary" style="width:100%">Save</button></div>
-          </form>
-        </section>
       </div>
     </div>
     <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:8px;margin-top:12px;border-top:1px solid var(--soft);padding-top:20px">
@@ -263,9 +250,8 @@ var VISUALS = { quote_graphic: "Quote graphic", carousel: "Carousel", short_vide
 function postKind(p) { return p.item_type === "short_video" ? "Short video" : p.channel === "page" ? "Company page" : "Your profile"; }
 var DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 var MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-var STATS = [["followers_profile", "Followers, you"], ["followers_page", "Followers, page"], ["impressions_profile", "Impressions, you"], ["impressions_page", "Impressions, page"], ["profile_views", "Profile views"]];
 var ROWS = [["connect_sent", "Invites sent"], ["connect_accepted", "Accepted"], ["rate", "Accept rate"], ["message_sent", "Messages"], ["comment", "Comments"],
-  ["reply", "Replies"], ["meeting_booked", "Meetings booked"], ["pursuits_opened", "Pursuits opened"], ["posts", "Posts published"]];
+  ["reply", "Replies"], ["meeting_booked", "Meetings booked"], ["pursuits_opened", "Pursuits opened"]];
 var state = { today: null, posts: [], picked: null, showAllPending: false, results: null, week: null };
 
 function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
@@ -622,7 +608,7 @@ function mondays(n) {
   return out;
 }
 function pct(a, b) { return b ? Math.round(100 * a / b) + "%" : "–"; }
-// ---- This week (KADE's weekly plan, plus this week's posts and the LinkedIn numbers) ----
+// ---- This week (KADE's weekly plan; posts and LinkedIn numbers are Influence's) ----
 function loadWeek() {
   return fetch("/api/week").then(function (r) { return r.json(); }).then(function (d) { state.week = d; renderWeek(); })
     .catch(function (e) { document.getElementById("wkdecide").textContent = "Could not load the plan: " + e.message; });
@@ -630,12 +616,7 @@ function loadWeek() {
 function line(parent, text, cls) { return add(parent, el("p", cls || "", text)); }
 function renderWeek() {
   var d = state.week, p = d.plan;
-  ["wkdecide", "wksuggest", "wkmarket", "wkmotion", "wkposts", "wkresults", "wkevents"].forEach(function (id) { document.getElementById(id).textContent = ""; });
-  var posts = document.getElementById("wkposts");
-  if (!d.posts.length) line(posts, "No posts scheduled this week.", "empty");
-  d.posts.forEach(function (x) {
-    add(posts, add(el("p", "small"), el("b", "", nice(x.due_date) + " "), document.createTextNode(postKind(x) + ": " + (x.title || "Post") + " "), el("span", "muted", "(" + x.status + ")")));
-  });
+  ["wkdecide", "wksuggest", "wkmarket", "wkmotion", "wkresults", "wkevents"].forEach(function (id) { document.getElementById(id).textContent = ""; });
   var ev = document.getElementById("wkevents"), e = d.events;
   if (!e || e.error) line(ev, e && e.error ? "Signals' events are not available." : "No events yet.", "empty");
   else {
@@ -685,8 +666,6 @@ function renderWeek() {
   [["connect_sent", "Invites sent"], ["connect_accepted", "Accepted"], ["message_sent", "Messages and emails"], ["reply", "Replies"], ["meeting_booked", "Meetings"]].forEach(function (k) {
     line(res, k[1] + ": " + (lw[k[0]] || 0) + " (week before: " + (wb[k[0]] || 0) + ")", "small");
   });
-  var mon = mondays(2)[1];
-  line(res, d.linkedinLastEntered && d.linkedinLastEntered >= mon ? "LinkedIn numbers entered for the week of " + nice(d.linkedinLastEntered) + "." : "LinkedIn numbers for last week aren't entered yet (Results tab).", "small muted");
 }
 
 function loadResults() {
@@ -698,15 +677,12 @@ function renderResults() {
   var kadeOk = d.kade && !d.kade.error;
   var byWeek = {};
   if (kadeOk) d.kade.weeks.forEach(function (w) { byWeek[w.week] = w; });
-  var posts = {}; d.posts.forEach(function (p) { posts[p.week] = (posts[p.week] || 0) + p.n; });
   function val(w, key) {
-    if (key === "posts") return posts[w] || 0;
     var x = byWeek[w] || {};
     if (key === "rate") return pct(x.connect_accepted || 0, x.connect_sent || 0);
     return x[key] || 0;
   }
   function sum(key) {
-    if (key === "posts") return d.posts.reduce(function (s, p) { return s + p.n; }, 0);
     if (!kadeOk) return 0;
     if (key === "rate") return pct(sum("connect_accepted"), sum("connect_sent"));
     return d.kade.weeks.reduce(function (s, w) { return s + (w[key] || 0); }, 0);
@@ -719,7 +695,7 @@ function renderResults() {
     add(tiles, add(el("div", "tile"), el("span", "muted small", t[1]), el("span", "big", String(val(weeks[0], t[0]))), el("span", "muted small", t[2]())));
   });
   var box = document.getElementById("weektable"); box.textContent = "";
-  if (!kadeOk) box.appendChild(el("p", "empty", "Signals results not available" + (d.kade && d.kade.error ? ": " + d.kade.error : "") + ". Posts and LinkedIn numbers are shown."));
+  if (!kadeOk) box.appendChild(el("p", "empty", "Signals results not available" + (d.kade && d.kade.error ? ": " + d.kade.error : "") + "."));
   var table = el("table"), thead = el("thead"), hr = el("tr");
   hr.appendChild(el("th", "", ""));
   weeks.forEach(function (w) { var th = el("th", "", nice(w)); th.scope = "col"; hr.appendChild(th); });
@@ -727,21 +703,13 @@ function renderResults() {
   thead.appendChild(hr); table.appendChild(thead);
   var tb = el("tbody");
   ROWS.forEach(function (r) {
-    if (!kadeOk && r[0] !== "posts") return;
+    if (!kadeOk) return;
     var tr = el("tr"), th = el("th", "", r[1]); th.scope = "row"; th.style.fontWeight = "500"; tr.appendChild(th);
     weeks.forEach(function (w) { tr.appendChild(el("td", "", String(val(w, r[0])))); });
     tr.appendChild(el("td", "total", String(sum(r[0]))));
     tb.appendChild(tr);
   });
-  var stats = {}; d.linkedin.forEach(function (x) { (stats[x.week] = stats[x.week] || {})[x.metric] = x.value; });
-  STATS.forEach(function (r) {
-    var tr = el("tr"), th = el("th", "", r[1]); th.scope = "row"; th.style.fontWeight = "500"; tr.appendChild(th);
-    weeks.forEach(function (w) { var v = (stats[w] || {})[r[0]]; tr.appendChild(el("td", "", v == null ? "–" : Number(v).toLocaleString())); });
-    tr.appendChild(el("td", "", "")); tb.appendChild(tr);
-  });
   table.appendChild(tb); box.appendChild(table);
-  var entered = Object.keys(stats).sort().pop();
-  document.getElementById("statslast").textContent = "From LinkedIn's analytics, once a week." + (entered ? " Last entered: week of " + nice(entered) + "." : "");
   var tr = document.getElementById("tracks"); tr.textContent = "";
   var tracks = kadeOk ? d.kade.tracks : [];
   if (!tracks.length) tr.appendChild(el("p", "empty", "No invitations in the last 8 weeks yet."));
@@ -808,15 +776,6 @@ function renderPartnerResults() {
     types.appendChild(it);
   });
 }
-(function setupStats() {
-  var sel = document.getElementById("statsweek");
-  mondays(5).slice(1).forEach(function (w, i) { var o = el("option", "", "Week of " + nice(w)); o.value = w; if (i === 0) o.selected = true; sel.appendChild(o); });
-  document.getElementById("statsform").onsubmit = function (e) {
-    e.preventDefault();
-    var body = {}; new FormData(e.target).forEach(function (v, k) { body[k] = v; });
-    post("/api/results/linkedin", body).then(function () { toast("Saved."); e.target.reset(); sel.value = body.week; return loadResults(); }).catch(function (err) { toast(err.message); });
-  };
-})();
 
 // ---- Load ----
 function load() {

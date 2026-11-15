@@ -104,6 +104,12 @@ export async function networkView(env: NetworkEnv) {
 
 export class InputError extends Error {}
 
+/** Tier changes, joins and removals, for the monthly review (KADE docs/influence-measurement.md). */
+export function logChange(env: NetworkEnv, personId: string, fullName: string, fromTier: number | null, toTier: number | null, change: "tier" | "joined" | "removed", by: string | null) {
+  return env.DB.prepare("INSERT INTO tier_changes (person_id, full_name, from_tier, to_tier, change, by) VALUES (?1, ?2, ?3, ?4, ?5, ?6)")
+    .bind(personId, fullName, fromTier, toTier, change, by).run().catch((e) => console.log(JSON.stringify({ level: "warn", job: "logChange", error: String(e) })));
+}
+
 export async function addToNetwork(env: NetworkEnv, input: { linkedinUrl?: string; name?: string; affiliation?: string; community?: string; type?: string; notes?: string }, by: string, source: "manual" | "network_list" = "manual") {
   if (!input.linkedinUrl || !input.name) throw new InputError("Name and LinkedIn profile address are required");
   let p: { personId: string; created: boolean };
@@ -118,6 +124,7 @@ export async function addToNetwork(env: NetworkEnv, input: { linkedinUrl?: strin
      ON CONFLICT (person_id) DO UPDATE SET status = 'active', updated_at = CURRENT_TIMESTAMP WHERE network.status = 'removed'`,
   ).bind(p.personId, input.name.trim(), input.linkedinUrl.trim(), input.affiliation?.trim() || null, community, JSON.stringify(community ? [community] : []), type,
     input.notes?.trim() || null, source, by).run();
+  await logChange(env, p.personId, input.name.trim(), null, null, "joined", by);
   // Their public work is researched straight away (Signals queues it; KADE docs/influence-research.md).
   await requestResearch(env, { footprint: [{ personId: p.personId, affiliation: input.affiliation?.trim() || null }] }).catch((e) => console.log(JSON.stringify({ level: "warn", job: "requestResearch", error: String(e) })));
   return { personId: p.personId, createdInSignals: p.created };
@@ -158,11 +165,15 @@ export async function updateMember(env: NetworkEnv, personId: string, b: Record<
   const keys = Object.keys(set);
   await env.DB.prepare(`UPDATE network SET ${keys.map((k, i) => `${k} = ?${i + 2}`).join(", ")}, updated_at = CURRENT_TIMESTAMP WHERE person_id = ?1`)
     .bind(personId, ...keys.map((k) => set[k] ?? null)).run();
+  if ("tier" in set && (set.tier ?? null) !== row.tier && row.status === "active") await logChange(env, personId, row.full_name, row.tier, (set.tier as number | null) ?? null, "tier", by);
   return { ok: true, score, tier: set.tier ?? row.tier };
 }
 
-export const removeMember = (env: NetworkEnv, personId: string) =>
-  env.DB.prepare("UPDATE network SET status = 'removed', updated_at = CURRENT_TIMESTAMP WHERE person_id = ?1").bind(personId).run();
+export async function removeMember(env: NetworkEnv, personId: string, by: string | null = null) {
+  const row = await env.DB.prepare("SELECT full_name, tier, status FROM network WHERE person_id = ?1").bind(personId).first<{ full_name: string; tier: number | null; status: string }>();
+  await env.DB.prepare("UPDATE network SET status = 'removed', updated_at = CURRENT_TIMESTAMP WHERE person_id = ?1").bind(personId).run();
+  if (row?.status === "active") await logChange(env, personId, row.full_name, row.tier, null, "removed", by);
+}
 
 /**
  * She follows a suggested candidate: they join the network. Discovery may not have found their LinkedIn profile, so she
@@ -189,6 +200,8 @@ export async function followCandidate(env: NetworkEnv, personId: string, linkedi
   }
   await env.DB.prepare("UPDATE network SET status = 'active', linkedin_url = ?2, added_by = ?3, added_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE person_id = ?1")
     .bind(id, url, by).run();
+  const joined = await env.DB.prepare("SELECT full_name, tier FROM network WHERE person_id = ?1").bind(id).first<{ full_name: string; tier: number | null }>();
+  if (joined) await logChange(env, id, joined.full_name, null, joined.tier, "joined", by);
   return { personId: id, merged: false };
 }
 
