@@ -35,7 +35,8 @@ const APPROACH_LABELS: Record<string, string> = { research_extension: "research 
 
 export const RECURRING_OR_MORE = ["recurring", "connected", "dialogue", "collaboration", "active"];
 
-interface Week { week: string; impressions: number | null; engagements: number | null; newFollowers: number | null; days: number; comments: number; people: number; responses: number; connections: number; ideas: number; posts: number }
+interface Week { week: string; impressions: number | null; engagements: number | null; newFollowers: number | null; days: number;
+  pageImpressions: number | null; pageEngagements: number | null; pageDays: number; comments: number; people: number; responses: number; connections: number; ideas: number; posts: number }
 
 async function allIds(env: NetworkEnv) {
   return (await env.DB.prepare("SELECT person_id, full_name, community, tier, status FROM network").all<{ person_id: string; full_name: string; community: string | null; tier: number | null; status: string }>()).results;
@@ -44,20 +45,23 @@ async function allIds(env: NetworkEnv) {
 /** Weeks (Monday to Sunday) from `from` through the week of `to`, each with every measure. */
 export async function weeks(env: NetworkEnv, from: string, to: string, log: Engagement[]): Promise<Week[]> {
   const [daily, ideas, posts] = await Promise.all([
-    env.DB.prepare("SELECT day, impressions, engagements, new_followers FROM li_daily WHERE account = 'profile' AND day >= ?1 AND day <= ?2").bind(from, addDays(to, 6))
-      .all<{ day: string; impressions: number | null; engagements: number | null; new_followers: number | null }>(),
+    env.DB.prepare("SELECT account, day, impressions, engagements, new_followers FROM li_daily WHERE day >= ?1 AND day <= ?2").bind(from, addDays(to, 6))
+      .all<{ account: string; day: string; impressions: number | null; engagements: number | null; new_followers: number | null }>(),
     env.DB.prepare("SELECT substr(created_at, 1, 10) AS day FROM ideas WHERE status <> 'dropped' AND created_at >= ?1").bind(from).all<{ day: string }>(),
     env.DB.prepare("SELECT substr(sent_at, 1, 10) AS day FROM review_queue WHERE status = 'sent' AND item_type IN ('post_page', 'post_profile', 'short_video') AND sent_at >= ?1").bind(from).all<{ day: string }>(),
   ]);
   const out: Week[] = [];
   for (let w = mondayOf(from); w <= mondayOf(to); w = addDays(w, 7)) {
     const end = addDays(w, 6), inWeek = (d: string) => d >= w && d <= end;
-    const ds = daily.results.filter((d) => inWeek(d.day));
-    const sum = (k: "impressions" | "engagements" | "new_followers") => (ds.some((d) => d[k] != null) ? ds.reduce((n, d) => n + (d[k] ?? 0), 0) : null);
+    const ds = daily.results.filter((d) => d.account === "profile" && inWeek(d.day));
+    const pg = daily.results.filter((d) => d.account === "page" && inWeek(d.day));
+    const total = (rows: typeof ds, k: "impressions" | "engagements" | "new_followers") => (rows.some((d) => d[k] != null) ? rows.reduce((n, d) => n + (d[k] ?? 0), 0) : null);
+    const sum = (k: "impressions" | "engagements" | "new_followers") => total(ds, k);
     const lw = log.filter((x) => inWeek(x.occurred_at.slice(0, 10)));
     const comments = lw.filter((x) => x.kind === "comment");
     out.push({
       week: w, impressions: sum("impressions"), engagements: sum("engagements"), newFollowers: sum("new_followers"), days: ds.length,
+      pageImpressions: total(pg, "impressions"), pageEngagements: total(pg, "engagements"), pageDays: pg.length,
       comments: comments.length, people: new Set(comments.map((c) => c.person_id)).size, responses: lw.filter((x) => x.kind === "reply").length,
       connections: lw.filter((x) => x.kind === "connect_accepted").length,
       ideas: ideas.results.filter((x) => inWeek(x.day)).length, posts: posts.results.filter((x) => inWeek(x.day)).length,
@@ -75,7 +79,10 @@ export function baseline(all: Week[], s: MeasureSettings) {
   const use = before.length >= s.baselineWeeks ? before : after.length >= s.baselineWeeks ? after : [];
   if (!use.length) return null;
   const avg = (k: keyof Week) => Math.round((use.reduce((n, w) => n + Number(w[k] ?? 0), 0) / use.length) * 10) / 10;
-  return { weeks: use.map((w) => w.week), from: before === use ? "before the start" : "the first weeks", impressions: avg("impressions"), engagements: avg("engagements"), newFollowers: avg("newFollowers"), comments: avg("comments") };
+  const pageWeeks = all.filter((w) => use.some((u) => u.week === w.week) && w.pageDays >= 5);
+  const pageAvg = (k: "pageImpressions" | "pageEngagements") => (pageWeeks.length ? Math.round((pageWeeks.reduce((n, w) => n + Number(w[k] ?? 0), 0) / pageWeeks.length) * 10) / 10 : null);
+  return { weeks: use.map((w) => w.week), from: before === use ? "before the start" : "the first weeks", impressions: avg("impressions"), engagements: avg("engagements"), newFollowers: avg("newFollowers"), comments: avg("comments"),
+    pageImpressions: pageAvg("pageImpressions"), pageEngagements: pageAvg("pageEngagements") };
 }
 
 /** The Review tab: latest numbers, baseline, weekly trends, the 90-day pilot and the month's review. */
@@ -89,7 +96,7 @@ export async function reviewView(env: NetworkEnv, month?: string) {
   const log = people.length ? await engagementLog(env, people.map((p) => p.person_id), sinceAll) : [];
   const ws = await weeks(env, from, today, log);
   const [lastUpload, followers, view, researched, ideasSince] = await Promise.all([
-    env.DB.prepare("SELECT period_start, period_end, uploaded_at, profile_views, search_appearances, file_name FROM li_uploads ORDER BY uploaded_at DESC LIMIT 1").first<Record<string, unknown>>(),
+    env.DB.prepare("SELECT account, period_start, period_end, uploaded_at, profile_views, search_appearances, file_name FROM li_uploads ORDER BY uploaded_at DESC LIMIT 20").all<Record<string, unknown>>(),
     env.DB.prepare("SELECT day, total FROM li_followers WHERE account = 'profile' ORDER BY day DESC LIMIT 2").all<{ day: string; total: number }>(),
     networkView(env),
     env.DB.prepare("SELECT COUNT(*) AS n FROM network WHERE scored_at IS NOT NULL").first<{ n: number }>(),
@@ -112,7 +119,7 @@ export async function reviewView(env: NetworkEnv, month?: string) {
   };
   const m = month && /^\d{4}-\d{2}$/.test(month) ? month : previousMonth(today);
   return {
-    today, lastUpload, followers: followers.results[0] ?? null, baseline: baseline(ws, s), weeks: ws.slice(-8).reverse(), pilot,
+    today, lastUpload: lastUpload.results.find((u) => u.account === "profile") ?? null, lastPageUpload: lastUpload.results.find((u) => u.account === "page") ?? null, followers: followers.results[0] ?? null, baseline: baseline(ws, s), weeks: ws.slice(-8).reverse(), pilot,
     review: await monthReview(env, m, log, people, view), reminderHourNY: s.reminderHourNY,
   };
 }
@@ -149,8 +156,11 @@ export async function monthReview(env: NetworkEnv, month: string, log: Engagemen
       .all<{ title: string; post_title: string; due_date: string }>(),
     env.DB.prepare("SELECT full_name, from_tier, to_tier, change, by, at FROM tier_changes WHERE at >= ?1 AND at < ?2 ORDER BY at").bind(a, b)
       .all<{ full_name: string; from_tier: number | null; to_tier: number | null; change: string; by: string | null; at: string }>(),
-    env.DB.prepare("SELECT SUM(impressions) AS impressions, SUM(engagements) AS engagements, SUM(new_followers) AS new_followers, COUNT(*) AS days FROM li_daily WHERE account = 'profile' AND day >= ?1 AND day < ?2").bind(a, b)
-      .first<{ impressions: number | null; engagements: number | null; new_followers: number | null; days: number }>(),
+    env.DB.prepare(`SELECT SUM(CASE WHEN account = 'profile' THEN impressions END) AS impressions, SUM(CASE WHEN account = 'profile' THEN engagements END) AS engagements,
+         SUM(CASE WHEN account = 'profile' THEN new_followers END) AS new_followers, SUM(account = 'profile') AS days,
+         SUM(CASE WHEN account = 'page' THEN impressions END) AS page_impressions, SUM(CASE WHEN account = 'page' THEN engagements END) AS page_engagements, SUM(account = 'page') AS page_days
+       FROM li_daily WHERE day >= ?1 AND day < ?2`).bind(a, b)
+      .first<{ impressions: number | null; engagements: number | null; new_followers: number | null; days: number; page_impressions: number | null; page_engagements: number | null; page_days: number }>(),
     env.DB.prepare("SELECT category, value, pct FROM li_demographics WHERE account = 'profile' AND category IN ('Seniority', 'Industry', 'Job title') ORDER BY category, pct DESC").all<{ category: string; value: string; pct: number | null }>(),
     env.DB.prepare("SELECT notes FROM reviews WHERE month = ?1").bind(month).first<{ notes: string | null }>(),
   ]);
@@ -185,10 +195,11 @@ export async function remindUpload(env: NetworkEnv & { SITE_URL?: string }, now 
   const up = await env.DB.prepare("SELECT 1 FROM li_uploads WHERE uploaded_at >= ?1").bind(monday).first();
   if (!up) {
     await notifyOwner(env, "Influence: upload this week's LinkedIn analytics", [
-      "It's Friday: time to upload this week's LinkedIn analytics export.",
+      "It's Friday: time to upload this week's LinkedIn analytics.",
       "",
-      "1. On LinkedIn, open your profile's Analytics, set the range to the past 28 days, and click Export.",
-      "2. In Influence, open Review and upload the .xlsx file.",
+      "1. Your profile: open your profile's Analytics, set the past 28 days, and click Export (an .xlsx file).",
+      "2. The company page: open the page as admin, Analytics, Content, set the past 28 days, and click Export (an .xls file).",
+      "3. In Influence, open Review and upload each file.",
       "",
       "https://influence.kadeanalytics.com/#review",
     ].join("\n"));
@@ -211,7 +222,8 @@ export async function monthlyEmail(env: NetworkEnv, now = new Date()) {
   const body = [
     `Your Influence review for ${month}.`,
     "",
-    `LinkedIn: ${n(r.linkedin?.impressions)} impressions, ${n(r.linkedin?.engagements)} engagements, ${n(r.linkedin?.new_followers)} new followers (${r.linkedin?.days ?? 0} days uploaded).`,
+    `LinkedIn, your profile: ${n(r.linkedin?.impressions)} impressions, ${n(r.linkedin?.engagements)} engagements, ${n(r.linkedin?.new_followers)} new followers (${r.linkedin?.days ?? 0} days uploaded).`,
+    `LinkedIn, the company page: ${n(r.linkedin?.page_impressions)} impressions, ${n(r.linkedin?.page_engagements)} engagements (${r.linkedin?.page_days ?? 0} days uploaded).`,
     `Comments: ${r.topics.length}. Author responses: ${r.discussions.reduce((s, d) => s + d.replies, 0)}.`,
     r.discussions.length ? `Most discussion: ${r.discussions.slice(0, 3).map((d) => `${d.name} (${d.replies} responses, ${d.comments} comments)`).join("; ")}.` : null,
     r.byApproach.length ? `Comment approaches (responses of comments): ${r.byApproach.map((a) => `${APPROACH_LABELS[a.key] ?? a.key} ${a.responded} of ${a.comments}`).join("; ")}.` : null,
