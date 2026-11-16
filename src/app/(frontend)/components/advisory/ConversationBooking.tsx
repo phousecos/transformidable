@@ -8,6 +8,13 @@ import { INBOUND_KEYS, captureInbound } from "./inbound";
 // plain CSS selector for its container).
 const idp = "av";
 
+// Cal.com caps the booking's notes field at 1,000 characters. The problem
+// box and the short fields are sized so a full form fits; the campaign tags
+// go last, so if anything is cut it is a tag (also sent as metadata).
+const NOTES_MAX = 1000;
+const PROBLEM_MAX = 600;
+const SHORT_MAX = 100;
+
 const AREAS = ["M&A", "Troubled program", "IT controls", "AI", "Something else"];
 
 const EMBED_SCRIPT = "https://app.cal.com/embed/embed.js";
@@ -54,7 +61,10 @@ function bookingConfig(fields, inbound) {
     fields.area && `Area: ${fields.area}`,
     ...INBOUND_KEYS.filter((k) => inbound[k]).map((k) => `${k}: ${inbound[k]}`),
   ].filter(Boolean);
-  const notes = [`What's the governance problem?\n${fields.problem.trim()}`, details.join("\n")].filter(Boolean).join("\n\n");
+  const notes = [`What's the governance problem?\n${fields.problem.trim()}`, details.join("\n")]
+    .filter(Boolean)
+    .join("\n\n")
+    .slice(0, NOTES_MAX);
   const config: Record<string, string> = { name: fields.name.trim(), notes };
   for (const k of INBOUND_KEYS) {
     if (!inbound[k]) continue;
@@ -123,11 +133,11 @@ export function ConversationBooking() {
             </div>
             <div>
               <label className="case-form-label" htmlFor={`${idp}-org`}>Organization <span className="case-form-optional">(optional)</span></label>
-              <input id={`${idp}-org`} className="case-form-input" type="text" autoComplete="organization" value={fields.organization} onChange={set("organization")} />
+              <input id={`${idp}-org`} className="case-form-input" type="text" autoComplete="organization" maxLength={SHORT_MAX} value={fields.organization} onChange={set("organization")} />
             </div>
             <div>
               <label className="case-form-label" htmlFor={`${idp}-role`}>Role <span className="case-form-optional">(optional)</span></label>
-              <input id={`${idp}-role`} className="case-form-input" type="text" autoComplete="organization-title" value={fields.role} onChange={set("role")} />
+              <input id={`${idp}-role`} className="case-form-input" type="text" autoComplete="organization-title" maxLength={SHORT_MAX} value={fields.role} onChange={set("role")} />
             </div>
             <div>
               <label className="case-form-label" htmlFor={`${idp}-area`}>Area <span className="case-form-optional">(optional)</span></label>
@@ -138,8 +148,10 @@ export function ConversationBooking() {
             </div>
           </div>
 
-          <label className="case-form-label" htmlFor={`${idp}-problem`}>What&rsquo;s the governance problem?</label>
-          <textarea id={`${idp}-problem`} className="case-form-textarea" rows={5} required aria-required="true" maxLength={2000} value={fields.problem} onChange={set("problem")} {...invalid("problem")} />
+          <label className="case-form-label" htmlFor={`${idp}-problem`}>
+            What&rsquo;s the governance problem? <span className="case-form-optional">({PROBLEM_MAX - fields.problem.length} characters left)</span>
+          </label>
+          <textarea id={`${idp}-problem`} className="case-form-textarea" rows={5} required aria-required="true" maxLength={PROBLEM_MAX} value={fields.problem} onChange={set("problem")} {...invalid("problem")} />
 
           <div id={`${idp}-error`} role="alert" aria-live="assertive" className="case-form-msg">{error}</div>
 
