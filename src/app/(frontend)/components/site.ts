@@ -2,4 +2,4 @@
 
 // The Cal.com event the advisory conversation page books into.
 export const CAL_ORIGIN = "https://cal.com";
-export const CAL_LINK = "jerribland/j.-lynne-meeting-request";
+export const CAL_LINK = "transformidable/meeting";
