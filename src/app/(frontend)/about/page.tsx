@@ -2,7 +2,6 @@
 import Link from "next/link";
 import { ResearchShell } from "../components/research/ResearchShell";
 import { Sky } from "../components/research/Sky";
-import { ADVISORY_ENTITY } from "../components/site";
 import { pageMetadata } from "../../../lib/seo.ts";
 
 export const dynamic = "force-dynamic";
@@ -195,10 +194,9 @@ export default function AboutPage() {
 
           {/* Matches the footer disclosure and /independence. */}
           <section className="case-section" id="independence">
-            <h2 className="case-h">Independence and affiliation</h2>
+            <h2 className="case-h">Independence</h2>
             <div className="prose" style={{ marginTop: 0 }}>
               <p>
-                Advisory engagements are contracted through {ADVISORY_ENTITY}, an affiliate of Transformidable.
                 Transformidable research is conducted independently: it is never commissioned by advisory clients,
                 and we accept no compensation from technology vendors.
               </p>

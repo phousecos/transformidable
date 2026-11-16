@@ -1,7 +1,6 @@
 // @ts-nocheck
 import Link from "next/link";
 import { ResearchSubscribe } from "./ResearchNav";
-import { ADVISORY_ENTITY } from "../site";
 
 export function ResearchFooter() {
   return (
@@ -75,10 +74,9 @@ export function ResearchFooter() {
         <span>Set in Source Serif &amp; Archivo</span>
       </div>
 
-      {/* Contracting disclosure. Matches /independence. */}
+      {/* Independence note. Matches /independence. */}
       <div className="wrap">
         <p className="footer-affiliation">
-          Advisory engagements are contracted through {ADVISORY_ENTITY}, an affiliate of Transformidable.
           Transformidable research is conducted independently and is never commissioned by advisory clients.{" "}
           <Link href="/independence">Read our independence policy.</Link>
         </p>

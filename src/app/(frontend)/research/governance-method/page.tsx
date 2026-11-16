@@ -187,8 +187,8 @@ export default function GovernanceMethodPage() {
                 experiences for executives and governing bodies.
               </p>
               <p>
-                J. Lynne &amp; Co., an affiliated advisory practice, applies governance principles to
-                organizational assessments, transformation oversight, and advisory engagements.
+                <Link className="link" href="/advisory">Transformidable Advisory</Link> applies governance
+                principles to organizational assessments, transformation oversight, and advisory engagements.
               </p>
               <p>Insights from research and practice can inform the continued development of the method.</p>
             </div>
