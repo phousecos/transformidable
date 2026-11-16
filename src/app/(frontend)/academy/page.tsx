@@ -3,6 +3,10 @@
 // Payload (Academy Page, Courses), dates, seats and prices from the class
 // platform (lib/academy.ts). Rendered on every request, so a change in either
 // shows up without a deploy.
+//
+// Two kinds of offering, split by how they're bought: courses (open cohorts,
+// per seat, Register) and, under "For your board or council", workshops
+// offered only as a private session (no price shown, Request a session).
 import {
   AcademyHero,
   AcademyShell,
@@ -17,12 +21,13 @@ import {
   Instructors,
   JsonLd,
   NextSessionStrip,
+  PublicNote,
   SessionsTable,
   TakeawaySection,
   TwoWays,
   WaitlistLine,
 } from "../components/academy/Academy";
-import { DEDICATED_HREF, INTEREST_HREF, fullName, getAcademyPage, getCatalog, registerHref } from "../../../lib/academy.ts";
+import { DEDICATED_HREF, INTEREST_HREF, fullName, getAcademyPage, getCatalog, isPerSeat, registerHref } from "../../../lib/academy.ts";
 import { SITE_URL, pageMetadata } from "../../../lib/seo.ts";
 
 export const dynamic = "force-dynamic";
@@ -39,6 +44,9 @@ export async function generateMetadata() {
 
 export default async function AcademyPage({ searchParams }) {
   const [{ topic = "" } = {}, page, { catalog }] = await Promise.all([searchParams, getAcademyPage(), getCatalog()]);
+  // Courses: anything with open cohorts. Workshops: private sessions only.
+  const courses = catalog.filter(isPerSeat);
+  const workshops = catalog.filter((c) => !isPerSeat(c));
   const next = catalog.find((c) => c.next && !c.next.full) || null;
   const founding = catalog.find((c) => c.next && c.next.priceCents < c.next.regularPriceCents) || next;
 
@@ -79,18 +87,18 @@ export default async function AcademyPage({ searchParams }) {
       />
 
       <AcademyHero eyebrow={page.heroEyebrow} headline={page.heroHeadline} accent={page.heroAccent} subhead={page.heroSubhead}>
-        <ButtonRow primary={{ label: page.heroPrimary, href: "#sessions" }} secondary={{ label: page.heroSecondary, href: DEDICATED_HREF }} />
+        <ButtonRow primary={{ label: page.heroPrimary, href: "#sessions" }} secondary={{ label: page.heroSecondary, href: workshops.length ? "#for-your-board" : DEDICATED_HREF }} />
         <NextSessionStrip course={next} foundingLabel={page.foundingLabel} />
       </AcademyHero>
 
       <FoundingBand page={page} href={founding?.next ? registerHref(founding.series, founding.next) : "#sessions"} />
 
-      {catalog.length > 0 && (
+      {courses.length > 0 && (
         <section className="aa-band" id="courses" aria-labelledby="aa-courses-h">
           <div className="wrap">
             {page.coursesEyebrow && <p className="aa-eyebrow">{page.coursesEyebrow}</p>}
             <Headline id="aa-courses-h" text={page.coursesHeadline} accent={page.coursesAccent} />
-            <CourseCards catalog={catalog} />
+            <CourseCards catalog={courses} />
             {(page.coursesNote || page.coursesNoteLink) && (
               <p className="aa-under">
                 <Em>{page.coursesNote}</Em>{" "}
@@ -109,6 +117,23 @@ export default async function AcademyPage({ searchParams }) {
           <WaitlistLine page={page} />
         </div>
       </section>
+
+      {workshops.length > 0 && (
+        <section className="aa-band" id="for-your-board" aria-labelledby="aa-workshops-h">
+          <div className="wrap">
+            <p className="aa-eyebrow">{page.workshopsEyebrow || "For your board or council"}</p>
+            <Headline
+              id="aa-workshops-h"
+              text={page.workshopsHeadline || "Workshops built around"}
+              accent={page.workshopsAccent || "the decisions in front of your body."}
+            />
+            {page.workshopsIntro && <p className="aa-intro"><Em>{page.workshopsIntro}</Em></p>}
+            <CourseCards catalog={workshops} />
+            <ButtonRow primary={{ label: page.workshopsButton || "Request a session", href: DEDICATED_HREF }} />
+            <PublicNote page={page} />
+          </div>
+        </section>
+      )}
 
       <HowTiles page={page} />
       <TakeawaySection page={page} courses={catalog} />

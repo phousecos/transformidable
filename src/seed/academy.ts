@@ -25,7 +25,7 @@ const TA101_QA = {
 }
 const TA101_OLD_NEXT_ANSWER = 'Governing AI Adoption, a 4-hour private workshop for your organization. Or see the other Academy courses.'
 const TA101_NEXT_ANSWER =
-  'TA-201 Governing AI Adoption, a four-hour live workshop in open cohorts or for your whole board. Your TA-101 fee is credited toward it.'
+  'TA-201 Governing AI Adoption, a four-hour live course in open cohorts or for your whole board. Your TA-101 fee is credited toward it.'
 
 const TA101 = {
   code: 'TA-101',
@@ -164,9 +164,12 @@ const APPLIED_PAGE = {
     'An applied program for leadership teams to define AI decision rights, accountability, escalation and oversight, and leave with an AI Governance Action Brief.',
 }
 
-// TA-201: the four-hour workshop, in open cohorts (online in one or two
+// TA-201: the four-hour course (it was called a workshop until Nov 15, 2026), in open cohorts (online in one or two
 // sessions, or in person; each date's format is set in the class platform) or
 // for one body. From the course page mockup of Nov 14, 2026.
+const TA201_NEXT_ANSWER =
+  'Bring your whole body to a workshop: AI for Your Governing Body, built around your own decisions, or the Governance Tabletop. Or talk with Transformidable Advisory about an engagement.'
+
 const WORKSHOP_PAGE = {
   code: 'TA-201',
   topicTag: 'AI',
@@ -184,21 +187,21 @@ const WORKSHOP_PAGE = {
   listed: true,
   sortOrder: 20,
 
-  eyebrow: 'Transformidable Academy · TA-201 · Live workshop',
+  eyebrow: 'Transformidable Academy · TA-201 · Live course',
   headline: 'Govern what you’ve',
   headlineAccent: 'adopted.',
   subhead:
-    'A four-hour live workshop for legislators, council members, commissioners, and board members. It turns AI awareness into the decision rights, evidence, and oversight your body needs before and after it approves AI.',
+    'A four-hour live course for legislators, council members, commissioners, and board members. It turns AI awareness into the decision rights, evidence, and oversight your body needs before and after it approves AI.',
   facts: list(['4 hours, live · one half day or two sessions', '16–20 officials · online or in person', 'TA-101 recommended, not required']),
 
-  cohortsHeadline: 'Same workshop, three ways to sit for it.',
+  cohortsHeadline: 'Same course, three ways to sit for it.',
   cohortsIntro:
     'Every cohort covers the full four hours. Pick the format that fits your calendar: one online half day, two shorter online sessions a week apart, or in person. Capped at 20. All times Eastern.',
 
   whyHeadline: 'The vote is where',
   whyAccent: 'governing AI starts.',
   whyBody:
-    'After approval, contracts renew, vendors add features, staff widen the use, and a pilot quietly becomes the default. Your body is still accountable for all of it. This workshop gives you the structure: who decides, what evidence you require, and when an issue comes back to you. You’ll practice it on realistic scenarios, not slides.',
+    'After approval, contracts renew, vendors add features, staff widen the use, and a pilot quietly becomes the default. Your body is still accountable for all of it. This course gives you the structure: who decides, what evidence you require, and when an issue comes back to you. You’ll practice it on realistic scenarios, not slides.',
 
   agendaEyebrow: 'Agenda',
   agendaHeadline: 'Four hours, six parts.',
@@ -229,7 +232,7 @@ const WORKSHOP_PAGE = {
     'Participant guide with scenarios, worksheets and glossary',
     'Certificate of completion',
   ]),
-  leaveWithNote: 'Took TA-101 in the last six months? Your fee is credited toward this workshop.',
+  leaveWithNote: 'Took TA-101 in the last six months? Your fee is credited toward this course.',
 
   whoFor:
     'Legislators and legislative staff leads, city and county council members, county commissioners, school board members, authority and commission appointees, and public-entity and nonprofit board members, plus the executives and CIOs who report to them. Best if you’ve taken TA-101 or already know the AI basics.',
@@ -251,7 +254,7 @@ const WORKSHOP_PAGE = {
     },
     {
       question: 'Do I need TA-101 first?',
-      answer: 'It’s recommended but not required. This workshop assumes you know what AI is and where it shows up. TA-101 covers both in 90 minutes.',
+      answer: 'It’s recommended but not required. This course assumes you know what AI is and where it shows up. TA-101 covers both in 90 minutes.',
     },
     {
       question: 'One session or two: which should I pick?',
@@ -265,16 +268,16 @@ const WORKSHOP_PAGE = {
     },
     {
       question: 'What comes next?',
-      answer: 'Building AI Governance in Practice, or a dedicated advisory engagement through Transformidable Advisory.',
+      answer: TA201_NEXT_ANSWER,
     },
   ],
 
   finalHeadline: 'You approved it.',
   finalAccent: 'Now govern it.',
   nextCourseLabel: 'New to AI? Start with',
-  seoTitle: 'TA-201 Governing AI Adoption: a live workshop for public officials | Transformidable Academy',
+  seoTitle: 'TA-201 Governing AI Adoption: a live course for public officials | Transformidable Academy',
   seoDescription:
-    'A four-hour live workshop, online or in person, for councils, commissions, legislatures and boards: AI decision rights, evidence before approval, escalation and oversight, and a 90-day governance plan.',
+    'A four-hour live course, online or in person, for councils, commissions, legislatures and boards: AI decision rights, evidence before approval, escalation and oversight, and a 90-day governance plan.',
 }
 
 const WORKSHOP = {
@@ -510,12 +513,277 @@ async function upgradeTA102(payload: Payload): Promise<void> {
   console.log('[seed:academy] Wrote TA-102 Know What You’re Siting.')
 }
 
+// ---------------------------------------------------------------------------
+// Courses and workshops (Nov 15, 2026). The Academy page now splits its
+// offerings by how they're bought: courses run in open cohorts, per seat
+// (TA-101, TA-102, TA-201); workshops are private sessions for one body,
+// scoped with the client and priced to the group (no price on the site).
+// The two workshops below replace Building AI Governance in Practice, which
+// is unlisted (its page stays reachable by link).
+
+const PRIVATE_WORKSHOP_TERMS = 'Priced to your group · we scope it with you and send a proposal'
+const PRIVATE_WORKSHOP_FORMAT = '4 hours · one half day or two 2-hour sessions · online or in person'
+const PUBLIC_MEETING_FAQ = {
+  question: 'Could it count as a public meeting?',
+  answer:
+    'Likely, if a quorum of your body attends. Many bodies hold it as a noticed work session or retreat. Check with your clerk or attorney; this is not legal advice.',
+}
+const WORKSHOP_PRICE_FAQ = {
+  question: 'What does it cost?',
+  answer: 'It depends on your group’s size, the format and what we tailor. We scope it with you and send a proposal.',
+}
+
+const AI_WORKSHOP = {
+  title: 'AI for Your Governing Body',
+  slug: 'ai-for-your-governing-body',
+  topicTag: 'AI',
+  level: 'workshop',
+  offerings: ['private'],
+  privateFormat: PRIVATE_WORKSHOP_FORMAT,
+  privateTerms: PRIVATE_WORKSHOP_TERMS,
+  oneLine: 'A four-hour workshop for one governing body, built around the AI decisions in front of it. Leave with a draft your body wrote together.',
+  format: '4 hours · online or in person',
+  availability: 'scheduled',
+  statusLabel: 'Available for your board or council',
+  listed: true,
+  sortOrder: 40,
+
+  eyebrow: 'Transformidable Academy · Workshop for one body',
+  headline: 'Govern AI',
+  headlineAccent: 'as one body.',
+  subhead:
+    'A four-hour workshop for a single council, commission, legislature or board. A shared foundation, then two working modules your body chooses, ending with a draft you build together in the room.',
+  facts: list(['4 hours · one half day or two 2-hour sessions', 'Online or in person', 'For one body and the staff who support it']),
+
+  whyHeadline: 'Every body is at a different point',
+  whyAccent: 'with AI.',
+  whyBody:
+    'Some are approving their first tool. Others are finding AI already in use and wondering who signed off. This workshop starts where your body is: a short intake with your clerk or manager and a brief member survey shape the examples, the modules and the output, so the four hours go to your decisions.',
+
+  agendaEyebrow: 'How the four hours run',
+  agendaHeadline: 'A shared foundation, two modules you choose.',
+  agendaNote:
+    'Your body picks two modules: an AI use policy, sorting AI uses by risk, questions to ask vendors and departments, public transparency and engagement, or workforce impact. In two sessions, parts 1–3 run in session one and parts 4–5 in session two.',
+  agenda: [
+    { minutes: 30, title: 'Shared foundation', description: 'What AI is, where it shows up and how it goes wrong, condensed from TA-101, or a recap if your members have taken it.' },
+    { minutes: 30, title: 'Where AI already is', description: 'Walk through the survey results: the AI your organization already uses or is being asked to approve, and who decided.' },
+    { minutes: 60, title: 'Module one', description: 'The first module your body chose, worked on your own examples.' },
+    { minutes: 15, title: 'Break', isBreak: true },
+    { minutes: 50, title: 'Module two', description: 'The second module, with the same focus on your own decisions.' },
+    { minutes: 55, title: 'Build it together', description: 'Draft the output in the room, in your body’s own words: a policy outline, a decision guide or a set of priorities. Close with next steps.' },
+  ],
+
+  outcomesHeadline: 'By the end, your body will be able to',
+  outcomes: list([
+    'Share one vocabulary for AI across members and staff',
+    'See where AI already operates in your organization',
+    'Work through the two AI issues that matter most to you now',
+    'Agree on a starting position, in writing',
+    'Name what comes back to the body, and when',
+  ]),
+  leaveWithHeadline: 'What your body leaves with',
+  leaveWith: list([
+    'A draft built together: a policy outline, decision guide or set of priorities',
+    'A written summary of the session and agreed next steps, sent afterward',
+    'Participant guide with glossary',
+    'Certificate of completion for each participant',
+  ]),
+
+  whoFor:
+    'One governing body at a time: a city or town council, county commission, school board, legislative committee, authority or commission, or public-entity or nonprofit board, with the executives and staff who bring AI items forward.',
+  notFor: 'Individuals looking for an open session. Take TA-101 or TA-201 in an open cohort instead.',
+  howItRuns: list([
+    'Four hours, as one half day or two 2-hour sessions',
+    'Online or in person',
+    'A short intake call with your clerk or manager, and a brief member survey beforehand',
+    'Built on your own examples; what your body discusses stays with your body',
+    'Not recorded',
+  ]),
+
+  faq: [
+    {
+      question: 'How is this different from TA-201?',
+      answer:
+        'TA-201 is a set course in open cohorts, with officials from different places. This workshop is for one body only: your body chooses the modules, and the output is a draft for your own organization.',
+    },
+    WORKSHOP_PRICE_FAQ,
+    {
+      question: 'Do members need TA-101 first?',
+      answer: 'No. The first part covers the essentials. If your members have taken TA-101, we use that time for a short recap and go deeper.',
+    },
+    { question: 'Online or in person?', answer: 'Either, as one half day or two 2-hour sessions. Two sessions fit more easily around meetings; one half day keeps the work together.' },
+    PUBLIC_MEETING_FAQ,
+  ],
+
+  finalHeadline: 'Your next AI decision,',
+  finalAccent: 'made together.',
+  seoTitle: 'AI for Your Governing Body: a workshop for councils and boards | Transformidable Academy',
+  seoDescription:
+    'A four-hour workshop, online or in person, for one council, commission, legislature or board: a shared AI foundation, two modules your body chooses, and a draft built together.',
+}
+
+const TABLETOP = {
+  title: 'Governance Tabletop',
+  slug: 'governance-tabletop',
+  topicTag: 'Governance',
+  level: 'workshop',
+  offerings: ['private'],
+  privateFormat: PRIVATE_WORKSHOP_FORMAT,
+  privateTerms: PRIVATE_WORKSHOP_TERMS,
+  oneLine: 'Your body works through a realistic scenario together, decision by decision, and sees where its governance holds and where it breaks.',
+  format: '4 hours · online or in person',
+  availability: 'scheduled',
+  statusLabel: 'Available for your board or council',
+  listed: true,
+  sortOrder: 50,
+
+  eyebrow: 'Transformidable Academy · Workshop for one body',
+  headline: 'Rehearse the decision',
+  headlineAccent: 'before it’s real.',
+  subhead:
+    'A four-hour tabletop exercise for a single council, commission, legislature or board. A realistic scenario unfolds in rounds; your body decides what to do at each turn, then debriefs on what held up and what didn’t.',
+  facts: list(['4 hours · one half day or two 2-hour sessions', 'Online or in person', 'Scenario adapted to your community']),
+
+  whyHeadline: 'Most bodies find out how they govern',
+  whyAccent: 'in the middle of a crisis.',
+  whyBody:
+    'Who gets told first? Who can decide between meetings? What does the public hear, and when? A tabletop answers those questions on a fictional problem, so the gaps surface in a workshop instead of a headline.',
+
+  agendaEyebrow: 'How the four hours run',
+  agendaHeadline: 'Four hours, five parts.',
+  agendaNote:
+    'Scenarios include an AI tool that causes harm, a vendor contract renewal, a data center rezoning, and a ransomware attack or data breach, each adapted to your community. In two sessions, parts 1–2 run in session one and parts 3–5 in session two.',
+  agenda: [
+    { minutes: 20, title: 'Setup and roles', description: 'Agree the ground rules, assign roles and set the scene. Every scenario is fictional.' },
+    { minutes: 100, title: 'Rounds one and two', description: 'The scenario unfolds. New developments arrive on a timer; your body decides what to do, who to tell and what to ask for.' },
+    { minutes: 15, title: 'Break', isBreak: true },
+    { minutes: 65, title: 'Rounds three and four', description: 'The pressure rises: public attention, a vendor response, a deadline. Decisions made earlier come back.' },
+    { minutes: 30, title: 'Debrief', description: 'Where decisions held up and where they broke down, mapped to six governance disciplines: see, decide, own, escalate, evidence and respond.' },
+    { minutes: 10, title: 'Next steps', description: 'Agree which gaps to close first.' },
+  ],
+
+  outcomesHeadline: 'By the end, your body will have',
+  outcomes: list([
+    'Practiced a hard decision together, without real consequences',
+    'Found who decides what between meetings, and where no one does',
+    'Tested how information reaches members and the public',
+    'Seen its governance through six disciplines',
+    'Agreed which gaps to close first',
+  ]),
+  leaveWithHeadline: 'What your body leaves with',
+  leaveWith: list([
+    'An after-action summary: what happened, the gaps found and recommended next steps',
+    'The scenario materials, to run again with staff',
+    'Certificate of completion for each participant',
+  ]),
+
+  whoFor:
+    'One governing body at a time: a city or town council, county commission, school board, legislative committee, authority or commission, or public-entity or nonprofit board, with the executives, clerk, attorney and communications staff who would be in the room if it happened.',
+  notFor: 'Individuals looking for an open session. TA-201 includes a shorter tabletop in open cohorts.',
+  howItRuns: list([
+    'Four hours, as one half day or two 2-hour sessions',
+    'Online or in person; in person works best',
+    'Scenario chosen and adapted with you before the session',
+    'Every scenario is fictional; no real organization is named',
+    'Not recorded',
+  ]),
+
+  faq: [
+    {
+      question: 'Which scenario should we choose?',
+      answer:
+        'The one closest to a decision your body expects to face: an AI tool that causes harm, a vendor contract renewal, a data center rezoning, or a ransomware attack or data breach. We adapt it to your community during scoping.',
+    },
+    WORKSHOP_PRICE_FAQ,
+    { question: 'Do members need to prepare?', answer: 'No. A short briefing note goes out beforehand; the exercise does the rest.' },
+    { question: 'Online or in person?', answer: 'Either, as one half day or two 2-hour sessions. In person works best for a tabletop, but it runs well online.' },
+    PUBLIC_MEETING_FAQ,
+  ],
+
+  finalHeadline: 'Find the gaps',
+  finalAccent: 'before a crisis does.',
+  seoTitle: 'Governance Tabletop: a scenario workshop for councils and boards | Transformidable Academy',
+  seoDescription:
+    'A four-hour tabletop exercise, online or in person, for one council, commission, legislature or board: a realistic scenario in rounds, a debrief on six governance disciplines, and an after-action summary.',
+}
+
+/**
+ * Adds the two workshops and unlists Building AI Governance in Practice, once:
+ * only while neither workshop exists and the applied program is still listed,
+ * so a later edit, deletion or relisting in the admin is never undone.
+ */
+async function addWorkshops(payload: Payload): Promise<void> {
+  const find = async (slug: string) =>
+    (await payload.find({ collection: 'courses', where: { slug: { equals: slug } }, limit: 1, depth: 0 })).docs[0] as Record<string, any> | undefined
+  const [ai, tabletop, applied] = await Promise.all([find(AI_WORKSHOP.slug), find(TABLETOP.slug), find(APPLIED.slug)])
+  if (ai || tabletop || (applied && !applied.listed)) return
+  await payload.create({ collection: 'courses', data: AI_WORKSHOP as any })
+  await payload.create({ collection: 'courses', data: TABLETOP as any })
+  if (applied) await payload.update({ collection: 'courses', id: applied.id, data: { listed: false } as any })
+  console.log('[seed:academy] Added the two workshops; unlisted Building AI Governance in Practice.')
+}
+
+/** Replaces exact phrases in a doc's text fields and FAQ answers; returns only what changed. */
+function swapText(doc: Record<string, any>, swaps: [string, string][], fields: string[]): Record<string, unknown> {
+  const swap = (v: unknown) => (typeof v === 'string' ? swaps.reduce((t, [from, to]) => t.split(from).join(to), v) : v)
+  const data: Record<string, unknown> = {}
+  for (const f of fields) {
+    const next = swap(doc[f])
+    if (next !== doc[f]) data[f] = next
+  }
+  if (Array.isArray(doc.faq)) {
+    const faq = doc.faq.map((q: any) => ({ ...q, answer: swap(q.answer) }))
+    if (faq.some((q: any, i: number) => q.answer !== doc.faq[i].answer)) data.faq = faq
+  }
+  return data
+}
+
+// TA-201 was sold per seat but described as a workshop; it's a course now.
+// Only these exact phrases change, so other edits made in the admin are kept.
+const TA201_SWAPS: [string, string][] = [
+  ['TA-201 · Live workshop', 'TA-201 · Live course'],
+  ['A four-hour live workshop', 'A four-hour live course'],
+  ['Same workshop, three ways', 'Same course, three ways'],
+  ['This workshop gives you', 'This course gives you'],
+  ['This workshop assumes', 'This course assumes'],
+  ['credited toward this workshop', 'credited toward this course'],
+  ['a live workshop for public officials', 'a live course for public officials'],
+  ['Building AI Governance in Practice, or a dedicated advisory engagement through Transformidable Advisory.', TA201_NEXT_ANSWER],
+]
+const TA101_SWAPS: [string, string][] = [['a four-hour live workshop in open cohorts', 'a four-hour live course in open cohorts']]
+
+async function courseLanguage(payload: Payload): Promise<void> {
+  const fields = ['eyebrow', 'subhead', 'cohortsHeadline', 'whyBody', 'leaveWithNote', 'seoTitle', 'seoDescription']
+  for (const [slug, swaps] of [[WORKSHOP.slug, TA201_SWAPS], [TA101.slug, TA101_SWAPS]] as const) {
+    const { docs } = await payload.find({ collection: 'courses', where: { slug: { equals: slug } }, limit: 1, depth: 0 })
+    const c = docs[0] as Record<string, any> | undefined
+    if (!c) continue
+    const data = swapText(c, swaps as [string, string][], fields)
+    if (!Object.keys(data).length) continue
+    await payload.update({ collection: 'courses', id: c.id, data: data as any })
+    console.log(`[seed:academy] ${slug}: now described as a course.`)
+  }
+}
+
+const WHOLE_BOARD_ANSWER =
+  'Yes. Any course can run as a dedicated session at the same per-seat price, with an 8-seat minimum. For a session built around your own agenda, see the workshops under For your board or council.'
+const DEDICATED_INTRO =
+  'Bring a course to your whole body, or book a workshop built around your agenda. Courses keep the same per-seat price, with an 8-seat minimum; smaller bodies fill the remaining seats with key staff. Workshops are scoped with you and priced to your group. Tell us about your body and we’ll propose dates.'
+const WORKSHOPS_SECTION = {
+  workshopsEyebrow: 'For your board or council',
+  workshopsHeadline: 'Workshops built around',
+  workshopsAccent: 'your body’s decisions.',
+  workshopsIntro:
+    'Four hours, online or in person, for one governing body at a time. We scope each workshop with your clerk or manager, so the examples, the exercises and what you leave with fit the decisions in front of you. Priced to your group.',
+  workshopsButton: 'Request a workshop',
+}
+
 const ACADEMY_PAGE = {
   heroEyebrow: 'Transformidable Academy',
   heroHeadline: 'Govern technology.',
   heroAccent: 'No technical background required.',
   heroSubhead:
-    'Live, small-group courses for the councils, commissions, legislatures and boards that approve and oversee technology. Learn what to ask, what a good answer sounds like, and when to say “not yet.”',
+    'Live courses and workshops for the councils, commissions, legislatures and boards that approve and oversee technology. Learn what to ask, what a good answer sounds like, and when to say “not yet.”',
   heroPrimary: 'See upcoming sessions',
   heroSecondary: 'Bring your whole board',
 
@@ -538,6 +806,8 @@ const ACADEMY_PAGE = {
   waitlistLine: 'Can’t make these times?',
   waitlistLink: 'Join the waitlist',
   waitlistAfter: 'and we’ll tell you when new dates open.',
+
+  ...WORKSHOPS_SECTION,
 
   howEyebrow: 'How the classes work',
   howHeadline: 'Built for people who hold the vote',
@@ -567,7 +837,7 @@ const ACADEMY_PAGE = {
       answer:
         'If a majority of your body attends together, it might. Tell us when you register and we’ll coordinate with your clerk, or set up a dedicated session. This is not legal advice.',
     },
-    { question: 'Can our whole board attend together?', answer: 'Yes, in a dedicated session at the same per-seat price, with an 8-seat minimum.' },
+    { question: 'Can our whole board attend together?', answer: WHOLE_BOARD_ANSWER },
   ],
 
   finalHeadline: 'Your next technology vote is coming.',
@@ -575,7 +845,7 @@ const ACADEMY_PAGE = {
   finalButton: 'See upcoming sessions',
   seoTitle: 'Transformidable Academy | Technology Governance Courses for Public Officials',
   seoDescription:
-    'Live, small-group courses for city and county councils, commissions, legislatures and school boards that approve and oversee technology. No technical background required.',
+    'Live courses and workshops for city and county councils, commissions, legislatures and school boards that approve and oversee technology. No technical background required.',
 
   attendEyebrow: 'Two ways to attend',
   attendHeadline: 'Come on your own.',
@@ -619,12 +889,44 @@ const ACADEMY_PAGE = {
 
   dedicatedEyebrow: 'Dedicated sessions',
   dedicatedHeadline: 'Plan a session for your board',
-  dedicatedIntro:
-    'Everyone at the table hears the same questions at the same time, on your calendar. Same per-seat price, with an 8-seat minimum; smaller bodies fill the remaining seats with key staff. Tell us about your body and we’ll propose dates.',
+  dedicatedIntro: DEDICATED_INTRO,
   interestEyebrow: 'Interest list',
   interestHeadline: 'Tell us what you need',
   interestIntro:
     'Join the waitlist for new dates, the interest list for a course that’s coming, or tell us what your body is being asked to approve. We’ll be in touch when there’s something to offer.',
+}
+
+
+// The Academy Page's copy before courses and workshops were split, replaced
+// only where it still reads exactly as first seeded.
+const ACADEMY_PAGE_SWAPS: Record<string, [string, string]> = {
+  heroSubhead: [
+    'Live, small-group courses for the councils, commissions, legislatures and boards that approve and oversee technology. Learn what to ask, what a good answer sounds like, and when to say “not yet.”',
+    ACADEMY_PAGE.heroSubhead,
+  ],
+  seoDescription: [
+    'Live, small-group courses for city and county councils, commissions, legislatures and school boards that approve and oversee technology. No technical background required.',
+    ACADEMY_PAGE.seoDescription,
+  ],
+  dedicatedIntro: [
+    'Everyone at the table hears the same questions at the same time, on your calendar. Same per-seat price, with an 8-seat minimum; smaller bodies fill the remaining seats with key staff. Tell us about your body and we’ll propose dates.',
+    DEDICATED_INTRO,
+  ],
+}
+const OLD_WHOLE_BOARD_ANSWER = 'Yes, in a dedicated session at the same per-seat price, with an 8-seat minimum.'
+
+/** Fills the workshops section once and updates the copy that mixed courses and workshops. */
+async function upgradeAcademyPage(payload: Payload): Promise<void> {
+  const page = (await payload.findGlobal({ slug: 'academy-page', depth: 0 })) as Record<string, any>
+  const data: Record<string, unknown> = {}
+  for (const [k, v] of Object.entries(WORKSHOPS_SECTION)) if (isEmpty(page[k])) data[k] = v
+  for (const [k, [from, to]] of Object.entries(ACADEMY_PAGE_SWAPS)) if (page[k] === from) data[k] = to
+  if (Array.isArray(page.faq) && page.faq.some((q: any) => q.answer === OLD_WHOLE_BOARD_ANSWER)) {
+    data.faq = page.faq.map((q: any) => (q.answer === OLD_WHOLE_BOARD_ANSWER ? { ...q, answer: WHOLE_BOARD_ANSWER } : q))
+  }
+  if (!Object.keys(data).length) return
+  await payload.updateGlobal({ slug: 'academy-page', data: data as any })
+  console.log('[seed:academy] Academy Page: courses and workshops split.')
 }
 
 export async function seedAcademy(payload: Payload): Promise<void> {
@@ -641,10 +943,13 @@ export async function seedAcademy(payload: Payload): Promise<void> {
   await upgradeToTA201(payload)
   await fixTA101(payload)
   await upgradeTA102(payload)
+  await addWorkshops(payload)
+  await courseLanguage(payload)
 
   const page = (await payload.findGlobal({ slug: 'academy-page', depth: 0 })) as { heroHeadline?: string }
   if (!page?.heroHeadline) {
     await payload.updateGlobal({ slug: 'academy-page', data: ACADEMY_PAGE as any })
     console.log('[seed:academy] Academy Page filled.')
   }
+  await upgradeAcademyPage(payload)
 }

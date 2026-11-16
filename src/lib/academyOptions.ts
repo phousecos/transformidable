@@ -7,7 +7,7 @@
 // inquiries keep their answer. The values stay fixed; only labels change.
 export const ACADEMY_PROGRAMS = [
   { label: 'AI Governance for Boards & Councils (90-minute briefing)', value: 'course-1' },
-  { label: 'Governing AI Adoption (4-hour workshop)', value: 'course-2' },
+  { label: 'Governing AI Adoption (4-hour course)', value: 'course-2' },
   { label: 'Building AI Governance in Practice (applied program)', value: 'course-3' },
   { label: 'More than one program', value: 'foundation-certificate' },
   { label: 'Not sure yet', value: 'not-sure' },
