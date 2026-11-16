@@ -30,6 +30,7 @@ const STATIC_PATHS = [
   "/briefings/live",
   "/briefings/webinars",
   "/about",
+  "/independence",
   "/contact",
   "/academy",
   "/academy/dedicated-sessions",
