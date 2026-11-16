@@ -189,7 +189,7 @@ export const Courses: CollectionConfig = {
               label: 'Choose a cohort',
               admin: { description: 'The dates table. Each date’s format (online in one or two sessions, or in person) is set on the date in the class platform.' },
               fields: [
-                { name: 'cohortsHeadline', label: 'Headline', type: 'text', admin: { description: 'Under "Choose a cohort", e.g. "Same workshop, three ways to sit for it." Blank: none.' } },
+                { name: 'cohortsHeadline', label: 'Headline', type: 'text', admin: { description: 'Under "Choose a cohort", e.g. "Same course, three ways to sit for it." Blank: none.' } },
                 { name: 'cohortsIntro', label: 'Intro', type: 'textarea', admin: { rows: 2, description: 'Blank: the Academy Page’s sessions intro.' } },
               ],
             },
@@ -240,7 +240,7 @@ export const Courses: CollectionConfig = {
                 textList('outcomes', 'Outcomes'),
                 { name: 'leaveWithHeadline', label: 'Take-home headline', type: 'text' },
                 textList('leaveWith', 'You leave with', ITALICS),
-                { name: 'leaveWithNote', label: 'Note under take-home', type: 'text', admin: { description: 'e.g. "Took TA-101 in the last six months? Your fee is credited toward this workshop."' } },
+                { name: 'leaveWithNote', label: 'Note under take-home', type: 'text', admin: { description: 'e.g. "Took TA-101 in the last six months? Your fee is credited toward this course."' } },
               ],
             },
             {

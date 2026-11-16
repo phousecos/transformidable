@@ -110,6 +110,20 @@ export const AcademyPage: GlobalConfig = {
             },
             {
               type: 'collapsible',
+              label: 'For your board or council (workshops)',
+              admin: {
+                description:
+                  'Lists courses offered only as a private session (no open cohorts), such as the workshops. Courses with open cohorts stay under Courses.',
+              },
+              fields: [
+                { name: 'workshopsEyebrow', label: 'Eyebrow', type: 'text' },
+                headline('workshops'),
+                { name: 'workshopsIntro', label: 'Intro', type: 'textarea', admin: { rows: 3, description: ITALICS } },
+                { name: 'workshopsButton', label: 'Button', type: 'text', admin: { description: 'Opens the dedicated-session form, e.g. Request a session.' } },
+              ],
+            },
+            {
+              type: 'collapsible',
               label: 'How the classes work',
               fields: [
                 { name: 'howEyebrow', label: 'Eyebrow', type: 'text' },
