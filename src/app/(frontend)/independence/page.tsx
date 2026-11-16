@@ -2,7 +2,6 @@
 import Link from "next/link";
 import { ResearchShell } from "../components/research/ResearchShell";
 import { Sky } from "../components/research/Sky";
-import { ADVISORY_ENTITY } from "../components/site";
 import { pageMetadata } from "../../../lib/seo.ts";
 
 export const metadata = pageMetadata({ title: "Independence", description: "The commitments that govern how Transformidable's research, advisory, and other divisions relate to one another.", path: "/independence" });
@@ -37,10 +36,6 @@ export default function IndependencePage() {
               <li>
                 <strong>Case selection is ours.</strong> Advisory engagements do not influence which cases we study or
                 publish, and we do not publish confidential client information.
-              </li>
-              <li>
-                <strong>Clear contracting.</strong> Advisory engagements are contracted through {ADVISORY_ENTITY}, an
-                affiliate of Transformidable.
               </li>
             </ul>
             <p>
