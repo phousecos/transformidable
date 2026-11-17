@@ -237,7 +237,7 @@ export default async function HomePage() {
 
             <Link className="hm-feat" href="/academy/courses/know-what-youre-governing">
               <span className="hm-feat-label">Academy &middot; TA-101</span>
-              <span className="hm-feat-title">Know What You&rsquo;re Governing</span>
+              <span className="hm-feat-title">AI Fundamentals: Know What You&rsquo;re Governing</span>
               <span className="hm-feat-desc">A 90-minute live course for legislators, council members, commissioners and board members: what to ask before you approve AI.</span>
               <span className="hm-feat-go">See dates <Arrow s={12} /></span>
             </Link>

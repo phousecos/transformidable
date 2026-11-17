@@ -29,7 +29,7 @@ const TA101_NEXT_ANSWER =
 
 const TA101 = {
   code: 'TA-101',
-  title: 'Know What You’re Governing',
+  title: 'AI Fundamentals: Know What You’re Governing',
   slug: 'know-what-youre-governing',
   topicTag: 'AI',
   level: 'foundations',
@@ -309,7 +309,7 @@ const APPLIED = {
 // coming in early 2027; its dates come from the class platform.
 const TA102_PAGE = {
   code: 'TA-102',
-  title: 'Know What You’re Siting',
+  title: 'Data Centers: Know What You’re Siting',
   slug: 'know-what-youre-siting',
   topicTag: 'Data centers',
   level: 'foundations',
@@ -510,7 +510,7 @@ async function upgradeTA102(payload: Payload): Promise<void> {
   const c = docs[0] as Record<string, any> | undefined
   if (!c || c.headline) return
   await payload.update({ collection: 'courses', id: c.id, data: TA102_PAGE as any })
-  console.log('[seed:academy] Wrote TA-102 Know What You’re Siting.')
+  console.log('[seed:academy] Wrote TA-102 Data Centers: Know What You’re Siting.')
 }
 
 // ---------------------------------------------------------------------------
