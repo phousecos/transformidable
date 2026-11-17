@@ -65,6 +65,14 @@ export const ACADEMY_BUYING_MODELS = [
   { label: 'private program', value: 'private-program' },
 ]
 
+// Who a course is for (Courses → For). The Academy page shows each its own
+// view: /academy?for=public (the default) and /academy?for=org. Labels use
+// the words visitors use for themselves.
+export const ACADEMY_AUDIENCES = [
+  { label: 'Elected and appointed officials', value: 'public' },
+  { label: 'Executives and leadership teams', value: 'organization' },
+]
+
 // How a course can be taken (Courses → Ways to take it).
 export const ACADEMY_OFFERINGS = [
   { label: 'Open cohorts (per seat)', value: 'open' },

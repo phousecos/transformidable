@@ -335,3 +335,8 @@
   .tr .aa-btn, .tr .aa-next { transition: none; }
   .tr .aa-btn:hover { transform: none; }
 }
+
+/* The two views (?for=public, ?for=org): the switch under the hero. */
+.tr .aa .aa-band--tight { padding-block: 22px 0; }
+.tr .aa-audience { margin: 0; }
+.tr .aa-audience a { font-size: .9rem; padding: 9px 18px; }

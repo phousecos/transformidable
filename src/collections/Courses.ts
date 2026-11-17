@@ -1,6 +1,6 @@
 import type { CollectionConfig, Field } from 'payload'
 import { isAdmin, isAdminOrEditor } from '../access/checkRole.ts'
-import { ACADEMY_AVAILABILITY, ACADEMY_BUYING_MODELS, ACADEMY_LEVELS, ACADEMY_OFFERINGS } from '../lib/academyOptions.ts'
+import { ACADEMY_AUDIENCES, ACADEMY_AVAILABILITY, ACADEMY_BUYING_MODELS, ACADEMY_LEVELS, ACADEMY_OFFERINGS } from '../lib/academyOptions.ts'
 
 // One Academy course. Everything the website says about a course lives here;
 // dates, seats and prices come from the class platform (repo phousecos/webinar,
@@ -30,7 +30,7 @@ export const Courses: CollectionConfig = {
   labels: { singular: 'Course', plural: 'Courses' },
   admin: {
     useAsTitle: 'title',
-    defaultColumns: ['code', 'title', 'offerings', 'availability', 'webinarSeries', 'listed'],
+    defaultColumns: ['code', 'title', 'audience', 'offerings', 'availability', 'webinarSeries', 'listed'],
     description:
       'Academy courses. Dates, seats and prices are set in the class platform (live.betransformidable.com/admin); link a course to its series there with "Webinar series slug".',
   },
@@ -88,6 +88,17 @@ export const Courses: CollectionConfig = {
                   admin: { width: '34%', description: 'Open cohorts list dates from the class platform; a private session offers "Plan a private session".' },
                 },
               ],
+            },
+            {
+              name: 'audience',
+              label: 'For',
+              type: 'select',
+              defaultValue: 'public',
+              options: ACADEMY_AUDIENCES,
+              admin: {
+                description:
+                  'Which view of the Academy page lists it. An executive edition is its own course entry with its own webinar series. Blank counts as officials.',
+              },
             },
             // Replaced by "Ways to take it"; read once to fill it in (seed/academy.ts).
             { name: 'buyingModel', type: 'select', options: ACADEMY_BUYING_MODELS, admin: { hidden: true } },
