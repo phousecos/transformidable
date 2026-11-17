@@ -29,7 +29,7 @@ const TA101_NEXT_ANSWER =
 
 const TA101 = {
   code: 'TA-101',
-  title: 'Know What You’re Governing',
+  title: 'AI Fundamentals: Know What You’re Governing',
   slug: 'know-what-youre-governing',
   topicTag: 'AI',
   level: 'foundations',

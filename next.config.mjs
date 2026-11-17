@@ -79,8 +79,8 @@ const nextConfig = {
         destination: 'https://betransformidable.com/',
         permanent: true,
       },
-      // The Academy's 90-minute course is now TA-101 Know What You're
-      // Governing; its earlier addresses land on it.
+      // The Academy's 90-minute course is now TA-101 AI Fundamentals: Know
+      // What You're Governing; its earlier addresses land on it.
       {
         source: '/academy/courses/ai-explained',
         destination: '/academy/courses/know-what-youre-governing',

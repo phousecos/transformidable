@@ -163,7 +163,7 @@ export default function AiPolicyPage() {
         </li>
         <li>
           <strong>Academy.</strong>{" "}
-          <Link href="/academy/courses/know-what-youre-governing">TA-101 Know What You&rsquo;re Governing</Link>,
+          <Link href="/academy/courses/know-what-youre-governing">TA-101 AI Fundamentals: Know What You&rsquo;re Governing</Link>,
           a 90-minute live course, gives your board a shared vocabulary, the questions to ask, and
           the <em>Before You Vote on AI</em> card. See all <Link href="/academy">Academy courses</Link>.
         </li>

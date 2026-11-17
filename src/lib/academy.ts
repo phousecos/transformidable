@@ -237,5 +237,5 @@ export const LEVEL_TEXT: Record<string, string> = { foundations: 'Foundations', 
 /** The small label on a card: the course code, else the level. */
 export const cardLabel = (c: Record<string, any>) => c.code || LEVEL_TEXT[c.level] || ''
 
-/** The course's name as people say it: "TA-101 Know What You're Governing". */
+/** The course's name as people say it: "TA-101 AI Fundamentals: Know What You're Governing". */
 export const fullName = (c: Record<string, any>) => [c.code, c.title].filter(Boolean).join(' ')
