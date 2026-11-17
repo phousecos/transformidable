@@ -98,6 +98,7 @@ try {
     { table: 'courses', column: 'level', validValues: ['foundations', 'workshop', 'applied'] },
     { table: 'courses', column: 'buying_model', validValues: ['per-seat', 'private-organization', 'private-program'] },
     { table: 'courses', column: 'availability', validValues: ['scheduled', 'private', 'coming'] },
+    { table: 'courses', column: 'audience', validValues: ['public', 'organization'] },
     { table: 'courses_offerings', column: 'value', validValues: ['open', 'private'] },
     // Subscribers
     { table: 'subscribers_lists', column: 'value', validValues: ['brief', 'book'] },

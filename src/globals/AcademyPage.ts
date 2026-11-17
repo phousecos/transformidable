@@ -78,6 +78,31 @@ export const AcademyPage: GlobalConfig = {
             },
             {
               type: 'collapsible',
+              label: 'Who it’s for (the two views)',
+              admin: {
+                description:
+                  'The switch under the hero. /academy and /academy?for=public show courses for officials; /academy?for=org shows briefings and courses for executives. Link emails to the matching one.',
+              },
+              fields: [
+                {
+                  type: 'row',
+                  fields: [
+                    { name: 'forPublicLabel', label: 'Officials label', type: 'text', admin: { width: '50%', description: 'Blank: "Elected and appointed officials".' } },
+                    { name: 'forOrgLabel', label: 'Executives label', type: 'text', admin: { width: '50%', description: 'Blank: "Executives and leadership teams".' } },
+                  ],
+                },
+                headline('org', 'Executives view: briefings headline'),
+                { name: 'orgIntro', label: 'Executives view: briefings intro', type: 'textarea', admin: { rows: 2, description: ITALICS } },
+                {
+                  name: 'orgEmptyLine',
+                  label: 'Line when a view has no dates',
+                  type: 'text',
+                  admin: { description: 'Before the interest-list link. Blank: "New dates are being added."' },
+                },
+              ],
+            },
+            {
+              type: 'collapsible',
               label: 'Founding offer',
               fields: [
                 { name: 'foundingShow', label: 'Show the founding offer', type: 'checkbox', defaultValue: true },

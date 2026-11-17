@@ -7,7 +7,14 @@
 // Two kinds of offering, split by how they're bought: courses (open cohorts,
 // per seat, Register) and, under "For your board or council", workshops
 // offered only as a private session (no price shown, Request a session).
+//
+// Two views, by who a course is for (Courses → For): officials (the default,
+// ?for=public) and executives (?for=org). The executives view leads with the
+// free briefings; either view shows them when it has no dated course, so the
+// page never shows an empty list.
 import {
+  AudienceToggle,
+  BriefingDates,
   AcademyHero,
   AcademyShell,
   ButtonRow,
@@ -27,7 +34,8 @@ import {
   TwoWays,
   WaitlistLine,
 } from "../components/academy/Academy";
-import { DEDICATED_HREF, INTEREST_HREF, fullName, getAcademyPage, getCatalog, isPerSeat, registerHref } from "../../../lib/academy.ts";
+import { DEDICATED_HREF, INTEREST_HREF, briefingsFor, fullName, getAcademyPage, getCatalog, inView, isPerSeat, registerHref, viewOf } from "../../../lib/academy.ts";
+import { getBriefings } from "../../../lib/briefings.ts";
 import { SITE_URL, pageMetadata } from "../../../lib/seo.ts";
 
 export const dynamic = "force-dynamic";
@@ -43,7 +51,16 @@ export async function generateMetadata() {
 }
 
 export default async function AcademyPage({ searchParams }) {
-  const [{ topic = "" } = {}, page, { catalog }] = await Promise.all([searchParams, getAcademyPage(), getCatalog()]);
+  const [{ topic = "", for: forParam = "" } = {}, page, { catalog: everyCourse }, briefingFeed] = await Promise.all([
+    searchParams,
+    getAcademyPage(),
+    getCatalog(),
+    getBriefings(),
+  ]);
+  const view = viewOf(forParam);
+  const catalog = everyCourse.filter((c) => inView(c, view));
+  const dated = catalog.some((c) => c.sessions.length > 0);
+  const briefings = view === "org" || !dated ? briefingsFor(briefingFeed, view) : [];
   // Courses: anything with open cohorts. Workshops: private sessions only.
   const courses = catalog.filter(isPerSeat);
   const workshops = catalog.filter((c) => !isPerSeat(c));
@@ -71,7 +88,7 @@ export default async function AcademyPage({ searchParams }) {
           "@context": "https://schema.org",
           "@type": "ItemList",
           name: page.heroEyebrow || "Transformidable Academy",
-          itemListElement: catalog.map((c, i) => ({
+          itemListElement: everyCourse.map((c, i) => ({
             "@type": "ListItem",
             position: i + 1,
             item: {
@@ -90,6 +107,12 @@ export default async function AcademyPage({ searchParams }) {
         <ButtonRow primary={{ label: page.heroPrimary, href: "#sessions" }} secondary={{ label: page.heroSecondary, href: workshops.length ? "#for-your-board" : DEDICATED_HREF }} />
         <NextSessionStrip course={next} foundingLabel={page.foundingLabel} />
       </AcademyHero>
+
+      <AudienceToggle page={page} view={view} />
+
+      {view === "org" && (
+        <BriefingDates items={briefings} headline={page.orgHeadline} accent={page.orgAccent} intro={page.orgIntro} />
+      )}
 
       <FoundingBand page={page} href={founding?.next ? registerHref(founding.series, founding.next) : "#sessions"} />
 
@@ -113,10 +136,17 @@ export default async function AcademyPage({ searchParams }) {
         <div className="wrap">
           <Headline id="aa-sessions-h" text={page.sessionsHeadline || "Upcoming sessions"} />
           {page.sessionsIntro && <p className="aa-intro aa-intro--tight">{page.sessionsIntro}</p>}
-          <SessionsTable catalog={catalog} topic={topic} />
+          <SessionsTable
+            catalog={catalog}
+            topic={topic}
+            view={forParam ? view : ""}
+            empty={view === "org" || briefings.length ? page.orgEmptyLine || "New dates are being added." : ""}
+          />
           <WaitlistLine page={page} />
         </div>
       </section>
+
+      {view === "public" && <BriefingDates items={briefings} id="briefings" />}
 
       {workshops.length > 0 && (
         <section className="aa-band" id="for-your-board" aria-labelledby="aa-workshops-h">
@@ -130,7 +160,7 @@ export default async function AcademyPage({ searchParams }) {
             {page.workshopsIntro && <p className="aa-intro"><Em>{page.workshopsIntro}</Em></p>}
             <CourseCards catalog={workshops} />
             <ButtonRow primary={{ label: page.workshopsButton || "Request a session", href: DEDICATED_HREF }} />
-            <PublicNote page={page} />
+            {view === "public" && <PublicNote page={page} />}
           </div>
         </section>
       )}

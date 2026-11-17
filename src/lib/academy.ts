@@ -15,7 +15,7 @@
 import { cache } from 'react'
 import config from '@payload-config'
 import { getPayload } from 'payload'
-import { SITE_CAMPAIGN, type BriefingSeries, type BriefingSession } from './briefings.ts'
+import { SITE_CAMPAIGN, type BriefingSeries, type BriefingSession, type BriefingsFeed } from './briefings.ts'
 
 /** A later part of a class in parts: registering for the date registers for every part. */
 export type AcademyPart = { id: number; startsAt: string; endsAt: string; durationMinutes: number }
@@ -239,3 +239,46 @@ export const cardLabel = (c: Record<string, any>) => c.code || LEVEL_TEXT[c.leve
 
 /** The course's name as people say it: "TA-101 Know What You're Governing". */
 export const fullName = (c: Record<string, any>) => [c.code, c.title].filter(Boolean).join(' ')
+
+// ---- Who it's for: the page's two views -------------------------------------
+
+/** The Academy page's views: officials (the default) and executives. */
+export type AcademyView = 'public' | 'org'
+
+/** The view a link asks for: ?for=org, else officials. */
+export const viewOf = (value: unknown): AcademyView => (value === 'org' ? 'org' : 'public')
+
+/** The address of a view. */
+export const viewHref = (view: AcademyView) => `/academy?for=${view}`
+
+/** The toggle's default labels, used when the Academy Page leaves them blank. */
+export const VIEW_LABELS: Record<AcademyView, string> = {
+  public: 'Elected and appointed officials',
+  org: 'Executives and leadership teams',
+}
+
+/** A course's audience. Courses saved before the field existed are for officials. */
+export const courseAudience = (c: Record<string, any>) => (c.audience === 'organization' ? 'organization' : 'public')
+
+/** True when a course belongs in a view. */
+export const inView = (c: Record<string, any>, view: AcademyView) =>
+  courseAudience(c) === (view === 'org' ? 'organization' : 'public')
+
+export type BriefingDate = { series: BriefingSeries; session: BriefingSession }
+
+/**
+ * Upcoming briefing dates for a view, soonest first: briefings for everyone
+ * plus those for the view's own audience. A series without an audience (an
+ * older feed) is for everyone.
+ */
+export function briefingsFor(feed: BriefingsFeed | null, view: AcademyView, limit = 4): BriefingDate[] {
+  if (!feed) return []
+  const own = view === 'org' ? 'organization' : 'public'
+  const out: BriefingDate[] = []
+  for (const series of feed.series) {
+    const audience = series.audience || 'everyone'
+    if (audience !== 'everyone' && audience !== own) continue
+    for (const session of series.sessions) out.push({ series, session })
+  }
+  return out.sort((a, b) => a.session.startsAt.localeCompare(b.session.startsAt)).slice(0, limit)
+}

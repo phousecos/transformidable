@@ -24,7 +24,10 @@ import {
   seatsText,
   sessionTimes,
   showsFormats,
+  VIEW_LABELS,
+  viewHref,
 } from "../../../../lib/academy.ts";
+import { sessionWhen, tagged } from "../../../../lib/briefings.ts";
 import "./academy.css";
 
 export const Arrow = ({ s = 13 }: { s?: number }) => (
@@ -193,7 +196,15 @@ function PriceCell({ s, currency }) {
  * with an interest-list row. The topic filter appears only when the rows span
  * more than one topic; it is plain links, so it works without JavaScript.
  */
-export function SessionsTable({ catalog, topic = "", basePath = "/academy" }) {
+export function SessionsTable({ catalog, topic = "", basePath = "/academy", view = "", empty = "" }) {
+  // Filter links keep the view (?for=org) the visitor is in.
+  const filterHref = (t = "") => {
+    const q = new URLSearchParams();
+    if (view) q.set("for", view);
+    if (t) q.set("topic", t);
+    const qs = q.toString();
+    return `${basePath}${qs ? `?${qs}` : ""}#sessions`;
+  };
   const rows = [];
   for (const c of catalog) {
     for (const s of c.sessions) rows.push({ c, s });
@@ -205,6 +216,9 @@ export function SessionsTable({ catalog, topic = "", basePath = "/academy" }) {
   const shown = rows.filter((r) => show(r.c));
   const shownComing = coming.filter(show);
 
+  if (!rows.length && !coming.length && empty) {
+    return <p className="aa-empty"><Em>{empty}</Em> <a className="aa-inline" href={`${INTEREST_HREF}?reason=waitlist`}>Join the list</a> and we’ll tell you first.</p>;
+  }
   if (!rows.length && !coming.length) {
     return <p className="aa-empty">New dates are being scheduled. <a className="aa-inline" href={`${INTEREST_HREF}?reason=waitlist`}>Join the waitlist</a> and we’ll tell you when they open.</p>;
   }
@@ -213,9 +227,9 @@ export function SessionsTable({ catalog, topic = "", basePath = "/academy" }) {
     <>
       {topics.length > 1 && (
         <nav className="aa-filter" aria-label="Filter sessions by topic">
-          <a href={`${basePath}#sessions`} aria-current={!topic ? "true" : undefined}>All topics</a>
+          <a href={filterHref()} aria-current={!topic ? "true" : undefined}>All topics</a>
           {topics.map((t) => (
-            <a key={t} href={`${basePath}?topic=${encodeURIComponent(t)}#sessions`} aria-current={topic === t ? "true" : undefined}>{t}</a>
+            <a key={t} href={filterHref(t)} aria-current={topic === t ? "true" : undefined}>{t}</a>
           ))}
         </nav>
       )}
@@ -263,6 +277,70 @@ export function SessionsTable({ catalog, topic = "", basePath = "/academy" }) {
         </table>
       </div>
     </>
+  );
+}
+
+// ---- Who it's for --------------------------------------------------------------
+
+/**
+ * The switch between the page's two views. Plain links, so it works without
+ * JavaScript; the link from an email (?for=org) lands on the right one.
+ */
+export function AudienceToggle({ page, view }) {
+  const label = { public: page.forPublicLabel || VIEW_LABELS.public, org: page.forOrgLabel || VIEW_LABELS.org };
+  return (
+    <nav className="aa-band aa-band--tight" aria-label="Who the Academy is for">
+      <div className="wrap">
+        <div className="aa-filter aa-audience">
+          {["public", "org"].map((v) => (
+            <a key={v} href={viewHref(v)} aria-current={view === v ? "page" : undefined}>{label[v]}</a>
+          ))}
+        </div>
+      </div>
+    </nav>
+  );
+}
+
+/** Upcoming briefings with their dates and a Register link to the briefings site. */
+export function BriefingDates({ items, headline = "", accent = "", intro = "", id = "briefings" }) {
+  if (!has(items)) return null;
+  return (
+    <section className="aa-band" id={id} aria-labelledby={`${id}-h`}>
+      <div className="wrap">
+        <Headline id={`${id}-h`} text={headline || "Free briefings"} accent={accent} />
+        {intro && <p className="aa-intro aa-intro--tight"><Em>{intro}</Em></p>}
+        <div className="aa-table-wrap">
+          <table className="aa-table">
+            <thead>
+              <tr>
+                <th scope="col">Briefing</th>
+                <th scope="col">Date · time</th>
+                <th scope="col">Price</th>
+                <th scope="col"><span className="sr-only">Register</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map(({ series, session }) => {
+                const w = sessionWhen(session.startsAt, series.timezone);
+                const title = session.title || series.name;
+                return (
+                  <tr key={`${series.slug}-${session.id}`}>
+                    <th scope="row"><b>{title}</b>{series.formatLabel && <span>{series.formatLabel}</span>}</th>
+                    <td><time dateTime={session.startsAt}>{w.date}</time> · {w.time}</td>
+                    <td>Free</td>
+                    <td>
+                      <a className="aa-btn aa-btn--wine aa-btn--sm" href={tagged(series.registerUrl, { session: String(session.id) })}>
+                        Register<span className="sr-only">: {title}, {w.short}</span>
+                      </a>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
   );
 }
 

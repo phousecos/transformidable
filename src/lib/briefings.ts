@@ -31,6 +31,8 @@ export type BriefingSeries = {
   description: string
   formatLabel: string
   program: string
+  /** Who the series is for. Feeds from before the field send none: treat as everyone. */
+  audience?: 'everyone' | 'public' | 'organization'
   timezone: string
   durationMinutes: number
   topics: { slug: string; name: string }[]
